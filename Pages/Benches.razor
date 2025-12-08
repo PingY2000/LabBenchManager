@@ -1,0 +1,26 @@
+﻿<h3>Benches</h3>
+
+@page "/benches" 
+@using LabBenchManager.Models 
+@inject LabBenchManager.Services.BenchService Service
+
+@inject LabBenchManager.Services.BenchService Service
+@code { 
+    private Bench newBench = new(); 
+    private List<Bench> benches = new();
+protected override async Task OnInitializedAsync() 
+{ 
+    benches = await Service.GetAllAsync(); 
+} 
+private async Task AddBench() 
+{ 
+    await Service.AddAsync(newBench);
+    newBench = new();
+    benches = await Service.GetAllAsync();
+} 
+private async Task Remove(int id) 
+{ 
+    await Service.RemoveAsync(id); 
+    benches = await Service.GetAllAsync();
+}
+}
