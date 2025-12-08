@@ -1,7 +1,96 @@
-﻿@page "/dashboard"
+﻿@page "/"
+@page "/dashboard"
 
-<h3>Dashboard</h3>
+@* 1. 注入你的 BenchService 和所需的模型命名空间 *@
+@using LabBenchManager.Services
+@using LabBenchManager.Models
+@inject BenchService BenchSvc
+
+<PageTitle>设备状态总览</PageTitle>
+
+<h3>设备状态总览 (Dashboard)</h3>
+<p class="text-muted">实时查看所有测试台的当前状态。</p>
+
+@* 保持这部分不变，它能很好地处理加载状态 *@
+@if (benches == null)
+{
+    <p><em>正在从数据库加载设备列表...</em></p>
+}
+else if (benches.Count == 0)
+{
+    <div class="alert alert-info">
+        数据库中还没有任何设备信息。请先到 "Benches" 页面添加设备。
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @* 这里的循环现在将遍历从数据库获取的真实数据 *@
+        @foreach (var bench in benches)
+        {
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100 border-2 @GetStatusClass(bench.Status)">
+                    <div class="card-header fw-bold">
+                        @bench.Name
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <span class="badge @GetStatusBadgeClass(bench.Status)">@bench.Status.ToString()</span>
+                        </h5>
+                        <ul class="list-unstyled">
+                            @* 使用了空值合并运算符 `??` 来优雅地处理 null 值 *@
+                            <li><strong>当前使用者:</strong> @(bench.CurrentUser ?? "N/A")</li>
+                            <li><strong>关联项目:</strong> @(bench.Project ?? "N/A")</li>
+                            <li><strong>预计结束时间:</strong> @(bench.NextAvailableTime?.ToString("yyyy-MM-dd HH:mm") ?? "随时可用")</li>
+                            <li><strong>位置:</strong> @(bench.Location ?? "未指定")</li>
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => ViewDetails(bench.Id)">查看详情</button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
 
 @code {
+    // 2. 将原来的 benches 字段类型改为 Bench 模型
+    private List<Bench>? benches;
 
+    // 3. 重写 OnInitializedAsync，因为数据库操作是异步的
+    protected override async Task OnInitializedAsync()
+    {
+        // 关键！调用服务来获取数据
+        benches = await BenchSvc.GetAllAsync();
+    }
+
+    // 4. 移除所有模拟数据和本地定义的模型类 (TestBench, BenchStatus)，因为它们现在在 Models 文件夹里了
+    //    保留下面的辅助方法，因为它们仍然有用
+
+    private string GetStatusClass(BenchStatus status) => status switch
+    {
+        BenchStatus.空闲 => "border-success",
+        BenchStatus.使用中 => "border-warning",
+        BenchStatus.维护中 => "border-danger",
+        BenchStatus.已预定 => "border-info",
+        _ => "border-secondary"
+    };
+
+    private string GetStatusBadgeClass(BenchStatus status) => status switch
+    {
+        BenchStatus.空闲 => "bg-success",
+        BenchStatus.使用中 => "bg-warning text-dark",
+        BenchStatus.维护中 => "bg-danger",
+        BenchStatus.已预定 => "bg-info text-dark",
+        _ => "bg-secondary"
+    };
+
+    private void ViewDetails(int benchId)
+    {
+        // 真实导航逻辑
+        // NavigationManager.NavigateTo($"/benches/details/{benchId}");
+        Console.WriteLine($"查看设备 {benchId} 的详情");
+    }
 }

@@ -1,10 +1,12 @@
-﻿using LabBenchManager.Data;
+﻿//Program.cs
+using LabBenchManager.Data;
 using LabBenchManager.Models;
 using LabBenchManager.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Authentication.Negotiate;
 using System;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,6 +32,11 @@ builder.Services.AddDbContext<LabDbContext>(options =>
 // 注册业务服务（依赖 DbContext，生命周期设为 Scoped）
 builder.Services.AddScoped<BenchService>();
 
+// === 身份认证与授权（Windows 集成认证） ===
+builder.Services.AddAuthentication(NegotiateDefaults.AuthenticationScheme)
+                .AddNegotiate();
+
+builder.Services.AddAuthorization();
 
 // =================================================
 var app = builder.Build();
@@ -50,6 +57,9 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 // 映射 Blazor Hub 和回退页面
 app.MapBlazorHub();

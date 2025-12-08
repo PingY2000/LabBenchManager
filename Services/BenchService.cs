@@ -1,4 +1,5 @@
-﻿using LabBenchManager.Models;
+﻿// Services/BenchService.cs
+using LabBenchManager.Models;
 using LabBenchManager.Data;
 using Microsoft.EntityFrameworkCore;
 namespace LabBenchManager.Services

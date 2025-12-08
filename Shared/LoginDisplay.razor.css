@@ -1,0 +1,13 @@
+﻿/* LoginDisplay.razor.css */
+
+span {
+    color: #000000;
+}
+
+/*
+ * (可选但推荐) 增加一点图标和文字之间的间距，
+ * 让它看起来不那么拥挤。
+ */
+.oi-person, .oi-warning {
+    margin-right: 0.5rem;
+}

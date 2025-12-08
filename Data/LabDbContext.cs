@@ -1,4 +1,5 @@
-﻿using LabBenchManager.Models;
+﻿//Data/LabDbContext.cs
+using LabBenchManager.Models;
 using Microsoft.EntityFrameworkCore;
 namespace LabBenchManager.Data
 {

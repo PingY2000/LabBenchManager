@@ -1,26 +1,157 @@
-﻿<h3>Benches</h3>
+﻿@page "/benches"
 
-@page "/benches" 
-@using LabBenchManager.Models 
-@inject LabBenchManager.Services.BenchService Service
+@using LabBenchManager.Services
+@using LabBenchManager.Models
+@inject BenchService BenchSvc
+@inject NavigationManager NavigationManager
 
-@inject LabBenchManager.Services.BenchService Service
-@code { 
-    private Bench newBench = new(); 
-    private List<Bench> benches = new();
-protected override async Task OnInitializedAsync() 
-{ 
-    benches = await Service.GetAllAsync(); 
-} 
-private async Task AddBench() 
-{ 
-    await Service.AddAsync(newBench);
-    newBench = new();
-    benches = await Service.GetAllAsync();
-} 
-private async Task Remove(int id) 
-{ 
-    await Service.RemoveAsync(id); 
-    benches = await Service.GetAllAsync();
+<PageTitle>设备管理</PageTitle>
+
+<h3>设备管理 (Benches)</h3>
+<p class="text-muted">在这里添加、编辑或删除测试台设备。</p>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="ShowAddModal">
+        <span class="oi oi-plus" aria-hidden="true"></span> 添加新设备
+    </button>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>名称</th>
+            <th>位置</th>
+            <th>状态</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (benchList == null)
+        {
+            <tr><td colspan="5"><em>加载中...</em></td></tr>
+        }
+        else
+        {
+            @foreach (var bench in benchList)
+            {
+                <tr>
+                    <td>@bench.Id</td>
+                    <td>@bench.Name</td>
+                    <td>@bench.Location</td>
+                    <td>@bench.Status.ToString()</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" @onclick="() => EditBench(bench)">编辑</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteBench(bench.Id)">删除</button>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+@* 一个简单的模态框用于添加/编辑 *@
+@if (showModal)
+{
+    <div class="modal fade show" style="display:block" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(editingBench.Id == 0 ? "添加新设备" : "编辑设备")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@editingBench" OnValidSubmit="HandleSave">
+                        <DataAnnotationsValidator />
+                        <div class="mb-3">
+                            <label class="form-label">设备名称</label>
+                            <InputText class="form-control" @bind-Value="editingBench.Name" />
+                            <ValidationMessage For="@(() => editingBench.Name)" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">位置</label>
+                            <InputText class="form-control" @bind-Value="editingBench.Location" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">状态</label>
+                            <InputSelect class="form-select" @bind-Value="editingBench.Status">
+                                @foreach (var status in Enum.GetValues<BenchStatus>())
+                                {
+                                    <option value="@status">@status.ToString()</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">取消</button>
+                            <button type="submit" class="btn btn-primary">保存</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
 }
+
+
+@code {
+    private List<Bench>? benchList;
+    private bool showModal = false;
+    private Bench editingBench = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBenches();
+    }
+
+    private async Task LoadBenches()
+    {
+        benchList = await BenchSvc.GetAllAsync();
+    }
+
+    private void ShowAddModal()
+    {
+        editingBench = new Bench(); // 创建一个新实例
+        showModal = true;
+    }
+
+    private void EditBench(Bench benchToEdit)
+    {
+        // 创建一个副本进行编辑，避免直接修改列表中的对象
+        editingBench = new Bench
+        {
+            Id = benchToEdit.Id,
+            Name = benchToEdit.Name,
+            Location = benchToEdit.Location,
+            Status = benchToEdit.Status
+        };
+        showModal = true;
+    }
+
+    private async Task DeleteBench(int id)
+    {
+        // 可以在这里加一个确认弹窗
+        await BenchSvc.RemoveAsync(id);
+        await LoadBenches(); // 重新加载数据刷新列表
+    }
+
+    private async Task HandleSave()
+    {
+        if (editingBench.Id == 0) // 新增
+        {
+            await BenchSvc.AddAsync(editingBench);
+        }
+        else // 更新
+        {
+            await BenchSvc.UpdateAsync(editingBench);
+        }
+
+        showModal = false;
+        await LoadBenches();
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
 }

@@ -1,15 +1,16 @@
-﻿@inherits LayoutComponentBase
+﻿@*Shared/MainLayotr.razor*@
+@inherits LayoutComponentBase
 
 <PageTitle>LabBenchManager</PageTitle>
-
 <div class="page">
     <div class="sidebar">
         <NavMenu />
     </div>
 
     <main>
-        <div class="top-row px-4">
-            <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
+        <div class="top-row px-4 d-flex justify-content-end align-items-center">
+            @* 将 LoginDisplay 组件放在这里 *@
+            <LoginDisplay />
         </div>
 
         <article class="content px-4">
