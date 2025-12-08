@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LabBenchManager.Migrations
 {
     [DbContext(typeof(LabDbContext))]
-    [Migration("20251208074531_AddAssignmentsTable")]
-    partial class AddAssignmentsTable
+    [Migration("20251208081333_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
