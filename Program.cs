@@ -10,73 +10,36 @@ using System;
 var builder = WebApplication.CreateBuilder(args);
 
 
-// Add services to the container.
+// 1. 服务容器配置 (Service Container Configuration)
+// =================================================
+
+// 添加 Razor Pages 和 Blazor Server 服务
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
-builder.Services.AddSingleton<WeatherForecastService>();
-builder.Services.AddDbContext<LabDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("Default")));
 
+builder.Services.AddSingleton<WeatherForecastService>();
+
+// SQL Server 连接串（从 appsettings.json 读取，若为空则使用 LocalDB 默认值）
+var connectionString = builder.Configuration.GetConnectionString("Default")
+    ?? "Server=(localdb)\\MSSQLLocalDB;Database=LabBenchDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
+
+// 注册 DbContext（使用 SQL Server）
+builder.Services.AddDbContext<LabDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
+// 注册业务服务（依赖 DbContext，生命周期设为 Scoped）
 builder.Services.AddScoped<BenchService>();
 
-//builder.Services.AddRazorPages(); 
-//builder.Services.AddServerSideBlazor();
 
+// =================================================
 var app = builder.Build();
+// =================================================
 
 
+// 2. HTTP 请求管道配置 (HTTP Request Pipeline Configuration)
+// =========================================================
 
-
-// ========== 数据库初始化（直接内联代码）==========
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    var logger = services.GetRequiredService<ILogger<Program>>();
-    try
-    {
-        var context = services.GetRequiredService<LabDbContext>();
-
-        // 创建数据库和表
-        await context.Database.EnsureCreatedAsync();
-        logger.LogInformation("数据库已创建或已存在");
-
-        // 检查并添加种子数据
-        if (!await context.Benches.AnyAsync())
-        {
-            logger.LogInformation("正在添加种子数据...");
-
-            var benches = new Bench[]
-            {
-                new Bench { Name = "工作台1", Location = "实验室A", Description = "化学实验专用" },
-                new Bench { Name = "工作台2", Location = "实验室B", Description = "物理实验专用" },
-                new Bench { Name = "工作台3", Location = "实验室C", Description = "生物实验专用" }
-            };
-
-            context.Benches.AddRange(benches);
-            await context.SaveChangesAsync();
-
-            logger.LogInformation("✅ 成功添加 {Count} 条种子数据", benches.Length);
-        }
-        else
-        {
-            logger.LogInformation("数据库已有数据，跳过种子数据添加");
-        }
-
-        logger.LogInformation("✅ 数据库初始化完成");
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "❌ 数据库初始化时发生错误");
-        throw;
-    }
-}
-// ========== 数据库初始化结束 ==========
-
-
-
-
-
-// Configure the HTTP request pipeline.
+// 开发环境外的异常处理
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -85,14 +48,33 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseStaticFiles();
-
 app.UseRouting();
 
+// 映射 Blazor Hub 和回退页面
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
 
+
+// 3. 应用程序启动时初始化 (Initialization on Application Startup)
+// ===============================================================
+
+// 启动时初始化数据库
+// （无迁移时可自动建库建表；若已添加迁移，建议改用 db.Database.Migrate()）
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    // 注意：GetRequiredService 需要指定要获取的服务类型
+    var dbContext = services.GetRequiredService<LabDbContext>();
+
+    // 确保数据库已创建。如果使用 EF Core Migrations，请注释掉此行，并取消下一行的注释。
+    dbContext.Database.EnsureCreated();
+
+    // 如果已添加迁移，改为使用 Migrate() 来应用迁移
+    // dbContext.Database.Migrate(); 
+}
+
+
+// 4. 运行应用程序 (Run the Application)
+// ======================================
 app.Run();
-
-
