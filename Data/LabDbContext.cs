@@ -7,5 +7,6 @@ namespace LabBenchManager.Data
     {
         public LabDbContext(DbContextOptions options) : base(options) { }
         public DbSet<Bench> Benches => Set<Bench>();
+        public DbSet<Assignment> Assignments => Set<Assignment>();
     }
 }

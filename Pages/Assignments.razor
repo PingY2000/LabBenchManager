@@ -1,5 +1,9 @@
 ﻿@page "/assignments"
 
+@using LabBenchManager.Services
+@using LabBenchManager.Models
+@inject AssignmentService AssignmentSvc
+
 <PageTitle>申请管理</PageTitle>
 
 <h3>申请管理 (Assignments)</h3>
@@ -18,72 +22,69 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var request in requests)
+        @if (assignments == null)
         {
-            <tr>
-                <td>@request.Id</td>
-                <td>@request.ApplicantName</td>
-                <td>@request.ProjectName</td>
-                <td>@request.TestBenchName</td>
-                <td>@request.RequestTime.ToString("yyyy-MM-dd HH:mm")</td>
-                <td>
-                    <span class="badge @GetRequestStatusBadge(request.Status)">@request.Status.ToString()</span>
-                </td>
-                <td>
-                    @if (request.Status == RequestStatus.待审批)
-                    {
-                        <button class="btn btn-sm btn-success me-1" @onclick="() => HandleApproval(request, true)">批准</button>
-                        <button class="btn btn-sm btn-danger" @onclick="() => HandleApproval(request, false)">拒绝</button>
-                    }
-                    else
-                    {
-                        <button class="btn btn-sm btn-secondary" disabled>已处理</button>
-                    }
-                </td>
-            </tr>
+            <tr><td colspan="7"><em>正在从数据库加载申请列表...</em></td></tr>
+        }
+        else
+        {
+            @foreach (var request in assignments)
+            {
+                <tr>
+                    <td>@request.Id</td>
+                    <td>@request.ApplicantName</td>
+                    <td>@request.ProjectName</td>
+                    <td>@request.Bench?.Name</td> @* 因为我们用了 Include, 这里可以安全地显示设备名 *@
+                    <td>@request.RequestTime.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>
+                        <span class="badge @GetRequestStatusBadge(request.Status)">@request.Status.ToString()</span>
+                    </td>
+                    <td>
+                        @if (request.Status == AssignmentStatus.待审批)
+                        {
+                            <button class="btn btn-sm btn-success me-1" @onclick="() => HandleApproval(request, true)">批准</button>
+                            <button class="btn btn-sm btn-danger" @onclick="() => HandleApproval(request, false)">拒绝</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-secondary" disabled>已处理</button>
+                        }
+                    </td>
+                </tr>
+            }
         }
     </tbody>
 </table>
 
 
 @code {
-    private List<TestRequest> requests = new();
+    private List<Assignment>? assignments;
 
-    public enum RequestStatus { 待审批, 已批准, 已拒绝 }
-
-    public class TestRequest
+    protected override async Task OnInitializedAsync()
     {
-        public int Id { get; set; }
-        public string ApplicantName { get; set; } = "";
-        public string ProjectName { get; set; } = "";
-        public string TestBenchName { get; set; } = "";
-        public DateTime RequestTime { get; set; }
-        public RequestStatus Status { get; set; }
+        await LoadAssignments();
     }
 
-    protected override void OnInitialized()
+    private async Task LoadAssignments()
     {
-        requests = new List<TestRequest>
-        {
-            new TestRequest { Id = 1, ApplicantName = "王五", ProjectName = "Project-Z", TestBenchName = "高低温测试箱 #1", RequestTime = DateTime.Now.AddDays(-1), Status = RequestStatus.待审批 },
-            new TestRequest { Id = 2, ApplicantName = "赵六", ProjectName = "Project-X", TestBenchName = "电磁兼容(EMC)暗室", RequestTime = DateTime.Now.AddHours(-10), Status = RequestStatus.已批准 },
-            new TestRequest { Id = 3, ApplicantName = "孙七", ProjectName = "Project-A", TestBenchName = "振动测试台", RequestTime = DateTime.Now.AddHours(-5), Status = RequestStatus.已拒绝 },
-            new TestRequest { Id = 4, ApplicantName = "周八", ProjectName = "Project-B", TestBenchName = "盐雾腐蚀测试箱", RequestTime = DateTime.Now.AddMinutes(-30), Status = RequestStatus.待审批 }
-        };
+        assignments = await AssignmentSvc.GetAllAsync();
     }
 
-    private void HandleApproval(TestRequest request, bool isApproved)
+    private async Task HandleApproval(Assignment request, bool isApproved)
     {
-        request.Status = isApproved ? RequestStatus.已批准 : RequestStatus.已拒绝;
-        // 在真实应用中，这里会调用 API 更新后端数据
-        Console.WriteLine($"申请 {request.Id} 已被 {(isApproved ? "批准" : "拒绝")}");
+        request.Status = isApproved ? AssignmentStatus.已批准 : AssignmentStatus.已拒绝;
+        await AssignmentSvc.UpdateAsync(request);
+        // 审批后无需重新加载整个列表，只需刷新当前UI即可
+        StateHasChanged();
     }
 
-    private string GetRequestStatusBadge(RequestStatus status) => status switch
+    private string GetRequestStatusBadge(AssignmentStatus status) => status switch
     {
-        RequestStatus.待审批 => "bg-warning text-dark",
-        RequestStatus.已批准 => "bg-success",
-        RequestStatus.已拒绝 => "bg-danger",
-        _ => "bg-secondary"
+        AssignmentStatus.待审批 => "bg-warning text-dark",
+        AssignmentStatus.已批准 => "bg-success",
+        AssignmentStatus.已拒绝 => "bg-danger",
+        AssignmentStatus.进行中 => "bg-primary",
+        AssignmentStatus.已完成 => "bg-secondary",
+        _ => "bg-dark"
     };
 }

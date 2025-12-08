@@ -19,7 +19,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
-builder.Services.AddSingleton<WeatherForecastService>();
 
 // SQL Server 连接串（从 appsettings.json 读取，若为空则使用 LocalDB 默认值）
 var connectionString = builder.Configuration.GetConnectionString("Default")
@@ -31,6 +30,7 @@ builder.Services.AddDbContext<LabDbContext>(options =>
 
 // 注册业务服务（依赖 DbContext，生命周期设为 Scoped）
 builder.Services.AddScoped<BenchService>();
+builder.Services.AddScoped<AssignmentService>();
 
 // === 身份认证与授权（Windows 集成认证） ===
 builder.Services.AddAuthentication(NegotiateDefaults.AuthenticationScheme)
@@ -78,10 +78,10 @@ using (var scope = app.Services.CreateScope())
     var dbContext = services.GetRequiredService<LabDbContext>();
 
     // 确保数据库已创建。如果使用 EF Core Migrations，请注释掉此行，并取消下一行的注释。
-    dbContext.Database.EnsureCreated();
+    //dbContext.Database.EnsureCreated();
 
     // 如果已添加迁移，改为使用 Migrate() 来应用迁移
-    // dbContext.Database.Migrate(); 
+    dbContext.Database.Migrate(); 
 }
 
 

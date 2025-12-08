@@ -1,5 +1,10 @@
 ﻿@page "/request"
 @using System.ComponentModel.DataAnnotations
+@using LabBenchManager.Services
+@using LabBenchManager.Models
+@inject AssignmentService AssignmentSvc
+@inject BenchService BenchSvc
+@inject NavigationManager NavigationManager
 
 <PageTitle>申请测试</PageTitle>
 
@@ -9,53 +14,56 @@
 @if (showSuccessMessage)
 {
     <div class="alert alert-success" role="alert">
-        申请提交成功！管理员将会尽快审批。
+        申请提交成功！管理员将会尽快审批。 <a href="/assignments" class="alert-link">查看我的申请</a>.
     </div>
 }
 
-<EditForm Model="@newRequest" OnValidSubmit="HandleValidSubmit" class="card card-body bg-light">
+<EditForm Model="@newAssignment" OnValidSubmit="HandleValidSubmit" class="card card-body bg-light">
     <DataAnnotationsValidator />
 
     <div class="mb-3">
         <label for="applicantName" class="form-label">申请人姓名</label>
-        <InputText id="applicantName" class="form-control" @bind-Value="newRequest.ApplicantName" />
-        <ValidationMessage For="@(() => newRequest.ApplicantName)" />
+        <InputText id="applicantName" class="form-control" @bind-Value="newAssignment.ApplicantName" />
+        <ValidationMessage For="@(() => newAssignment.ApplicantName)" />
     </div>
 
     <div class="mb-3">
         <label for="projectName" class="form-label">项目名称</label>
-        <InputText id="projectName" class="form-control" @bind-Value="newRequest.ProjectName" />
-        <ValidationMessage For="@(() => newRequest.ProjectName)" />
+        <InputText id="projectName" class="form-control" @bind-Value="newAssignment.ProjectName" />
+        <ValidationMessage For="@(() => newAssignment.ProjectName)" />
     </div>
 
     <div class="mb-3">
         <label for="testBench" class="form-label">选择测试台</label>
-        <InputSelect id="testBench" class="form-select" @bind-Value="newRequest.TestBenchId">
+        <InputSelect id="testBench" class="form-select" @bind-Value="newAssignment.BenchId">
             <option value="0">--请选择一个设备--</option>
-            @foreach (var bench in availableBenches)
+            @if (availableBenches != null)
             {
-                <option value="@bench.Id">@bench.Name</option>
+                @foreach (var bench in availableBenches)
+                {
+                    <option value="@bench.Id">@bench.Name (@bench.Status)</option>
+                }
             }
         </InputSelect>
-        <ValidationMessage For="@(() => newRequest.TestBenchId)" />
+        <ValidationMessage For="@(() => newAssignment.BenchId)" />
     </div>
 
     <div class="row">
         <div class="col-md-6 mb-3">
             <label for="startTime" class="form-label">计划开始时间</label>
-            <InputDate id="startTime" class="form-control" @bind-Value="newRequest.StartTime" />
-            <ValidationMessage For="@(() => newRequest.StartTime)" />
+            <InputDate id="startTime" class="form-control" @bind-Value="newAssignment.StartTime" />
+            <ValidationMessage For="@(() => newAssignment.StartTime)" />
         </div>
         <div class="col-md-6 mb-3">
             <label for="endTime" class="form-label">计划结束时间</label>
-            <InputDate id="endTime" class="form-control" @bind-Value="newRequest.EndTime" />
-            <ValidationMessage For="@(() => newRequest.EndTime)" />
+            <InputDate id="endTime" class="form-control" @bind-Value="newAssignment.EndTime" />
+            <ValidationMessage For="@(() => newAssignment.EndTime)" />
         </div>
     </div>
 
     <div class="mb-3">
         <label for="notes" class="form-label">备注</label>
-        <InputTextArea id="notes" class="form-control" @bind-Value="newRequest.Notes" />
+        <InputTextArea id="notes" class="form-control" @bind-Value="newAssignment.Notes" />
     </div>
 
     <button type="submit" class="btn btn-primary">提交申请</button>
@@ -63,60 +71,33 @@
 
 
 @code {
-    private RequestModel newRequest = new();
+    private Assignment newAssignment = new();
+    private List<Bench>? availableBenches;
     private bool showSuccessMessage = false;
 
-    // 模拟可供选择的设备列表
-    private List<AvailableBench> availableBenches = new()
+    protected override async Task OnInitializedAsync()
     {
-        new AvailableBench { Id = 101, Name = "高低温测试箱 #1" },
-        new AvailableBench { Id = 102, Name = "电磁兼容(EMC)暗室" },
-        new AvailableBench { Id = 103, Name = "振动测试台" },
-        new AvailableBench { Id = 104, Name = "盐雾腐蚀测试箱" },
-        new AvailableBench { Id = 105, Name = "高低温测试箱 #2" },
-        new AvailableBench { Id = 106, Name = "光学性能分析仪" }
-    };
-
-    // 表单提交的数据模型，包含验证规则
-    public class RequestModel
-    {
-        [Required(ErrorMessage = "申请人姓名不能为空")]
-        [StringLength(50, ErrorMessage = "姓名过长")]
-        public string ApplicantName { get; set; } = "";
-
-        [Required(ErrorMessage = "项目名称不能为空")]
-        public string ProjectName { get; set; } = "";
-
-        [Range(1, int.MaxValue, ErrorMessage = "请选择一个有效的测试设备")]
-        public int TestBenchId { get; set; }
-
-        [Required(ErrorMessage = "必须指定开始时间")]
-        public DateTime StartTime { get; set; } = DateTime.Today;
-
-        [Required(ErrorMessage = "必须指定结束时间")]
-        public DateTime EndTime { get; set; } = DateTime.Today.AddDays(1);
-
-        public string? Notes { get; set; }
+        // 从数据库加载可用的设备列表
+        availableBenches = await BenchSvc.GetAllAsync();
     }
 
-    public class AvailableBench
+    private async Task HandleValidSubmit()
     {
-        public int Id { get; set; }
-        public string Name { get; set; } = "";
-    }
+        // 设置提交时的默认值
+        newAssignment.RequestTime = DateTime.UtcNow;
+        newAssignment.Status = AssignmentStatus.待审批;
 
-    private void HandleValidSubmit()
-    {
-        // 在真实应用中，这里会将 newRequest 对象发送到后端 API
-        Console.WriteLine("表单提交成功!");
-        Console.WriteLine($"申请人: {newRequest.ApplicantName}, 项目: {newRequest.ProjectName}, 设备ID: {newRequest.TestBenchId}");
+        // 调用服务，将数据保存到数据库
+        await AssignmentSvc.AddAsync(newAssignment);
 
         showSuccessMessage = true;
 
         // 重置表单模型，以便用户可以进行下一次提交
-        newRequest = new();
+        newAssignment = new();
 
-        // 可以选择在几秒后自动隐藏成功消息
-        // Task.Delay(5000).ContinueWith(t => { showSuccessMessage = false; StateHasChanged(); });
+        // (可选) 几秒后自动隐藏成功消息
+        await Task.Delay(5000);
+        showSuccessMessage = false;
+        StateHasChanged();
     }
 }
