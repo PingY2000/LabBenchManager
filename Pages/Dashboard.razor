@@ -5,13 +5,13 @@
 @using LabBenchManager.Services
 @using LabBenchManager.Models
 @inject BenchService BenchSvc
+@inject NavigationManager NavigationManager
 
 <PageTitle>设备状态总览</PageTitle>
 
 <h3>设备状态总览 (Dashboard)</h3>
 <p class="text-muted">实时查看所有测试台的当前状态。</p>
 
-@* 保持这部分不变，它能很好地处理加载状态 *@
 @if (benches == null)
 {
     <p><em>正在从数据库加载设备列表...</em></p>
@@ -19,34 +19,55 @@
 else if (benches.Count == 0)
 {
     <div class="alert alert-info">
-        数据库中还没有任何设备信息。请先到 "Benches" 页面添加设备。
+        数据库中还没有任何设备信息。请先到 <a href="/benches">设备管理</a> 页面添加设备。
     </div>
 }
 else
 {
-    <div class="row g-3">
-        @* 这里的循环现在将遍历从数据库获取的真实数据 *@
+    <div class="row row-cols-1 row-cols-lg-2 g-3">
         @foreach (var bench in benches)
         {
-            <div class="col-12 col-md-6 col-lg-4">
-                <div class="card h-100 border-2 @GetStatusClass(bench.Status)">
-                    <div class="card-header fw-bold">
-                        @bench.Name
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            <span class="badge @GetStatusBadgeClass(bench.Status)">@bench.Status.ToString()</span>
-                        </h5>
-                        <ul class="list-unstyled">
-                            @* 使用了空值合并运算符 `??` 来优雅地处理 null 值 *@
-                            <li><strong>当前使用者:</strong> @(bench.CurrentUser ?? "N/A")</li>
-                            <li><strong>关联项目:</strong> @(bench.Project ?? "N/A")</li>
-                            <li><strong>预计结束时间:</strong> @(bench.NextAvailableTime?.ToString("yyyy-MM-dd HH:mm") ?? "随时可用")</li>
-                            <li><strong>位置:</strong> @(bench.Location ?? "未指定")</li>
-                        </ul>
-                    </div>
-                    <div class="card-footer">
-                        <button class="btn btn-sm btn-outline-primary" @onclick="() => ViewDetails(bench.Id)">查看详情</button>
+            <div class="col">
+                <div class="card h-100 @GetStatusClass(bench.Status)">
+                    <div class="row g-0 h-100">
+                        <div class="col-5">
+                            @if (!string.IsNullOrEmpty(bench.PictureUrl))
+                            {
+                                <img src="@bench.PictureUrl" class="img-aspect-4-3 rounded-start" alt="@bench.Name">
+                            }
+                            else
+                            {
+                                <div class="placeholder-aspect-4-3 rounded-start">
+                                    <span class="fs-3 oi oi-image"></span>
+                                </div>
+                            }
+                        </div>
+                        <div class="col-7">
+                            <div class="card-body d-flex flex-column h-100 p-2 p-sm-3">
+                                <div>
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <h6 class="card-title mb-1">@bench.Name</h6>
+                                        <span class="badge @GetStatusBadgeClass(bench.Status)">@bench.Status.ToString()</span>
+                                    </div>
+                                    <p class="card-subtitle mb-2 text-muted small">#@bench.EquipmentAssetNo</p>
+                                    <hr class="my-2" />
+                                </div>
+
+                                <ul class="list-unstyled small mb-2">
+                                    <li><strong>测试类型:</strong> @(bench.TestType ?? "N/A")</li>
+                                    <li><strong>测试对象:</strong> @(bench.TestObject ?? "N/A")</li>
+                                    <li class="pt-1"><strong><span class="oi oi-map-marker me-1"></span>位置:</strong> @(bench.Location ?? "未指定")</li>
+                                </ul>
+
+                                <div class="mt-auto">
+                                    <hr class="my-2" />
+                                    <div class="small">
+                                        <div><strong><span class="oi oi-person me-1"></span>使用者:</strong> @(bench.CurrentUser ?? "N/A")</div>
+                                        <div><strong><span class="oi oi-timer me-1"></span>结束时间:</strong> @(bench.NextAvailableTime?.ToString("HH:mm") ?? "N/A")</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -54,20 +75,50 @@ else
     </div>
 }
 
-
-@code {
-    // 2. 将原来的 benches 字段类型改为 Bench 模型
-    private List<Bench>? benches;
-
-    // 3. 重写 OnInitializedAsync，因为数据库操作是异步的
-    protected override async Task OnInitializedAsync()
-    {
-        // 关键！调用服务来获取数据
-        benches = await BenchSvc.GetAllAsync();
+<style>
+    /* 确保图片容器有固定高度 */
+    .img-aspect-4-3 {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: var(--bs-border-radius) 0 0 var(--bs-border-radius);
     }
 
-    // 4. 移除所有模拟数据和本地定义的模型类 (TestBench, BenchStatus)，因为它们现在在 Models 文件夹里了
-    //    保留下面的辅助方法，因为它们仍然有用
+    /* 占位符样式 */
+    .placeholder-aspect-4-3 {
+        width: 100%;
+        height: 100%;
+        background-color: #f8f9fa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6c757d;
+        border-radius: var(--bs-border-radius) 0 0 var(--bs-border-radius);
+    }
+
+    /* 修复卡片主体高度 */
+    .card-body {
+        min-height: 180px;
+    }
+
+    /* 确保卡片行等高 */
+    .row.g-0 {
+        min-height: 180px;
+    }
+
+    /* 卡片边框加粗显示状态 */
+    .card {
+        border-width: 2px;
+    }
+</style>
+
+@code {
+    private List<Bench>? benches;
+
+    protected override async Task OnInitializedAsync()
+    {
+        benches = await BenchSvc.GetAllAsync();
+    }
 
     private string GetStatusClass(BenchStatus status) => status switch
     {
@@ -89,7 +140,7 @@ else
 
     private void ViewDetails(int benchId)
     {
-        // 真实导航逻辑
+        // 这里可以导航到未来的设备详情页
         // NavigationManager.NavigateTo($"/benches/details/{benchId}");
         Console.WriteLine($"查看设备 {benchId} 的详情");
     }
