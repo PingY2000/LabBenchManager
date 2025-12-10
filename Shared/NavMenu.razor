@@ -17,19 +17,40 @@
         </div>
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="request">
+                <span class="oi oi-pencil" aria-hidden="true"></span> 设备详情
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="request">
                 <span class="oi oi-pencil" aria-hidden="true"></span> 申请测试
             </NavLink>
         </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="assignments">
-                <span class="oi oi-list-rich" aria-hidden="true"></span> 管理申请
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="benches">
-                <span class="oi oi-cog" aria-hidden="true"></span> 设备管理
-            </NavLink>
-        </div>
+
+        @* 申请管理: 只有 TestEngineer, Admin 能看到 *@
+        <AuthorizeView Roles="TestEngineer, Admin">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="assignments">
+                    <span class="oi oi-spreadsheet" aria-hidden="true"></span> 申请管理
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        @* 申请管理: 只有 TestEngineer, Admin 能看到 *@
+        <AuthorizeView Roles="TestEngineer, Admin">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="assignments">
+                    <span class="oi oi-spreadsheet" aria-hidden="true"></span> 计划安排
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        @* 设备管理: 只有 Admin 能看到 *@
+        <AuthorizeView Roles="Admin">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="benches">
+                    <span class="oi oi-cog" aria-hidden="true"></span> 设备管理
+                </NavLink>
+            </div>
+        </AuthorizeView>
+
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="adminusers">
                 <span class="oi oi-people" aria-hidden="true"></span> 用户管理
