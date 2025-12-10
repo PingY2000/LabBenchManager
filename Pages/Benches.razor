@@ -16,45 +16,54 @@
     </button>
 </div>
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>名称</th>
-            <th>位置</th>
-            <th>状态</th>
-            <th>操作</th>
-        </tr>
-    </thead>
-    <tbody>
-        @if (benchList == null)
-        {
-            <tr><td colspan="5"><em>加载中...</em></td></tr>
-        }
-        else
-        {
-            @foreach (var bench in benchList)
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>名称 (Item)</th>
+                <th>设备/资产编号</th>
+                <th>位置</th>
+                <th>测试类型</th>
+                <th>测试对象</th>
+                <th>状态</th>
+                <th style="width: 150px;">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (benchList == null)
             {
-                <tr>
-                    <td>@bench.Id</td>
-                    <td>@bench.Name</td>
-                    <td>@bench.Location</td>
-                    <td>@bench.Status.ToString()</td>
-                    <td>
-                        <button class="btn btn-sm btn-secondary" @onclick="() => EditBench(bench)">编辑</button>
-                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteBench(bench.Id)">删除</button>
-                    </td>
-                </tr>
+                <tr><td colspan="8"><em>加载中...</em></td></tr>
             }
-        }
-    </tbody>
-</table>
+            else
+            {
+                @foreach (var bench in benchList)
+                {
+                    <tr>
+                        <td>@bench.Id</td>
+                        <td>@bench.Name</td>
+                        <td>@bench.EquipmentAssetNo</td>
+                        <td>@bench.Location</td>
+                        <td>@bench.TestType</td>
+                        <td>@bench.TestObject</td>
+                        <td>@bench.Status.ToString()</td>
+                        <td>
+                            <button class="btn btn-sm btn-secondary" @onclick="() => EditBench(bench)">编辑</button>
+                            <button class="btn btn-sm btn-danger" @onclick="() => DeleteBench(bench.Id)">删除</button>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
 
-@* 一个简单的模态框用于添加/编辑 *@
+@* 一个模态框用于添加/编辑，已更新以包含所有字段 *@
 @if (showModal)
 {
     <div class="modal fade show" style="display:block" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
+            @* 使用更大的模态框 *@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">@(editingBench.Id == 0 ? "添加新设备" : "编辑设备")</h5>
@@ -63,15 +72,50 @@
                 <div class="modal-body">
                     <EditForm Model="@editingBench" OnValidSubmit="HandleSave">
                         <DataAnnotationsValidator />
-                        <div class="mb-3">
-                            <label class="form-label">设备名称</label>
-                            <InputText class="form-control" @bind-Value="editingBench.Name" />
-                            <ValidationMessage For="@(() => editingBench.Name)" />
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">设备名称</label>
+                                <InputText class="form-control" @bind-Value="editingBench.Name" />
+                                <ValidationMessage For="@(() => editingBench.Name)" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">设备/资产编号</label>
+                                <InputText class="form-control" @bind-Value="editingBench.EquipmentAssetNo" />
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">位置</label>
                             <InputText class="form-control" @bind-Value="editingBench.Location" />
                         </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">测试类型</label>
+                                <InputText class="form-control" @bind-Value="editingBench.TestType" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">测试对象</label>
+                                <InputText class="form-control" @bind-Value="editingBench.TestObject" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">数量</label>
+                                <InputNumber class="form-control" @bind-Value="editingBench.Quantity" />
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label">工作时间标准</label>
+                                <InputText class="form-control" @bind-Value="editingBench.WorkingHoursNorm" />
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">基本性能</label>
+                            <InputTextArea class="form-control" @bind-Value="editingBench.BasicPerformance" rows="3" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">图片链接 (URL)</label>
+                            <InputText class="form-control" @bind-Value="editingBench.PictureUrl" />
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label">状态</label>
                             <InputSelect class="form-select" @bind-Value="editingBench.Status">
@@ -111,28 +155,39 @@
 
     private void ShowAddModal()
     {
-        editingBench = new Bench(); // 创建一个新实例
+        editingBench = new Bench { Quantity = 1 }; // 创建一个新实例, 默认数量为1
         showModal = true;
     }
 
     private void EditBench(Bench benchToEdit)
     {
-        // 创建一个副本进行编辑，避免直接修改列表中的对象
+        // 创建一个包含所有字段的副本进行编辑，避免直接修改列表中的对象
         editingBench = new Bench
         {
             Id = benchToEdit.Id,
             Name = benchToEdit.Name,
+            EquipmentAssetNo = benchToEdit.EquipmentAssetNo,
             Location = benchToEdit.Location,
+            TestType = benchToEdit.TestType,
+            TestObject = benchToEdit.TestObject,
+            Quantity = benchToEdit.Quantity,
+            WorkingHoursNorm = benchToEdit.WorkingHoursNorm,
+            BasicPerformance = benchToEdit.BasicPerformance,
+            PictureUrl = benchToEdit.PictureUrl,
             Status = benchToEdit.Status
+            // 注意：CurrentUser, Project, NextAvailableTime 等动态状态不在此处编辑
         };
         showModal = true;
     }
 
     private async Task DeleteBench(int id)
     {
-        // 可以在这里加一个确认弹窗
+        // 实际项目中，这里应该添加一个 JavaScript 的 confirm 弹窗来确认删除
+        // if (await JSRuntime.InvokeAsync<bool>("confirm", $"确定要删除 ID 为 {id} 的设备吗?"))
+        // {
         await BenchSvc.RemoveAsync(id);
         await LoadBenches(); // 重新加载数据刷新列表
+        // }
     }
 
     private async Task HandleSave()
