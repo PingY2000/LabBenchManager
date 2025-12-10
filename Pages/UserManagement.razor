@@ -1,0 +1,109 @@
+﻿@page "/adminusers"
+@*@attribute [Authorize(Roles = AppRoles.Admin)] *@
+
+@using LabBenchManager.Models
+@using LabBenchManager.Services
+@inject UserService UserService
+@inject NavigationManager NavigationManager
+
+<h3>用户权限管理</h3>
+<p class="text-muted">为NT账号分配应用程序角色。</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>NT账号</th>
+            <th>显示名称</th>
+            <th>角色</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (users == null)
+        {
+            <tr><td colspan="4"><em>加载中...</em></td></tr>
+        }
+        else
+        {
+            foreach (var user in users)
+            {
+                <tr>
+                    <td>@user.NtAccount</td>
+                    <td>@user.DisplayName</td>
+                    <td>
+                        @* 使用下拉框直接修改角色 *@
+                        <InputSelect class="form-select form-select-sm" @bind-Value="user.Role" @bind-Value:after="() => UpdateUserRole(user)">
+                            <option value="@AppRoles.Requester">@AppRoles.Requester</option>
+                            <option value="@AppRoles.TestEngineer">@AppRoles.TestEngineer</option>
+                            <option value="@AppRoles.Admin">@AppRoles.Admin</option>
+                        </InputSelect>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteUser(user.Id)">删除</button>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<hr />
+
+<h4>添加新用户</h4>
+<EditForm Model="newUser" OnValidSubmit="AddNewUser" class="row g-3 align-items-end">
+    <DataAnnotationsValidator />
+    <div class="col-md-4">
+        <label class="form-label">NT账号 (格式: DOMAIN\user)</label>
+        <InputText class="form-control" @bind-Value="newUser.NtAccount" />
+        <ValidationMessage For="() => newUser.NtAccount" />
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">角色</label>
+        <InputSelect class="form-select" @bind-Value="newUser.Role">
+            <option value="">--选择角色--</option>
+            <option value="@AppRoles.Requester">@AppRoles.Requester</option>
+            <option value="@AppRoles.TestEngineer">@AppRoles.TestEngineer</option>
+            <option value="@AppRoles.Admin">@AppRoles.Admin</option>
+        </InputSelect>
+        <ValidationMessage For="() => newUser.Role" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">添加</button>
+    </div>
+</EditForm>
+
+
+@code {
+    private List<ApplicationUser>? users;
+    private ApplicationUser newUser = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        users = await UserService.GetAllUsersAsync();
+    }
+
+    private async Task AddNewUser()
+    {
+        await UserService.AddUserAsync(newUser);
+        newUser = new(); // 重置表单
+        await LoadUsers(); // 刷新列表
+    }
+
+    private async Task UpdateUserRole(ApplicationUser userToUpdate)
+    {
+        await UserService.UpdateUserAsync(userToUpdate);
+        // 可以加一个提示，比如 "角色已更新"
+    }
+
+    private async Task DeleteUser(int id)
+    {
+        // 可以在这里加一个确认弹窗
+        await UserService.DeleteUserAsync(id);
+        await LoadUsers();
+    }
+}
