@@ -32,6 +32,7 @@ builder.Services.AddDbContext<LabDbContext>(options =>
 builder.Services.AddScoped<BenchService>();
 builder.Services.AddScoped<AssignmentService>();
 builder.Services.AddScoped<UserService>(); // <--- 注册 UserService
+builder.Services.AddScoped<TestPlanService>();
 
 // --- 身份认证与授权 ---
 builder.Services.AddAuthentication(NegotiateDefaults.AuthenticationScheme)

@@ -1,0 +1,135 @@
+﻿@page "/schedule"
+@attribute [Authorize(Roles = $"{AppRoles.TestEngineer},{AppRoles.Admin}")]
+
+@using LabBenchManager.Models
+@using LabBenchManager.Services
+@inject BenchService BenchSvc
+@inject TestPlanService PlanSvc
+
+<PageTitle>测试排产看板</PageTitle>
+
+<h3>🗓️ 测试排产看板 (Test Schedule)</h3>
+
+<table class="table table-bordered">
+    <thead class="table-dark">
+        <tr>
+            <th style="width: 20%;">测试台</th>
+            <th>排产队列（按优先级和顺序）</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (benches == null)
+        {
+            <tr><td colspan="2"><em>加载中...</em></td></tr>
+        }
+        else
+        {
+            @foreach (var bench in benches)
+            {
+                <tr>
+                    <td class="align-top">
+                        <strong>@bench.Name</strong>
+                        <br /><small class="text-muted">@bench.Location</small>
+                    </td>
+                    <td>
+                        @if (testPlansByBench.ContainsKey(bench.Id) && testPlansByBench[bench.Id].Any())
+                        {
+                            <div class="list-group">
+                                @foreach (var plan in testPlansByBench[bench.Id])
+                                {
+                                    <div class="list-group-item d-flex justify-content-between align-items-start @GetPlanClass(plan)">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-1">
+                                                <span class="badge @GetPriorityBadge(plan.Priority) me-2">
+                                                    @plan.Priority
+                                                </span>
+                                                <span class="badge @GetStatusBadge(plan.Status)">
+                                                    @plan.Status
+                                                </span>
+                                            </div>
+                                            <h6 class="mb-1">@plan.ProjectName</h6>
+                                            <small>
+                                                负责人: @(plan.AssignedTo ?? "未分配") |
+                                                计划: @plan.PlannedStartTime?.ToString("MM-dd HH:mm") ~ @plan.PlannedEndTime?.ToString("MM-dd HH:mm")
+                                            </small>
+                                        </div>
+                                        <div class="btn-group-vertical btn-group-sm">
+                                            <button class="btn btn-outline-secondary" @onclick="() => EditPlan(plan)" title="编辑">
+                                                <span class="oi oi-pencil"></span>
+                                            </button>
+                                            <button class="btn btn-outline-primary" @onclick="() => ChangePriority(plan, 1)" title="提高优先级">▲</button>
+                                            <button class="btn btn-outline-primary" @onclick="() => ChangePriority(plan, -1)" title="降低优先级">▼</button>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted">暂无排产</p>
+                            <button class="btn btn-sm btn-success" @onclick="() => AddPlanForBench(bench.Id)">
+                                ➕ 添加测试计划
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<Bench>? benches;
+    private Dictionary<int, List<TestPlan>> testPlansByBench = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        benches = await BenchSvc.GetAllAsync();
+        var allPlans = await PlanSvc.GetAllPlansAsync();
+
+        testPlansByBench = allPlans.GroupBy(p => p.BenchId)
+                                    .ToDictionary(g => g.Key, g => g.ToList());
+    }
+
+    private async Task ChangePriority(TestPlan plan, int delta)
+    {
+        var newPriority = (int)plan.Priority + delta;
+        if (newPriority >= 1 && newPriority <= 4)
+        {
+            await PlanSvc.UpdatePriorityAsync(plan.Id, (PriorityLevel)newPriority);
+            await LoadData();
+        }
+    }
+
+    private void EditPlan(TestPlan plan) { /* 打开编辑弹窗 */ }
+    private void AddPlanForBench(int benchId) { /* 打开添加弹窗 */ }
+
+    private string GetPlanClass(TestPlan plan) => plan.Status switch
+    {
+        TestPlanStatus.进行中 => "border-start border-warning border-5",
+        TestPlanStatus.已完成 => "bg-light text-muted",
+        _ => ""
+    };
+
+    private string GetPriorityBadge(PriorityLevel priority) => priority switch
+    {
+        PriorityLevel.紧急 => "bg-danger",
+        PriorityLevel.高 => "bg-warning text-dark",
+        PriorityLevel.中 => "bg-info text-dark",
+        _ => "bg-secondary"
+    };
+
+    private string GetStatusBadge(TestPlanStatus status) => status switch
+    {
+        TestPlanStatus.待开始 => "bg-secondary",
+        TestPlanStatus.进行中 => "bg-primary",
+        TestPlanStatus.已完成 => "bg-success",
+        TestPlanStatus.已暂停 => "bg-warning text-dark",
+        _ => "bg-dark"
+    };
+}

@@ -9,5 +9,6 @@ namespace LabBenchManager.Data
         public DbSet<Bench> Benches => Set<Bench>();
         public DbSet<Assignment> Assignments => Set<Assignment>();
         public DbSet<ApplicationUser> ApplicationUsers => Set<ApplicationUser>();
+        public DbSet<TestPlan> TestPlans => Set<TestPlan>();
     }
 }
