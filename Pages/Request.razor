@@ -9,95 +9,281 @@
 <PageTitle>申请测试</PageTitle>
 
 <h3>申请测试 (Request)</h3>
-<p class="text-muted">填写以下表单以申请使用测试台。</p>
+<p class="text-muted">选择可用的测试台并填写申请信息。</p>
 
 @if (showSuccessMessage)
 {
-    <div class="alert alert-success" role="alert">
-        申请提交成功！管理员将会尽快审批。 <a href="/assignments" class="alert-link">查看我的申请</a>.
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <strong>申请提交成功！</strong> 管理员将会尽快审批。
+        <a href="/assignments" class="alert-link">查看我的申请</a>
+        <button type="button" class="btn-close" @onclick="() => showSuccessMessage = false"></button>
     </div>
 }
 
-<EditForm Model="@newAssignment" OnValidSubmit="HandleValidSubmit" class="card card-body bg-light">
-    <DataAnnotationsValidator />
-
-    <div class="mb-3">
-        <label for="applicantName" class="form-label">申请人姓名</label>
-        <InputText id="applicantName" class="form-control" @bind-Value="newAssignment.ApplicantName" />
-        <ValidationMessage For="@(() => newAssignment.ApplicantName)" />
-    </div>
-
-    <div class="mb-3">
-        <label for="projectName" class="form-label">项目名称</label>
-        <InputText id="projectName" class="form-control" @bind-Value="newAssignment.ProjectName" />
-        <ValidationMessage For="@(() => newAssignment.ProjectName)" />
-    </div>
-
-    <div class="mb-3">
-        <label for="testBench" class="form-label">选择测试台</label>
-        <InputSelect id="testBench" class="form-select" @bind-Value="newAssignment.BenchId">
-            <option value="0">--请选择一个设备--</option>
-            @if (availableBenches != null)
-            {
-                @foreach (var bench in availableBenches)
+<div class="row">
+    <!-- 左侧：可用设备列表 -->
+    <div class="col-md-5 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <span class="oi oi-list me-2"></span>可用设备列表
+                </h5>
+            </div>
+            <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                @if (benchesWithStatus == null)
                 {
-                    <option value="@bench.Id">@bench.Name (@bench.Status)</option>
+                    <p class="text-muted"><em>加载中...</em></p>
                 }
-            }
-        </InputSelect>
-        <ValidationMessage For="@(() => newAssignment.BenchId)" />
-    </div>
+                else if (!benchesWithStatus.Any())
+                {
+                    <div class="alert alert-info">
+                        暂无可用设备
+                    </div>
+                }
+                else
+                {
+                    <div class="list-group">
+                        @foreach (var item in benchesWithStatus)
+                        {
+                            var bench = item.Bench;
+                            var status = item.Status;
+                            var isAvailable = status == BenchStatus.空闲;
+                            var isSelected = newAssignment.BenchId == bench.Id;
 
-    <div class="row">
-        <div class="col-md-6 mb-3">
-            <label for="startTime" class="form-label">计划开始时间</label>
-            <InputDate id="startTime" class="form-control" @bind-Value="newAssignment.StartTime" />
-            <ValidationMessage For="@(() => newAssignment.StartTime)" />
+                            <a href="javascript:void(0)"
+                               class="list-group-item list-group-item-action @(isSelected ? "active" : "") @(!isAvailable ? "disabled" : "")"
+                               @onclick="() => SelectBench(bench.Id, isAvailable)">
+                                <div class="d-flex w-100 justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">
+                                            @bench.Name
+                                            @if (isSelected)
+                                            {
+                                                <span class="oi oi-check text-success ms-2"></span>
+                                            }
+                                        </h6>
+                                        <p class="mb-1 small">
+                                            <span class="oi oi-map-marker me-1"></span>@(bench.Location ?? "未指定位置")
+                                        </p>
+                                        <p class="mb-1 small">
+                                            <strong>测试类型:</strong> @(bench.TestType ?? "N/A") |
+                                            <strong>测试对象:</strong> @(bench.TestObject ?? "N/A")
+                                        </p>
+                                        @if (!string.IsNullOrEmpty(bench.EquipmentNo) || !string.IsNullOrEmpty(bench.AssetNo))
+                                        {
+                                            <p class="mb-0 small text-muted">
+                                                @if (!string.IsNullOrEmpty(bench.EquipmentNo))
+                                                {
+                                                    <span>设备号: @bench.EquipmentNo</span>
+                                                }
+                                                @if (!string.IsNullOrEmpty(bench.AssetNo))
+                                                {
+                                                    <span class="ms-2">资产号: @bench.AssetNo</span>
+                                                }
+                                            </p>
+                                        }
+                                    </div>
+                                    <div class="ms-2">
+                                        <span class="badge @GetStatusBadgeClass(status)">
+                                            @status
+                                        </span>
+                                    </div>
+                                </div>
+                                @if (!string.IsNullOrEmpty(bench.PictureUrl))
+                                {
+                                    <img src="@bench.PictureUrl" class="img-fluid mt-2 rounded" style="max-height: 100px;" alt="@bench.Name" />
+                                }
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
         </div>
-        <div class="col-md-6 mb-3">
-            <label for="endTime" class="form-label">计划结束时间</label>
-            <InputDate id="endTime" class="form-control" @bind-Value="newAssignment.EndTime" />
-            <ValidationMessage For="@(() => newAssignment.EndTime)" />
+    </div>
+
+    <!-- 右侧：申请表单 -->
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <span class="oi oi-document me-2"></span>申请信息
+                </h5>
+            </div>
+            <div class="card-body">
+                <EditForm Model="@newAssignment" OnValidSubmit="HandleValidSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="alert alert-danger" />
+
+                    @if (newAssignment.BenchId == 0)
+                    {
+                        <div class="alert alert-warning">
+                            <span class="oi oi-warning me-2"></span>
+                            请先从左侧列表中选择一个可用的测试台
+                        </div>
+                    }
+                    else
+                    {
+                        var selectedBench = benchesWithStatus?.FirstOrDefault(b => b.Bench.Id == newAssignment.BenchId)?.Bench;
+                        if (selectedBench != null)
+                        {
+                            <div class="alert alert-info">
+                                <strong>已选择设备:</strong> @selectedBench.Name
+                                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" @onclick="ClearSelection">
+                                    <span class="oi oi-x"></span> 重新选择
+                                </button>
+                            </div>
+                        }
+                    }
+
+                    <div class="mb-3">
+                        <label for="applicantName" class="form-label">
+                            申请人姓名 <span class="text-danger">*</span>
+                        </label>
+                        <InputText id="applicantName" class="form-control" @bind-Value="newAssignment.ApplicantName"
+                                   placeholder="请输入您的姓名" />
+                        <ValidationMessage For="@(() => newAssignment.ApplicantName)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="projectName" class="form-label">
+                            项目名称 <span class="text-danger">*</span>
+                        </label>
+                        <InputText id="projectName" class="form-control" @bind-Value="newAssignment.ProjectName"
+                                   placeholder="请输入项目名称" />
+                        <ValidationMessage For="@(() => newAssignment.ProjectName)" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="startTime" class="form-label">
+                                计划开始时间 <span class="text-danger">*</span>
+                            </label>
+                            <InputDate id="startTime" class="form-control" @bind-Value="newAssignment.StartTime" />
+                            <ValidationMessage For="@(() => newAssignment.StartTime)" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="endTime" class="form-label">
+                                计划结束时间 <span class="text-danger">*</span>
+                            </label>
+                            <InputDate id="endTime" class="form-control" @bind-Value="newAssignment.EndTime" />
+                            <ValidationMessage For="@(() => newAssignment.EndTime)" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">备注说明</label>
+                        <InputTextArea id="notes" class="form-control" @bind-Value="newAssignment.Notes" rows="4"
+                                       placeholder="请输入测试相关的备注信息（可选）" />
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg" disabled="@(newAssignment.BenchId == 0)">
+                            <span class="oi oi-check me-2"></span>提交申请
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="ResetForm">
+                            <span class="oi oi-reload me-2"></span>重置表单
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+
+        <!-- 使用说明 -->
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <span class="oi oi-info me-2"></span>使用说明
+                </h6>
+                <ul class="small mb-0">
+                    <li>从左侧列表中选择一个 <span class="badge bg-success">空闲</span> 状态的测试台</li>
+                    <li>填写完整的申请信息，包括申请人、项目名称和使用时间</li>
+                    <li>提交后请等待管理员审批</li>
+                    <li>您可以在 <a href="/assignments">我的申请</a> 页面查看申请状态</li>
+                </ul>
+            </div>
         </div>
     </div>
-
-    <div class="mb-3">
-        <label for="notes" class="form-label">备注</label>
-        <InputTextArea id="notes" class="form-control" @bind-Value="newAssignment.Notes" />
-    </div>
-
-    <button type="submit" class="btn btn-primary">提交申请</button>
-</EditForm>
-
+</div>
 
 @code {
     private Assignment newAssignment = new();
-    private List<Bench>? availableBenches;
+    private List<BenchWithStatus>? benchesWithStatus;
     private bool showSuccessMessage = false;
 
     protected override async Task OnInitializedAsync()
     {
-        // 从数据库加载可用的设备列表
-        availableBenches = await BenchSvc.GetAllAsync();
+        // 加载所有设备及其状态
+        benchesWithStatus = await BenchSvc.GetAllWithStatusAsync();
+
+        // 设置默认开始时间为明天
+        newAssignment.StartTime = DateTime.Today.AddDays(1);
+        newAssignment.EndTime = DateTime.Today.AddDays(2);
+    }
+
+    private void SelectBench(int benchId, bool isAvailable)
+    {
+        if (isAvailable)
+        {
+            newAssignment.BenchId = benchId;
+        }
+    }
+
+    private void ClearSelection()
+    {
+        newAssignment.BenchId = 0;
+    }
+
+    private void ResetForm()
+    {
+        newAssignment = new Assignment
+        {
+            StartTime = DateTime.Today.AddDays(1),
+            EndTime = DateTime.Today.AddDays(2)
+        };
     }
 
     private async Task HandleValidSubmit()
     {
+        // 验证选择的设备是否可用
+        var selectedItem = benchesWithStatus?.FirstOrDefault(b => b.Bench.Id == newAssignment.BenchId);
+        if (selectedItem == null || selectedItem.Status != BenchStatus.空闲)
+        {
+            // TODO: 显示错误消息
+            return;
+        }
+
         // 设置提交时的默认值
         newAssignment.RequestTime = DateTime.UtcNow;
         newAssignment.Status = AssignmentStatus.待审批;
 
-        // 调用服务，将数据保存到数据库
+        // 保存到数据库
         await AssignmentSvc.AddAsync(newAssignment);
 
+        // 显示成功消息
         showSuccessMessage = true;
 
-        // 重置表单模型，以便用户可以进行下一次提交
-        newAssignment = new();
+        // 重置表单
+        newAssignment = new Assignment
+        {
+            StartTime = DateTime.Today.AddDays(1),
+            EndTime = DateTime.Today.AddDays(2)
+        };
 
-        // (可选) 几秒后自动隐藏成功消息
+        // 重新加载设备列表
+        await OnInitializedAsync();
+
+        // 自动隐藏成功消息
         await Task.Delay(5000);
         showSuccessMessage = false;
         StateHasChanged();
     }
+
+    private string GetStatusBadgeClass(BenchStatus status) => status switch
+    {
+        BenchStatus.空闲 => "bg-success",
+        BenchStatus.使用中 => "bg-warning text-dark",
+        BenchStatus.维护中 => "bg-danger",
+        BenchStatus.已预定 => "bg-info text-dark",
+        _ => "bg-secondary"
+    };
 }

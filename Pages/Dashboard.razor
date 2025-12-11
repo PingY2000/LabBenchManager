@@ -1,7 +1,6 @@
 ﻿@page "/"
 @page "/dashboard"
 
-@* 1. 注入你的 BenchService 和所需的模型命名空间 *@
 @using LabBenchManager.Services
 @using LabBenchManager.Models
 @inject BenchService BenchSvc
@@ -12,11 +11,11 @@
 <h3>设备状态总览 (Dashboard)</h3>
 <p class="text-muted">实时查看所有测试台的当前状态。</p>
 
-@if (benches == null)
+@if (benchesWithStatus == null)
 {
     <p><em>正在从数据库加载设备列表...</em></p>
 }
-else if (benches.Count == 0)
+else if (benchesWithStatus.Count == 0)
 {
     <div class="alert alert-info">
         数据库中还没有任何设备信息。请先到 <a href="/benches">设备管理</a> 页面添加设备。
@@ -25,10 +24,13 @@ else if (benches.Count == 0)
 else
 {
     <div class="row row-cols-1 row-cols-lg-2 g-3">
-        @foreach (var bench in benches)
+        @foreach (var item in benchesWithStatus)
         {
+            var bench = item.Bench;
+            var status = item.Status;
+
             <div class="col">
-                <div class="card h-100 @GetStatusClass(bench.Status)">
+                <div class="card h-100 @GetStatusClass(status)">
                     <div class="row g-0 h-100">
                         <div class="col-5">
                             @if (!string.IsNullOrEmpty(bench.PictureUrl))
@@ -47,9 +49,18 @@ else
                                 <div>
                                     <div class="d-flex justify-content-between align-items-start">
                                         <h6 class="card-title mb-1">@bench.Name</h6>
-                                        <span class="badge @GetStatusBadgeClass(bench.Status)">@bench.Status.ToString()</span>
+                                        <span class="badge @GetStatusBadgeClass(status)">@status.ToString()</span>
                                     </div>
-                                    <p class="card-subtitle mb-2 text-muted small">#@bench.EquipmentAssetNo</p>
+                                    <p class="card-subtitle mb-2 text-muted small">
+                                        @if (!string.IsNullOrEmpty(bench.EquipmentNo))
+                                        {
+                                            <span>设备: #@bench.EquipmentNo</span>
+                                        }
+                                        @if (!string.IsNullOrEmpty(bench.AssetNo))
+                                        {
+                                            <span class="ms-2">资产: #@bench.AssetNo</span>
+                                        }
+                                    </p>
                                     <hr class="my-2" />
                                 </div>
 
@@ -63,7 +74,13 @@ else
                                     <hr class="my-2" />
                                     <div class="small">
                                         <div><strong><span class="oi oi-person me-1"></span>使用者:</strong> @(bench.CurrentUser ?? "N/A")</div>
-                                        <div><strong><span class="oi oi-timer me-1"></span>结束时间:</strong> @(bench.NextAvailableTime?.ToString("HH:mm") ?? "N/A")</div>
+                                        <div><strong><span class="oi oi-timer me-1"></span>结束时间:</strong> @(bench.NextAvailableTime?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")</div>
+                                    </div>
+                                    <!-- 添加查看排产按钮 -->
+                                    <div class="mt-2">
+                                        <button class="btn btn-primary btn-sm w-100" @onclick="() => ViewSchedule(bench.Id)">
+                                            <span class="oi oi-calendar me-1"></span>查看排产日历
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -113,11 +130,11 @@ else
 </style>
 
 @code {
-    private List<Bench>? benches;
+    private List<BenchWithStatus>? benchesWithStatus;
 
     protected override async Task OnInitializedAsync()
     {
-        benches = await BenchSvc.GetAllAsync();
+        benchesWithStatus = await BenchSvc.GetAllWithStatusAsync();
     }
 
     private string GetStatusClass(BenchStatus status) => status switch
@@ -138,10 +155,8 @@ else
         _ => "bg-secondary"
     };
 
-    private void ViewDetails(int benchId)
+    private void ViewSchedule(int benchId)
     {
-        // 这里可以导航到未来的设备详情页
-        // NavigationManager.NavigateTo($"/benches/details/{benchId}");
-        Console.WriteLine($"查看设备 {benchId} 的详情");
+        NavigationManager.NavigateTo($"/schedule/{benchId}");
     }
 }

@@ -1,4 +1,5 @@
 ﻿@page "/benches"
+@attribute [Authorize(Roles = $"{AppRoles.TestEngineer},{AppRoles.Admin}")]
 
 @using LabBenchManager.Services
 @using LabBenchManager.Models
@@ -22,44 +23,70 @@
         <thead>
             <tr>
                 <th>图片</th>
-                <th>名称 (Item)</th>
-                <th>设备/资产编号</th>
+                <th>名称</th>
+                <th>设备编号</th>
+                <th>资产编号</th>
                 <th>位置</th>
                 <th>测试类型</th>
                 <th>测试对象</th>
-                <th>状态</th>
-                <th style="width: 150px;">操作</th>
+                <th>当前状态</th>
+                <th style="width: 180px;">操作</th>
             </tr>
         </thead>
         <tbody>
-            @if (benchList == null)
+            @if (benchListWithStatus == null)
             {
-                <tr><td colspan="6"><em>加载中...</em></td></tr>
+                <tr><td colspan="9"><em>加载中...</em></td></tr>
+            }
+            else if (benchListWithStatus.Count == 0)
+            {
+                <tr><td colspan="9" class="text-center text-muted">暂无设备数据</td></tr>
             }
             else
             {
-                @foreach (var bench in benchList)
+                @foreach (var item in benchListWithStatus)
                 {
+                    var bench = item.Bench;
+                    var status = item.Status;
+
                     <tr>
                         <td>
                             @if (!string.IsNullOrEmpty(bench.PictureUrl))
                             {
-                                <img src="@bench.PictureUrl" class="img-thumbnail" style="width: 100px; height: auto;" alt="@bench.Name" />
+                                <img src="@bench.PictureUrl" class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover;" alt="@bench.Name" />
                             }
                             else
                             {
-                                <span class="text-muted">无图片</span>
+                                <div class="text-muted text-center" style="width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; border: 1px dashed #ccc;">
+                                    <span class="oi oi-image"></span>
+                                </div>
                             }
                         </td>
-                        <td>@bench.Name</td>
-                        <td>@bench.EquipmentAssetNo</td>
+                        <td>
+                            <strong>@bench.Name</strong>
+                        </td>
+                        <td>@(bench.EquipmentNo ?? "-")</td>
+                        <td>@(bench.AssetNo ?? "-")</td>
                         <td>@bench.Location</td>
                         <td>@bench.TestType</td>
                         <td>@bench.TestObject</td>
-                        <td>@bench.Status.ToString()</td>
                         <td>
-                            <button class="btn btn-sm btn-secondary" @onclick="() => EditBench(bench)">编辑</button>
-                            <button class="btn btn-sm btn-danger" @onclick="() => DeleteBench(bench.Id)">删除</button>
+                            <span class="badge @GetStatusBadgeClass(status)">
+                                @status.ToString()
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-primary" @onclick="() => ViewSchedule(bench.Id)" title="查看排产">
+                                    <span class="oi oi-calendar"></span>
+                                </button>
+                                <button class="btn btn-outline-secondary" @onclick="() => EditBench(bench)" title="编辑">
+                                    <span class="oi oi-pencil"></span>
+                                </button>
+                                <button class="btn btn-outline-danger" @onclick="() => DeleteBench(bench.Id)" title="删除">
+                                    <span class="oi oi-trash"></span>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 }
@@ -68,7 +95,7 @@
     </table>
 </div>
 
-@* 一个模态框用于添加/编辑，已更新以包含所有字段 *@
+@* 添加/编辑模态框 *@
 @if (showModal)
 {
     <div class="modal fade show" style="display:block" tabindex="-1">
@@ -81,68 +108,85 @@
                 <div class="modal-body">
                     <EditForm Model="@editingBench" OnValidSubmit="HandleSave">
                         <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger" />
+
+                        <!-- 基本信息 -->
+                        <h6 class="border-bottom pb-2 mb-3">基本信息</h6>
+
+                        <div class="mb-3">
+                            <label class="form-label">设备名称 <span class="text-danger">*</span></label>
+                            <InputText class="form-control" @bind-Value="editingBench.Name" placeholder="例如: VO36_General function hydraulic test bench" />
+                            <ValidationMessage For="@(() => editingBench.Name)" />
+                        </div>
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">设备名称</label>
-                                <InputText class="form-control" @bind-Value="editingBench.Name" />
-                                <ValidationMessage For="@(() => editingBench.Name)" />
+                                <label class="form-label">设备编号</label>
+                                <InputText class="form-control" @bind-Value="editingBench.EquipmentNo" placeholder="例如: 12235422" />
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">设备/资产编号</label>
-                                <InputText class="form-control" @bind-Value="editingBench.EquipmentAssetNo" />
+                                <label class="form-label">资产编号</label>
+                                <InputText class="form-control" @bind-Value="editingBench.AssetNo" placeholder="例如: 105500" />
                             </div>
                         </div>
+
                         <div class="mb-3">
                             <label class="form-label">位置</label>
-                            <InputText class="form-control" @bind-Value="editingBench.Location" />
+                            <InputText class="form-control" @bind-Value="editingBench.Location" placeholder="例如: DCCC-204-1F,Lab DC-IH/ECH-CN" />
                         </div>
+
+                        <!-- 测试信息 -->
+                        <h6 class="border-bottom pb-2 mb-3 mt-4">测试信息</h6>
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">测试类型</label>
-                                <InputText class="form-control" @bind-Value="editingBench.TestType" />
+                                <InputText class="form-control" @bind-Value="editingBench.TestType" placeholder="例如: Functional test" />
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">测试对象</label>
-                                <InputText class="form-control" @bind-Value="editingBench.TestObject" />
+                                <InputText class="form-control" @bind-Value="editingBench.TestObject" placeholder="例如: valve" />
                             </div>
                         </div>
+
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">数量</label>
                                 <InputNumber class="form-control" @bind-Value="editingBench.Quantity" />
                             </div>
                             <div class="col-md-8 mb-3">
-                                <label class="form-label">工作时间标准</label>
-                                <InputText class="form-control" @bind-Value="editingBench.WorkingHoursNorm" />
+                                <label class="form-label">工时规范</label>
+                                <InputText class="form-control" @bind-Value="editingBench.WorkingHoursNorm" placeholder="例如: 1 x 8 h x 5 day" />
                             </div>
                         </div>
+
                         <div class="mb-3">
-                            <label class="form-label">基本性能</label>
-                            <InputTextArea class="form-control" @bind-Value="editingBench.BasicPerformance" rows="3" />
+                            <label class="form-label">基本性能与配置</label>
+                            <InputTextArea class="form-control" @bind-Value="editingBench.BasicPerformanceAndConfiguration" rows="3" placeholder="例如: 3 working areas A1 A2 A3" />
                         </div>
+
+                        <!-- 图片上传 -->
+                        <h6 class="border-bottom pb-2 mb-3 mt-4">设备图片</h6>
+
                         <div class="mb-3">
-                            <label class="form-label">设备图片</label>
-                            <InputFile OnChange="LoadFile" class="form-control" accept="image/png, image/jpeg, image/gif" />
+                            <label class="form-label">上传图片</label>
+                            <InputFile OnChange="LoadFile" class="form-control" accept="image/png, image/jpeg, image/gif, image/jpg" />
+                            <small class="form-text text-muted">支持 PNG, JPG, GIF 格式，最大 5MB</small>
+
                             @if (!string.IsNullOrEmpty(editingBench.PictureUrl))
                             {
-                                <div class="mt-2">
-                                    <small>当前图片:</small><br />
-                                    <img src="@editingBench.PictureUrl" style="max-width: 200px; max-height: 200px;" />
+                                <div class="mt-3">
+                                    <label class="form-label">当前图片预览:</label><br />
+                                    <img src="@editingBench.PictureUrl" class="img-thumbnail" style="max-width: 300px; max-height: 300px;" />
                                 </div>
                             }
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">状态</label>
-                            <InputSelect class="form-select" @bind-Value="editingBench.Status">
-                                @foreach (var status in Enum.GetValues<BenchStatus>())
-                                {
-                                    <option value="@status">@status.ToString()</option>
-                                }
-                            </InputSelect>
-                        </div>
+
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" @onclick="CloseModal">取消</button>
-                            <button type="submit" class="btn btn-primary">保存</button>
+                            <button type="submit" class="btn btn-primary">
+                                <span class="oi oi-check me-1"></span>保存
+                            </button>
                         </div>
                     </EditForm>
                 </div>
@@ -152,12 +196,11 @@
     <div class="modal-backdrop fade show"></div>
 }
 
-
 @code {
-    private List<Bench>? benchList;
+    private List<BenchWithStatus>? benchListWithStatus;
     private bool showModal = false;
     private Bench editingBench = new();
-    private IBrowserFile? selectedFile; // 用于存储用户选择的文件
+    private IBrowserFile? selectedFile;
 
     protected override async Task OnInitializedAsync()
     {
@@ -166,20 +209,18 @@
 
     private async Task LoadBenches()
     {
-        benchList = await BenchSvc.GetAllAsync();
+        benchListWithStatus = await BenchSvc.GetAllWithStatusAsync();
     }
 
-    // 当用户在 InputFile 中选择文件时，此方法会被调用
     private void LoadFile(InputFileChangeEventArgs e)
     {
-        // 我们只处理单个文件上传
         selectedFile = e.File;
     }
 
     private void ShowAddModal()
     {
         editingBench = new Bench { Quantity = 1 };
-        selectedFile = null; // 清空上次选择的文件
+        selectedFile = null;
         showModal = true;
     }
 
@@ -189,43 +230,54 @@
         {
             Id = benchToEdit.Id,
             Name = benchToEdit.Name,
-            EquipmentAssetNo = benchToEdit.EquipmentAssetNo,
+            EquipmentNo = benchToEdit.EquipmentNo,
+            AssetNo = benchToEdit.AssetNo,
             Location = benchToEdit.Location,
             TestType = benchToEdit.TestType,
             TestObject = benchToEdit.TestObject,
             Quantity = benchToEdit.Quantity,
             WorkingHoursNorm = benchToEdit.WorkingHoursNorm,
-            BasicPerformance = benchToEdit.BasicPerformance,
-            PictureUrl = benchToEdit.PictureUrl,
-            Status = benchToEdit.Status
+            BasicPerformanceAndConfiguration = benchToEdit.BasicPerformanceAndConfiguration,
+            PictureUrl = benchToEdit.PictureUrl
         };
-        selectedFile = null; // 清空上次选择的文件
+        selectedFile = null;
         showModal = true;
     }
 
-    // 更新后的保存逻辑
     private async Task HandleSave()
     {
-        // 检查是否有新文件被上传
+        // 处理文件上传
         if (selectedFile != null)
         {
-            // 1. 定义存储路径
             var uploadPath = Path.Combine(Env.WebRootPath, "images", "benches");
             if (!Directory.Exists(uploadPath))
             {
                 Directory.CreateDirectory(uploadPath);
             }
 
-            // 2. 为了避免文件名冲突，生成一个唯一的文件名
             var uniqueFileName = $"{Guid.NewGuid()}{Path.GetExtension(selectedFile.Name)}";
             var physicalPath = Path.Combine(uploadPath, uniqueFileName);
 
-            // 3. 将文件流写入服务器磁盘
-            // 设定一个合理的文件大小限制，例如5MB
             await using var fs = new FileStream(physicalPath, FileMode.Create);
             await selectedFile.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).CopyToAsync(fs);
 
-            // 4. 更新模型中的 PictureUrl 为Web可访问的相对路径
+            // 如果是编辑模式且有旧图片，删除旧图片
+            if (editingBench.Id != 0 && !string.IsNullOrEmpty(editingBench.PictureUrl))
+            {
+                try
+                {
+                    var oldFilePath = Path.Combine(Env.WebRootPath, editingBench.PictureUrl.TrimStart('/'));
+                    if (File.Exists(oldFilePath))
+                    {
+                        File.Delete(oldFilePath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error deleting old file: {ex.Message}");
+                }
+            }
+
             editingBench.PictureUrl = $"/images/benches/{uniqueFileName}";
         }
 
@@ -242,14 +294,15 @@
         await LoadBenches();
     }
 
-    // 更新后的删除逻辑
     private async Task DeleteBench(int id)
     {
-        // 1. 在删除数据库记录前，先获取实体信息
-        var benchToDelete = await BenchSvc.GetByIdAsync(id);
+        var benchToDelete = benchListWithStatus?.FirstOrDefault(b => b.Bench.Id == id)?.Bench;
         if (benchToDelete == null) return;
 
-        // 2. 尝试删除关联的图片文件
+        // 确认删除
+        // TODO: 可以添加一个确认对话框
+
+        // 删除关联的图片文件
         if (!string.IsNullOrEmpty(benchToDelete.PictureUrl))
         {
             try
@@ -262,18 +315,30 @@
             }
             catch (Exception ex)
             {
-                // 记录日志，但不阻止数据库记录的删除
                 Console.WriteLine($"Error deleting file: {ex.Message}");
             }
         }
 
-        // 3. 删除数据库记录
         await BenchSvc.RemoveAsync(id);
         await LoadBenches();
+    }
+
+    private void ViewSchedule(int benchId)
+    {
+        NavigationManager.NavigateTo($"/schedule/{benchId}");
     }
 
     private void CloseModal()
     {
         showModal = false;
     }
+
+    private string GetStatusBadgeClass(BenchStatus status) => status switch
+    {
+        BenchStatus.空闲 => "bg-success",
+        BenchStatus.使用中 => "bg-warning text-dark",
+        BenchStatus.维护中 => "bg-danger",
+        BenchStatus.已预定 => "bg-info text-dark",
+        _ => "bg-secondary"
+    };
 }

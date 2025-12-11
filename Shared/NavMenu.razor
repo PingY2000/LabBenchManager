@@ -34,14 +34,6 @@
                 </NavLink>
             </div>
         </AuthorizeView>
-        @* 申请管理: 只有 TestEngineer, Admin 能看到 *@
-        <AuthorizeView Roles="TestEngineer, Admin">
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="assignments">
-                    <span class="oi oi-spreadsheet" aria-hidden="true"></span> 计划安排
-                </NavLink>
-            </div>
-        </AuthorizeView>
         @* 设备管理: 只有 Admin 能看到 *@
         <AuthorizeView Roles="Admin">
             <div class="nav-item px-3">
