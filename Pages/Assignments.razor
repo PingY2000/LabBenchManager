@@ -388,7 +388,7 @@
         try
         {
             assignments = await AssignmentSvc.GetAllAsync();
-            await ApplyFilters();
+            ApplyFilters();
         }
         catch (Exception ex)
         {
@@ -396,7 +396,7 @@
         }
     }
 
-    private async Task ApplyFilters()
+    private void ApplyFilters()
     {
         if (assignments == null) return;
 

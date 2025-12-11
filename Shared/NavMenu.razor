@@ -48,7 +48,7 @@
                         @foreach (var bench in benches)
                         {
                             <NavLink class="nav-link submenu-item" href="@($"schedule/{bench.Id}")" Match="NavLinkMatch.All">
-                                <span class="oi oi-wrench me-2"></span>
+								@*<span class="oi oi-wrench me-2"></span>*@
                                 <span class="bench-name">@bench.Name</span>
                                 @if (!string.IsNullOrEmpty(bench.EquipmentNo))
                                 {
@@ -95,77 +95,7 @@
     </nav>
 </div>
 
-<style>
-    /* 可展开的菜单项 */
-    .nav-link.expandable {
-        cursor: pointer;
-        user-select: none;
-    }
 
-    /* 展开/折叠图标动画 */
-    .chevron-icon {
-        transition: transform 0.2s;
-        font-size: 0.7em !important;
-        width: auto !important;
-    }
-
-    /* 子菜单容器 */
-    .submenu {
-        padding: 0 !important;
-        background-color: rgba(0, 0, 0, 0.2) !important;
-        margin: 0.25rem 0.5rem !important;
-        border-radius: 0.25rem;
-        overflow: hidden;
-    }
-
-    /* 子菜单项样式 */
-    .submenu-item {
-        padding: 0.6rem 1rem !important;
-        font-size: 0.85em !important;
-        height: auto !important;
-        line-height: 1.4 !important;
-        color: #d7d7d7 !important;
-        display: flex !important;
-        align-items: center;
-        border-left: 3px solid transparent;
-        transition: all 0.2s;
-    }
-
-        .submenu-item .oi {
-            width: 1.2rem !important;
-            font-size: 0.9em !important;
-        }
-
-        .submenu-item:hover {
-            background-color: rgba(255, 255, 255, 0.15) !important;
-            color: white !important;
-        }
-
-        .submenu-item.active {
-            background-color: rgba(255, 255, 255, 0.25) !important;
-            color: white !important;
-            border-left-color: #ffffff !important;
-        }
-
-    /* 加载和空状态样式 */
-    .loading-item,
-    .empty-item {
-        cursor: default !important;
-        padding: 0.8rem 1rem !important;
-    }
-
-        .loading-item:hover,
-        .empty-item:hover {
-            background-color: transparent !important;
-        }
-
-    /* 加载动画 */
-    .spinner-border-sm {
-        width: 0.8rem;
-        height: 0.8rem;
-        border-width: 0.1em;
-    }
-</style>
 
 @code {
     private bool collapseNavMenu = true;

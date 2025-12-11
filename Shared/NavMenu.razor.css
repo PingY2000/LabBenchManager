@@ -104,6 +104,7 @@
         align-items: flex-start !important;
         border-left: 3px solid transparent !important;
         transition: all 0.2s;
+        align-items: center !important;
     }
 
         .submenu ::deep .submenu-item:hover {
@@ -124,8 +125,9 @@
         font-size: 0.9em !important;
         flex-shrink: 0 !important;
         margin-right: 0.75rem !important;
-        margin-top: 0 !important; /* 🔥 移除顶部边距 */
-        align-self: center !important; /* 🔥 图标自身居中 */
+        margin-top: 0 !important; 
+        align-self: center !important; 
+
     }
 
     /* ========== 设备信息容器 ========== */
