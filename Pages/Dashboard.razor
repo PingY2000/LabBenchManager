@@ -93,6 +93,11 @@ else
 }
 
 <style>
+
+    /* 卡片边框加粗显示状态 */
+    .card {
+        border-width: 2px;
+    }
     /* 确保图片容器有固定高度 */
     .img-aspect-4-3 {
         width: 100%;
@@ -115,18 +120,19 @@ else
 
     /* 修复卡片主体高度 */
     .card-body {
-        min-height: 180px;
+        min-height: 150px; /* 缩小最小高度 */
     }
 
     /* 确保卡片行等高 */
     .row.g-0 {
-        min-height: 180px;
+        min-height: 150px; /* 缩小最小高度 */
     }
 
     /* 卡片边框加粗显示状态 */
     .card {
         border-width: 2px;
     }
+
 </style>
 
 @code {
