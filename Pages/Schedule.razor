@@ -1,16 +1,19 @@
-﻿@page "/schedule/{BenchId:int}"
+﻿@*Pages\Schedule.razor*@
+@page "/schedule/{BenchId:int}"
 @attribute [Authorize(Roles = $"{AppRoles.TestEngineer},{AppRoles.Admin}")]
 
 @using LabBenchManager.Models
 @using LabBenchManager.Services
-@using Microsoft.JSInterop
+@using LabBenchManager.Components.Calendar
+@using static LabBenchManager.Components.Calendar.CalendarHeader
+
 @inject BenchService BenchSvc
 @inject TestPlanService PlanSvc
 @inject NavigationManager NavigationManager
-@inject IJSRuntime JS
 
 <PageTitle>@benchName - 排产日历</PageTitle>
 
+<!-- 页面头部 -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h3>
@@ -40,119 +43,118 @@
 }
 else
 {
-    <!-- 日历视图 -->
-    <div class="card mb-3">
-        <div class="card-header bg-primary text-white">
-            <div class="row align-items-center">
-                <div class="col-auto">
-                    <button class="btn btn-light btn-sm" @onclick="Previous">
-                        <span class="oi oi-chevron-left"></span>
-                    </button>
-                </div>
-                <div class="col text-center">
-                    <h5 class="mb-0">@GetCurrentPeriodTitle()</h5>
-                </div>
-                <div class="col-auto">
-                    <button class="btn btn-light btn-sm me-2" @onclick="GoToToday">今天</button>
-                    <button class="btn btn-light btn-sm" @onclick="Next">
-                        <span class="oi oi-chevron-right"></span>
-                    </button>
-                </div>
-            </div>
+    <!-- 左右分栏布局 -->
+    <div class="row">
+        <!-- 左侧：日历视图 (70%) -->
+        <div class="col-12 col-md-6 col-lg-7 mb-3">
+            <div class="card shadow-sm">
+                <CalendarHeader Title="@GetCurrentPeriodTitle()"
+                                CurrentView="@currentView"
+                                OnPrevious="Previous"
+                                OnNext="Next"
+                                OnToday="GoToToday"
+                                OnViewChange="HandleViewChange" />
 
-            <div class="text-center mt-2">
-                <div class="btn-group btn-group-sm" role="group">
-                    <button type="button" class="btn @(currentView == CalendarView.Day ? "btn-warning" : "btn-light")"
-                            @onclick="() => SwitchView(CalendarView.Day)">
-                        天
-                    </button>
-                    <button type="button" class="btn @(currentView == CalendarView.Month ? "btn-warning" : "btn-light")"
-                            @onclick="() => SwitchView(CalendarView.Month)">
-                        月
-                    </button>
-                    <button type="button" class="btn @(currentView == CalendarView.Year ? "btn-warning" : "btn-light")"
-                            @onclick="() => SwitchView(CalendarView.Year)">
-                        年
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div class="card-body p-0">
-            @if (currentView == CalendarView.Day)
-            {
-                @RenderDayView()
-            }
-            else if (currentView == CalendarView.Month)
-            {
-                @RenderMonthView()
-            }
-            else if (currentView == CalendarView.Year)
-            {
-                @RenderYearView()
-            }
-        </div>
-    </div>
-
-    <!-- 排产列表视图 -->
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">📋 全部测试计划</h5>
-        </div>
-        <div class="card-body">
-            @if (testPlans == null || !testPlans.Any())
-            {
-                <p class="text-muted text-center py-4">暂无排产计划</p>
-            }
-            else
-            {
-                <div class="list-group">
-                    @foreach (var plan in testPlans.OrderBy(p => p.Priority).ThenBy(p => p.PlannedStartTime))
+                <div class="card-body p-0">
+                    @if (currentView == CalendarViewType.Day)
                     {
-                        <div class="list-group-item @GetPlanListClass(plan)">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div class="flex-grow-1">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <span class="badge @GetPriorityBadge(plan.Priority) me-2">
-                                            @plan.Priority
-                                        </span>
-                                        <span class="badge @GetStatusBadge(plan.Status)">
-                                            @plan.Status
-                                        </span>
+                        <DayView CurrentDate="@currentDate"
+                                 Plans="@testPlans"
+                                 OnTimeSlotClick="AddPlanAtTime"
+                                 OnPlanClick="EditPlan" />
+                    }
+                    else if (currentView == CalendarViewType.Month)
+                    {
+                        <MonthView CurrentDate="@currentDate"
+                                   Plans="@testPlans"
+                                   OnDayClick="OnDayClick"
+                                   OnPlanClick="EditPlan" />
+                    }
+                    else if (currentView == CalendarViewType.Year)
+                    {
+                        <YearView CurrentDate="@currentDate"
+                                  Plans="@testPlans"
+                                  OnMonthClick="OnMonthClick" />
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：测试计划列表 (30%) -->
+        <div class="col-12 col-md-6 col-lg-5">
+            <div class="card shadow-sm sticky-top" style="top: 1rem;">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">📋 测试计划</h5>
+                </div>
+                <div class="card-body p-0" style="max-height: calc(100vh - 200px); overflow-y: auto;">
+                    @if (testPlans == null || !testPlans.Any())
+                    {
+                        <div class="p-4 text-center text-muted">
+                            <span class="oi oi-document" style="font-size: 3rem; opacity: 0.3;"></span>
+                            <p class="mt-2">暂无测试计划</p>
+                            <button class="btn btn-sm btn-primary" @onclick="AddNewPlan">
+                                <span class="oi oi-plus me-1"></span>添加计划
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var plan in testPlans.OrderBy(p => p.Priority).ThenBy(p => p.PlannedStartTime))
+                            {
+                                <div class="list-group-item list-group-item-action @GetPlanListClass(plan)"
+                                     @onclick="() => EditPlan(plan)"
+                                     style="cursor: pointer;">
+                                    <div class="d-flex w-100 justify-content-between align-items-start mb-2">
+                                        <div class="flex-grow-1">
+                                            <span class="badge @GetPriorityBadge(plan.Priority) me-1">
+                                                @plan.Priority
+                                            </span>
+                                            <span class="badge @GetStatusBadge(plan.Status)">
+                                                @plan.Status
+                                            </span>
+                                        </div>
+                                        <div class="btn-group btn-group-sm" @onclick:stopPropagation="true">
+                                            <button class="btn btn-outline-secondary btn-sm" @onclick="() => EditPlan(plan)" title="编辑">
+                                                <span class="oi oi-pencil"></span>
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-sm" @onclick="() => ConfirmDeletePlan(plan)" title="删除">
+                                                <span class="oi oi-trash"></span>
+                                            </button>
+                                        </div>
                                     </div>
                                     <h6 class="mb-1">@plan.ProjectName</h6>
-                                    <div class="small text-muted">
-                                        <div>
-                                            <span class="oi oi-person me-1"></span>负责人: @(plan.AssignedTo ?? "未分配")
+                                    <small class="text-muted">
+                                        <div class="mb-1">
+                                            <span class="oi oi-person me-1"></span>@(plan.AssignedTo ?? "未分配")
                                         </div>
                                         <div>
-                                            <span class="oi oi-calendar me-1"></span>计划时间:
-                                            @plan.PlannedStartTime?.ToString("yyyy-MM-dd HH:mm") ~
-                                            @plan.PlannedEndTime?.ToString("yyyy-MM-dd HH:mm")
+                                            <span class="oi oi-clock me-1"></span>
+                                            @plan.PlannedStartTime?.ToString("MM-dd HH:mm") ~
+                                            @plan.PlannedEndTime?.ToString("HH:mm")
                                         </div>
-                                        @if (!string.IsNullOrEmpty(plan.Description))
-                                        {
-                                            <div class="mt-1">
-                                                <span class="oi oi-document me-1"></span>@plan.Description
-                                            </div>
-                                        }
+                                    </small>
+                                    @if (!string.IsNullOrEmpty(plan.Description))
+                                    {
+                                        <div class="mt-2">
+                                            <small class="text-muted">@plan.Description</small>
+                                        </div>
+                                    }
+                                    <!-- 优先级调整按钮 -->
+                                    <div class="mt-2 btn-group btn-group-sm" @onclick:stopPropagation="true">
+                                        <button class="btn btn-outline-primary btn-sm" @onclick="() => ChangePriority(plan, -1)" title="提高优先级">
+                                            <span class="oi oi-arrow-top"></span>
+                                        </button>
+                                        <button class="btn btn-outline-primary btn-sm" @onclick="() => ChangePriority(plan, 1)" title="降低优先级">
+                                            <span class="oi oi-arrow-bottom"></span>
+                                        </button>
                                     </div>
                                 </div>
-                                <div class="btn-group-vertical btn-group-sm ms-3">
-                                    <button class="btn btn-outline-secondary" @onclick="() => EditPlan(plan)" title="编辑">
-                                        <span class="oi oi-pencil"></span>
-                                    </button>
-                                    <button class="btn btn-outline-primary" @onclick="() => ChangePriority(plan, -1)" title="提高优先级">▲</button>
-                                    <button class="btn btn-outline-primary" @onclick="() => ChangePriority(plan, 1)" title="降低优先级">▼</button>
-                                    <button class="btn btn-outline-danger" @onclick="() => ConfirmDeletePlan(plan)" title="删除">
-                                        <span class="oi oi-trash"></span>
-                                    </button>
-                                </div>
-                            </div>
+                            }
                         </div>
                     }
                 </div>
-            }
+            </div>
         </div>
     </div>
 }
@@ -287,17 +289,10 @@ else
     [Parameter]
     public int BenchId { get; set; }
 
-    private enum CalendarView
-    {
-        Day,
-        Month,
-        Year
-    }
-
     private Bench? currentBench;
     private string benchName = "加载中...";
     private List<TestPlan>? testPlans;
-    private CalendarView currentView = CalendarView.Month;
+    private CalendarViewType currentView = CalendarViewType.Month;
     private DateTime currentDate = DateTime.Today;
     private BenchStatus currentBenchStatus = BenchStatus.空闲;
 
@@ -496,27 +491,27 @@ else
         }
     }
 
-    // ==================== 视图切换 ====================
-    private void SwitchView(CalendarView view)
-    {
-        currentView = view;
-    }
-
+    // ==================== 视图导航 ====================
     private string GetCurrentPeriodTitle() => currentView switch
     {
-        CalendarView.Day => currentDate.ToString("yyyy年MM月dd日 dddd", new System.Globalization.CultureInfo("zh-CN")),
-        CalendarView.Month => currentDate.ToString("yyyy年MM月"),
-        CalendarView.Year => currentDate.ToString("yyyy年"),
+        CalendarViewType.Day => currentDate.ToString("yyyy年MM月dd日 dddd", new System.Globalization.CultureInfo("zh-CN")),
+        CalendarViewType.Month => currentDate.ToString("yyyy年MM月"),
+        CalendarViewType.Year => currentDate.ToString("yyyy年"),
         _ => ""
     };
+
+    private void HandleViewChange(CalendarViewType newView)
+    {
+        currentView = newView;
+    }
 
     private void Previous()
     {
         currentDate = currentView switch
         {
-            CalendarView.Day => currentDate.AddDays(-1),
-            CalendarView.Month => currentDate.AddMonths(-1),
-            CalendarView.Year => currentDate.AddYears(-1),
+            CalendarViewType.Day => currentDate.AddDays(-1),
+            CalendarViewType.Month => currentDate.AddMonths(-1),
+            CalendarViewType.Year => currentDate.AddYears(-1),
             _ => currentDate
         };
     }
@@ -525,9 +520,9 @@ else
     {
         currentDate = currentView switch
         {
-            CalendarView.Day => currentDate.AddDays(1),
-            CalendarView.Month => currentDate.AddMonths(1),
-            CalendarView.Year => currentDate.AddYears(1),
+            CalendarViewType.Day => currentDate.AddDays(1),
+            CalendarViewType.Month => currentDate.AddMonths(1),
+            CalendarViewType.Year => currentDate.AddYears(1),
             _ => currentDate
         };
     }
@@ -537,202 +532,20 @@ else
         currentDate = DateTime.Today;
     }
 
-    private void GoBack() => NavigationManager.NavigateTo("/");
-
-    // ==================== 日视图渲染 ====================
-    private RenderFragment RenderDayView() => __builder =>
-    {
-        <div class="table-responsive">
-            <table class="table table-bordered mb-0 day-view-table">
-                <tbody>
-                    @for (int hour = 0; hour < 24; hour++)
-                    {
-                        var currentHour = new DateTime(currentDate.Year, currentDate.Month, currentDate.Day, hour, 0, 0);
-                        var plansInHour = GetPlansForTimeSlot(currentHour, currentHour.AddHours(1));
-
-                        <tr>
-                            <td class="time-cell">
-                                <div>@hour:00</div>
-                                <small class="text-muted">@hour:59</small>
-                            </td>
-                            <td class="hour-cell" @onclick="() => AddPlanAtTime(currentHour)">
-                                @foreach (var plan in plansInHour)
-                                {
-                                    <div class="plan-block @GetPlanBlockClass(plan)"
-                                         @onclick:stopPropagation="true"
-                                         @onclick="() => EditPlan(plan)">
-                                        <strong>@plan.ProjectName</strong>
-                                        <div class="small">
-                                            @plan.PlannedStartTime?.ToString("HH:mm") - @plan.PlannedEndTime?.ToString("HH:mm")
-                                        </div>
-                                        <div class="small">@(plan.AssignedTo ?? "未分配")</div>
-                                    </div>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    };
-
-    // ==================== 月视图渲染 ====================
-    private RenderFragment RenderMonthView() => __builder =>
-    {
-        var firstDayOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
-        var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
-        var startDate = firstDayOfMonth.AddDays(-(int)firstDayOfMonth.DayOfWeek + (int)DayOfWeek.Monday);
-        if (startDate > firstDayOfMonth) startDate = startDate.AddDays(-7);
-
-        <div class="table-responsive">
-            <table class="table table-bordered mb-0 month-view-table">
-                <thead class="table-light">
-                    <tr>
-                        <th class="text-center">周一</th>
-                        <th class="text-center">周二</th>
-                        <th class="text-center">周三</th>
-                        <th class="text-center">周四</th>
-                        <th class="text-center">周五</th>
-                        <th class="text-center">周六</th>
-                        <th class="text-center">周日</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @for (int week = 0; week < 6; week++)
-                    {
-                        var weekStart = startDate.AddDays(week * 7);
-                        if (week > 0 && weekStart > lastDayOfMonth.AddDays(6)) break;
-
-                        <tr>
-                            @for (int day = 0; day < 7; day++)
-                            {
-                                var cellDate = weekStart.AddDays(day);
-                                var isCurrentMonth = cellDate.Month == currentDate.Month;
-                                var isToday = cellDate.Date == DateTime.Today;
-                                var plansInDay = GetPlansForDay(cellDate);
-                                var cellClass = !isCurrentMonth ? "other-month" : isToday ? "today-cell" : "";
-
-                                <td class="month-day-cell @cellClass" @onclick="() => OnDayClick(cellDate)">
-                                    <div class="month-day-number">
-                                        <span class="day-number-badge @(isToday ? "today-badge" : "")">
-                                            @cellDate.Day
-                                        </span>
-                                    </div>
-                                    @foreach (var plan in plansInDay.Take(3))
-                                    {
-                                        <div class="plan-block @GetPlanBlockClass(plan)"
-                                             @onclick:stopPropagation="true"
-                                             @onclick="() => EditPlan(plan)"
-                                             title="@plan.ProjectName">
-                                            @plan.ProjectName
-                                        </div>
-                                    }
-                                    @if (plansInDay.Count > 3)
-                                    {
-                                        <div class="small text-muted">+@(plansInDay.Count - 3) 更多...</div>
-                                    }
-                                </td>
-                            }
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    };
-
-    // ==================== 年视图渲染 ====================
-    private RenderFragment RenderYearView() => __builder =>
-    {
-        <div class="year-view-grid">
-            @for (int month = 1; month <= 12; month++)
-            {
-                var monthDate = new DateTime(currentDate.Year, month, 1);
-                var monthName = monthDate.ToString("MM月");
-
-                <div class="mini-month-card" @onclick="() => OnMonthClick(monthDate)">
-                    <div class="mini-month-title">@monthName</div>
-                    @RenderMiniMonth(monthDate)
-                </div>
-            }
-        </div>
-    };
-
-    private RenderFragment RenderMiniMonth(DateTime monthDate) => __builder =>
-    {
-        var firstDay = new DateTime(monthDate.Year, monthDate.Month, 1);
-        var lastDay = firstDay.AddMonths(1).AddDays(-1);
-        var startDate = firstDay.AddDays(-(int)firstDay.DayOfWeek + (int)DayOfWeek.Monday);
-        if (startDate > firstDay) startDate = startDate.AddDays(-7);
-
-        <div class="mini-calendar">
-            <div class="mini-day mini-day-header">一</div>
-            <div class="mini-day mini-day-header">二</div>
-            <div class="mini-day mini-day-header">三</div>
-            <div class="mini-day mini-day-header">四</div>
-            <div class="mini-day mini-day-header">五</div>
-            <div class="mini-day mini-day-header">六</div>
-            <div class="mini-day mini-day-header">日</div>
-
-            @for (int i = 0; i < 42; i++)
-            {
-                var cellDate = startDate.AddDays(i);
-                var isCurrentMonth = cellDate.Month == monthDate.Month;
-                var hasPlan = testPlans?.Any(p =>
-                p.PlannedStartTime.HasValue &&
-                p.PlannedStartTime.Value.Date == cellDate.Date) ?? false;
-
-                if (i >= 35 && cellDate > lastDay) break;
-
-                <div class="mini-day @(!isCurrentMonth ? "mini-day-other-month" : "") @(hasPlan ? "mini-day-has-plan" : "")">
-                    @cellDate.Day
-                </div>
-            }
-        </div>
-    };
-
-    // ==================== 辅助方法 ====================
-    private List<TestPlan> GetPlansForTimeSlot(DateTime startTime, DateTime endTime)
-    {
-        if (testPlans == null) return new List<TestPlan>();
-
-        return testPlans.Where(p =>
-            p.PlannedStartTime.HasValue &&
-            p.PlannedEndTime.HasValue &&
-            p.PlannedStartTime.Value < endTime &&
-            p.PlannedEndTime.Value > startTime
-        ).ToList();
-    }
-
-    private List<TestPlan> GetPlansForDay(DateTime date)
-    {
-        if (testPlans == null) return new List<TestPlan>();
-
-        var dayStart = date.Date;
-        var dayEnd = date.Date.AddDays(1);
-
-        return testPlans.Where(p =>
-            p.PlannedStartTime.HasValue &&
-            p.PlannedEndTime.HasValue &&
-            p.PlannedStartTime.Value < dayEnd &&
-            p.PlannedEndTime.Value > dayStart
-        ).OrderBy(p => p.PlannedStartTime).ToList();
-    }
-
     private void OnDayClick(DateTime date)
     {
         currentDate = date;
-        currentView = CalendarView.Day;
+        currentView = CalendarViewType.Day;
     }
 
     private void OnMonthClick(DateTime monthDate)
     {
         currentDate = monthDate;
-        currentView = CalendarView.Month;
+        currentView = CalendarViewType.Month;
     }
 
+    private void GoBack() => NavigationManager.NavigateTo("/");
     // ==================== 样式辅助方法 ====================
-    private string GetPlanBlockClass(TestPlan plan) => $"plan-block-{plan.Status}";
-
     private string GetPlanListClass(TestPlan plan) => plan.Status switch
     {
         TestPlanStatus.进行中 => "border-start border-warning border-4",
@@ -754,6 +567,7 @@ else
         PriorityLevel.紧急 => "bg-danger",
         PriorityLevel.高 => "bg-warning text-dark",
         PriorityLevel.中 => "bg-info text-dark",
+        PriorityLevel.低 => "bg-secondary",
         _ => "bg-secondary"
     };
 

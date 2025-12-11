@@ -1,0 +1,88 @@
+﻿/* 年视图网格布局 */
+.year-view-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    padding: 15px;
+}
+
+/* 迷你月卡片 */
+.mini-month-card {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background-color: white;
+}
+
+    .mini-month-card:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+
+/* 月份标题 */
+.mini-month-title {
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 8px;
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+/* 迷你日历网格 */
+.mini-calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    font-size: 0.7rem;
+}
+
+/* 日期格子 */
+.mini-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+}
+
+/* 星期标题 */
+.mini-day-header {
+    font-weight: bold;
+    color: #6c757d;
+    font-size: 0.65rem;
+}
+
+/* 有计划的日期 */
+.mini-day-has-plan {
+    background-color: #0d6efd;
+    color: white;
+    font-weight: bold;
+}
+
+/* 非当前月的日期 */
+.mini-day-other-month {
+    color: #dee2e6;
+}
+
+/* 响应式 */
+@media (max-width: 1200px) {
+    .year-view-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .year-view-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding: 10px;
+    }
+}
+
+@media (max-width: 576px) {
+    .year-view-grid {
+        grid-template-columns: repeat(1, 1fr);
+    }
+}

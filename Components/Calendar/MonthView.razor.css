@@ -1,0 +1,104 @@
+﻿/* 月视图表格 */
+.month-view-table {
+    font-size: 0.85rem;
+}
+
+/* 月视图日期格子 */
+.month-day-cell {
+    height: 120px;
+    width: 14.28%;
+    cursor: pointer;
+    vertical-align: top;
+    padding: 4px;
+    border: 1px solid #dee2e6;
+    transition: background-color 0.2s;
+}
+
+    .month-day-cell:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+    }
+
+/* 日期数字 */
+.month-day-number {
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+/* 非当前月 */
+.other-month {
+    background-color: #f8f9fa;
+    color: #adb5bd;
+}
+
+/* 今天 */
+.today-cell {
+    background-color: #e7f3ff !important;
+}
+
+/* 日期徽章 */
+.day-number-badge {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    border-radius: 50%;
+}
+
+.today-badge {
+    background-color: #0d6efd;
+    color: white;
+}
+
+/* 计划块 */
+.plan-block {
+    border-left: 4px solid;
+    padding: 2px 4px;
+    margin-bottom: 2px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+    .plan-block:hover {
+        transform: translateX(2px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        z-index: 10;
+        white-space: normal;
+    }
+
+/* 计划状态颜色 */
+.plan-block-待开始 {
+    background-color: #e9ecef;
+    border-left-color: #6c757d;
+}
+
+.plan-block-进行中 {
+    background-color: #fff3cd;
+    border-left-color: #ffc107;
+}
+
+.plan-block-已完成 {
+    background-color: #d1e7dd;
+    border-left-color: #198754;
+}
+
+.plan-block-已暂停 {
+    background-color: #f8d7da;
+    border-left-color: #dc3545;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .month-day-cell {
+        height: 80px;
+    }
+
+    .plan-block {
+        font-size: 0.65rem;
+    }
+}

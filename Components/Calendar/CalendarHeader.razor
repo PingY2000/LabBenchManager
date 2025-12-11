@@ -1,0 +1,53 @@
+﻿@* Components/Calendar/CalendarHeader.razor *@
+
+<div class="card-header bg-primary text-white">
+    <div class="row align-items-center">
+        <div class="col-auto">
+            <button class="btn btn-light btn-sm" @onclick="() => OnPrevious.InvokeAsync()">
+                <span class="oi oi-chevron-left"></span>
+            </button>
+        </div>
+        <div class="col text-center">
+            <h5 class="mb-0">@Title</h5>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-light btn-sm me-2" @onclick="() => OnToday.InvokeAsync()">今天</button>
+            <button class="btn btn-light btn-sm" @onclick="() => OnNext.InvokeAsync()">
+                <span class="oi oi-chevron-right"></span>
+            </button>
+        </div>
+    </div>
+
+    <div class="text-center mt-2">
+        <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn @(CurrentView == CalendarViewType.Day ? "btn-warning" : "btn-light")"
+                    @onclick="() => OnViewChange.InvokeAsync(CalendarViewType.Day)">
+                天
+            </button>
+            <button type="button" class="btn @(CurrentView == CalendarViewType.Month ? "btn-warning" : "btn-light")"
+                    @onclick="() => OnViewChange.InvokeAsync(CalendarViewType.Month)">
+                月
+            </button>
+            <button type="button" class="btn @(CurrentView == CalendarViewType.Year ? "btn-warning" : "btn-light")"
+                    @onclick="() => OnViewChange.InvokeAsync(CalendarViewType.Year)">
+                年
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public CalendarViewType CurrentView { get; set; }
+    [Parameter] public EventCallback OnPrevious { get; set; }
+    [Parameter] public EventCallback OnNext { get; set; }
+    [Parameter] public EventCallback OnToday { get; set; }
+    [Parameter] public EventCallback<CalendarViewType> OnViewChange { get; set; }
+
+    public enum CalendarViewType
+    {
+        Day,
+        Month,
+        Year
+    }
+}

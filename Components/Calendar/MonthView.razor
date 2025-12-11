@@ -1,0 +1,118 @@
+﻿@* Components/Calendar/MonthView.razor *@
+@using LabBenchManager.Models
+
+<div class="table-responsive">
+    <table class="table table-bordered mb-0 month-view-table">
+        <thead class="table-light">
+            <tr>
+                <th class="text-center">周一</th>
+                <th class="text-center">周二</th>
+                <th class="text-center">周三</th>
+                <th class="text-center">周四</th>
+                <th class="text-center">周五</th>
+                <th class="text-center">周六</th>
+                <th class="text-center">周日</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var week in GetWeeks())
+            {
+                <tr>
+                    @foreach (var day in week)
+                    {
+                        var plansInDay = GetPlansForDay(day.Date);
+                        var cellClass = GetDayCellClass(day.Date);
+
+                        <td class="month-day-cell @cellClass" @onclick="() => OnDayClick.InvokeAsync(day.Date)">
+                            <div class="month-day-number">
+                                <span class="day-number-badge @(day.IsToday ? "today-badge" : "")">
+                                    @day.Date.Day
+                                </span>
+                            </div>
+                            @foreach (var plan in plansInDay.Take(3))
+                            {
+                                <div class="plan-block plan-block-@plan.Status"
+                                     @onclick:stopPropagation="true"
+                                     @onclick="() => OnPlanClick.InvokeAsync(plan)"
+                                     title="@plan.ProjectName">
+                                    @plan.ProjectName
+                                </div>
+                            }
+                            @if (plansInDay.Count > 3)
+                            {
+                                <div class="small text-muted">+@(plansInDay.Count - 3) 更多...</div>
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter] public DateTime CurrentDate { get; set; }
+    [Parameter] public List<TestPlan>? Plans { get; set; }
+    [Parameter] public EventCallback<DateTime> OnDayClick { get; set; }
+    [Parameter] public EventCallback<TestPlan> OnPlanClick { get; set; }
+
+    private class DayInfo
+    {
+        public DateTime Date { get; set; }
+        public bool IsCurrentMonth { get; set; }
+        public bool IsToday { get; set; }
+    }
+
+    private List<List<DayInfo>> GetWeeks()
+    {
+        var firstDayOfMonth = new DateTime(CurrentDate.Year, CurrentDate.Month, 1);
+        var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+        var startDate = firstDayOfMonth.AddDays(-(int)firstDayOfMonth.DayOfWeek + (int)DayOfWeek.Monday);
+        if (startDate > firstDayOfMonth) startDate = startDate.AddDays(-7);
+
+        var weeks = new List<List<DayInfo>>();
+        var currentDate = startDate;
+
+        for (int week = 0; week < 6; week++)
+        {
+            if (week > 0 && currentDate > lastDayOfMonth.AddDays(6)) break;
+
+            var weekDays = new List<DayInfo>();
+            for (int day = 0; day < 7; day++)
+            {
+                weekDays.Add(new DayInfo
+                {
+                    Date = currentDate,
+                    IsCurrentMonth = currentDate.Month == CurrentDate.Month,
+                    IsToday = currentDate.Date == DateTime.Today
+                });
+                currentDate = currentDate.AddDays(1);
+            }
+            weeks.Add(weekDays);
+        }
+
+        return weeks;
+    }
+
+    private List<TestPlan> GetPlansForDay(DateTime date)
+    {
+        if (Plans == null) return new List<TestPlan>();
+
+        var dayStart = date.Date;
+        var dayEnd = date.Date.AddDays(1);
+
+        return Plans.Where(p =>
+            p.PlannedStartTime.HasValue &&
+            p.PlannedEndTime.HasValue &&
+            p.PlannedStartTime.Value < dayEnd &&
+            p.PlannedEndTime.Value > dayStart
+        ).OrderBy(p => p.PlannedStartTime).ToList();
+    }
+
+    private string GetDayCellClass(DateTime date)
+    {
+        if (date.Month != CurrentDate.Month) return "other-month";
+        if (date.Date == DateTime.Today) return "today-cell";
+        return "";
+    }
+}

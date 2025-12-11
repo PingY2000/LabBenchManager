@@ -1,0 +1,55 @@
+﻿@* Components/Calendar/DayView.razor *@
+@using LabBenchManager.Models
+
+<div class="table-responsive">
+    <table class="table table-bordered mb-0 day-view-table">
+        <tbody>
+            @for (int hour = 0; hour < 24; hour++)
+            {
+                var currentHour = new DateTime(CurrentDate.Year, CurrentDate.Month, CurrentDate.Day, hour, 0, 0);
+                var plansInHour = GetPlansForHour(currentHour);
+
+                <tr>
+                    <td class="time-cell">
+                        <div>@hour:00</div>
+                        <small class="text-muted">@hour:59</small>
+                    </td>
+                    <td class="hour-cell" @onclick="() => OnTimeSlotClick.InvokeAsync(currentHour)">
+                        @foreach (var plan in plansInHour)
+                        {
+                            <div class="plan-block plan-block-@plan.Status"
+                                 @onclick:stopPropagation="true"
+                                 @onclick="() => OnPlanClick.InvokeAsync(plan)">
+                                <strong>@plan.ProjectName</strong>
+                                <div class="small">
+                                    @plan.PlannedStartTime?.ToString("HH:mm") - @plan.PlannedEndTime?.ToString("HH:mm")
+                                </div>
+                                <div class="small">@(plan.AssignedTo ?? "未分配")</div>
+                            </div>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter] public DateTime CurrentDate { get; set; }
+    [Parameter] public List<TestPlan>? Plans { get; set; }
+    [Parameter] public EventCallback<DateTime> OnTimeSlotClick { get; set; }
+    [Parameter] public EventCallback<TestPlan> OnPlanClick { get; set; }
+
+    private List<TestPlan> GetPlansForHour(DateTime hourStart)
+    {
+        if (Plans == null) return new List<TestPlan>();
+
+        var hourEnd = hourStart.AddHours(1);
+        return Plans.Where(p =>
+            p.PlannedStartTime.HasValue &&
+            p.PlannedEndTime.HasValue &&
+            p.PlannedStartTime.Value < hourEnd &&
+            p.PlannedEndTime.Value > hourStart
+        ).ToList();
+    }
+}
