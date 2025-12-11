@@ -6,59 +6,377 @@
 
 <PageTitle>申请管理</PageTitle>
 
-<h3>申请管理 (Assignments)</h3>
-<p class="text-muted">查看和处理所有测试台使用申请。</p>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-primary">测试申请管理</h2>
+            <p class="text-muted">查看和管理所有测试申请，支持审批和详情查看。</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-primary" @onclick="RefreshList">
+                <span class="oi oi-reload me-1"></span>刷新列表
+            </button>
+        </div>
+    </div>
 
-<table class="table table-hover table-striped">
-    <thead class="table-dark">
-        <tr>
-            <th>ID</th>
-            <th>申请人</th>
-            <th>项目名称</th>
-            <th>申请设备</th>
-            <th>申请时间</th>
-            <th>状态</th>
-            <th>操作</th>
-        </tr>
-    </thead>
-    <tbody>
-        @if (assignments == null)
-        {
-            <tr><td colspan="7"><em>正在从数据库加载申请列表...</em></td></tr>
-        }
-        else
-        {
-            @foreach (var request in assignments)
+    <!-- 筛选和搜索 -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">状态筛选</label>
+                    <select class="form-select" @bind="selectedStatus">
+                        <option value="">全部状态</option>
+                        @foreach (var status in Enum.GetValues<AssignmentStatus>())
+                        {
+                            <option value="@status">@status</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">测试阶段</label>
+                    <select class="form-select" @bind="selectedStage">
+                        <option value="">全部阶段</option>
+                        @foreach (var stage in Enum.GetValues<TestStage>())
+                        {
+                            <option value="@stage">@stage</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">申请时间</label>
+                    <select class="form-select" @bind="timeRange">
+                        <option value="7">最近7天</option>
+                        <option value="30">最近30天</option>
+                        <option value="90">最近90天</option>
+                        <option value="0">全部时间</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" @onclick="ApplyFilters">
+                        <span class="oi oi-filter me-1"></span>应用筛选
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计信息 -->
+    @if (assignments != null)
+    {
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">总申请数</h5>
+                        <h2 class="fw-bold">@assignments.Count</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-dark">
+                    <div class="card-body">
+                        <h5 class="card-title">待审批</h5>
+                        <h2 class="fw-bold">@assignments.Count(a => a.Status == AssignmentStatus.待审批)</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">已批准</h5>
+                        <h2 class="fw-bold">@assignments.Count(a => a.Status == AssignmentStatus.已批准)</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">加急申请</h5>
+                        <h2 class="fw-bold">@assignments.Count(a => a.IsUrgent)</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- 申请列表 -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            @if (assignments == null)
             {
-                <tr>
-                    <td>@request.Id</td>
-                    <td>@request.ApplicantName</td>
-                    <td>@request.ProjectName</td>
-                    <td>@request.Bench?.Name</td> @* 因为我们用了 Include, 这里可以安全地显示设备名 *@
-                    <td>@request.RequestTime.ToString("yyyy-MM-dd HH:mm")</td>
-                    <td>
-                        <span class="badge @GetRequestStatusBadge(request.Status)">@request.Status.ToString()</span>
-                    </td>
-                    <td>
-                        @if (request.Status == AssignmentStatus.待审批)
-                        {
-                            <button class="btn btn-sm btn-success me-1" @onclick="() => HandleApproval(request, true)">批准</button>
-                            <button class="btn btn-sm btn-danger" @onclick="() => HandleApproval(request, false)">拒绝</button>
-                        }
-                        else
-                        {
-                            <button class="btn btn-sm btn-secondary" disabled>已处理</button>
-                        }
-                    </td>
-                </tr>
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                    <p class="mt-2">正在加载申请列表...</p>
+                </div>
             }
-        }
-    </tbody>
-</table>
+            else if (!assignments.Any())
+            {
+                <div class="text-center py-5">
+                    <div class="oi oi-document display-4 text-muted mb-3"></div>
+                    <h5 class="text-muted">暂无申请记录</h5>
+                    <p class="text-muted">暂时还没有提交测试申请</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>申请编号</th>
+                                <th>项目名称</th>
+                                <th>申请人</th>
+                                <th>部门/单位</th>
+                                <th>样品数量</th>
+                                <th>测试阶段</th>
+                                <th>申请时间</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var assignment in assignments)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@assignment.Id</strong>
+                                        @if (assignment.IsUrgent)
+                                        {
+                                            <span class="badge bg-danger ms-1">加急</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold">@assignment.ProjectName</div>
+                                        <small class="text-muted">@(assignment.TestStandard?.Length > 30 ? assignment.TestStandard?.Substring(0, 30) + "..." : assignment.TestStandard)</small>
+                                    </td>
+                                    <td>
+                                        <div>@assignment.ApplicantName</div>
+                                        <small class="text-muted">@assignment.ContactPhone</small>
+                                    </td>
+                                    <td>@assignment.Department</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">@assignment.SampleQuantity 个</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetStageBadgeClass(assignment.Stage)">@assignment.Stage</span>
+                                    </td>
+                                    <td>
+                                        <div>@assignment.RequestTime.ToString("yyyy-MM-dd")</div>
+                                        <small class="text-muted">@assignment.RequestTime.ToString("HH:mm")</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(assignment.Status)">@assignment.Status</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button class="btn btn-outline-primary" @onclick="() => ShowDetail(assignment)">
+                                                <span class="oi oi-eye"></span>
+                                            </button>
+                                            @if (assignment.Status == AssignmentStatus.待审批)
+                                            {
+                                                <button class="btn btn-outline-success" @onclick="() => HandleApproval(assignment, true)">
+                                                    <span class="oi oi-check"></span>
+                                                </button>
+                                                <button class="btn btn-outline-danger" @onclick="() => HandleApproval(assignment, false)">
+                                                    <span class="oi oi-x"></span>
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
 
+<!-- 详情模态框 -->
+@if (selectedAssignment != null)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        申请详情 #@selectedAssignment.Id
+                        @if (selectedAssignment.IsUrgent)
+                        {
+                            <span class="badge bg-danger ms-2">加急</span>
+                        }
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseDetail"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted border-bottom pb-2 mb-3">申请信息</h6>
+                            <div class="mb-3">
+                                <label class="form-label text-muted">项目名称</label>
+                                <div class="form-control-plaintext">@selectedAssignment.ProjectName</div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    <label class="form-label text-muted">申请人</label>
+                                    <div class="form-control-plaintext">@selectedAssignment.ApplicantName</div>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label text-muted">部门/单位</label>
+                                    <div class="form-control-plaintext">@selectedAssignment.Department</div>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    <label class="form-label text-muted">联系电话</label>
+                                    <div class="form-control-plaintext">@selectedAssignment.ContactPhone</div>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label text-muted">电子邮箱</label>
+                                    <div class="form-control-plaintext">@selectedAssignment.ContactEmail</div>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    <label class="form-label text-muted">申请时间</label>
+                                    <div class="form-control-plaintext">@selectedAssignment.RequestTime.ToString("yyyy-MM-dd HH:mm")</div>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label text-muted">状态</label>
+                                    <div>
+                                        <span class="badge @GetStatusBadgeClass(selectedAssignment.Status)">@selectedAssignment.Status</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted border-bottom pb-2 mb-3">样品信息</h6>
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    <label class="form-label text-muted">样品数量</label>
+                                    <div class="form-control-plaintext">@selectedAssignment.SampleQuantity 个</div>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label text-muted">测试阶段</label>
+                                    <div>
+                                        <span class="badge @GetStageBadgeClass(selectedAssignment.Stage)">@selectedAssignment.Stage</span>
+                                        @if (!string.IsNullOrEmpty(selectedAssignment.StageDescription))
+                                        {
+                                            <div class="small text-muted mt-1">@selectedAssignment.StageDescription</div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(selectedAssignment.SampleSpecification))
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">样品规格/型号</label>
+                                    <div class="form-control-plaintext">@selectedAssignment.SampleSpecification</div>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(selectedAssignment.SampleBatchNo))
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">样品批号</label>
+                                    <div class="form-control-plaintext">@selectedAssignment.SampleBatchNo</div>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(selectedAssignment.SampleRequirements))
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">样品特殊要求</label>
+                                    <div class="form-control-plaintext">@selectedAssignment.SampleRequirements</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <h6 class="text-muted border-bottom pb-2 mb-3">时间规划</h6>
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    <label class="form-label text-muted">预计交样时间</label>
+                                    <div class="form-control-plaintext">@selectedAssignment.EstimatedSampleTime.ToString("yyyy-MM-dd")</div>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label text-muted">期望完成时间</label>
+                                    <div class="form-control-plaintext">@selectedAssignment.DesiredCompletionTime.ToString("yyyy-MM-dd")</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted border-bottom pb-2 mb-3">测试要求</h6>
+                            <div class="mb-3">
+                                <label class="form-label text-muted">测试标准/依据</label>
+                                <div class="form-control-plaintext">@selectedAssignment.TestStandard</div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(selectedAssignment.TestParameters))
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">测试参数/条件</label>
+                                    <div class="form-control-plaintext">@selectedAssignment.TestParameters</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <h6 class="text-muted border-bottom pb-2 mb-3">测试内容</h6>
+                        <div class="form-control-plaintext bg-light p-3 rounded">@selectedAssignment.TestContent</div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(selectedAssignment.SpecialRequirements))
+                    {
+                        <div class="mt-4">
+                            <h6 class="text-muted border-bottom pb-2 mb-3">特殊要求</h6>
+                            <div class="form-control-plaintext bg-light p-3 rounded">@selectedAssignment.SpecialRequirements</div>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(selectedAssignment.UrgentReason))
+                    {
+                        <div class="mt-4">
+                            <h6 class="text-muted border-bottom pb-2 mb-3">加急原因</h6>
+                            <div class="form-control-plaintext bg-light p-3 rounded">@selectedAssignment.UrgentReason</div>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(selectedAssignment.Notes))
+                    {
+                        <div class="mt-4">
+                            <h6 class="text-muted border-bottom pb-2 mb-3">备注说明</h6>
+                            <div class="form-control-plaintext bg-light p-3 rounded">@selectedAssignment.Notes</div>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    @if (selectedAssignment.Status == AssignmentStatus.待审批)
+                    {
+                        <button class="btn btn-success" @onclick="() => HandleApprovalModal(selectedAssignment, true)">
+                            <span class="oi oi-check me-1"></span>批准申请
+                        </button>
+                        <button class="btn btn-danger" @onclick="() => HandleApprovalModal(selectedAssignment, false)">
+                            <span class="oi oi-x me-1"></span>拒绝申请
+                        </button>
+                    }
+                    <button class="btn btn-secondary" @onclick="CloseDetail">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     private List<Assignment>? assignments;
+    private Assignment? selectedAssignment;
+    private string selectedStatus = "";
+    private string selectedStage = "";
+    private int timeRange = 7;
 
     protected override async Task OnInitializedAsync()
     {
@@ -67,24 +385,108 @@
 
     private async Task LoadAssignments()
     {
-        assignments = await AssignmentSvc.GetAllAsync();
+        try
+        {
+            assignments = await AssignmentSvc.GetAllAsync();
+            await ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"加载申请列表时出错: {ex.Message}");
+        }
     }
 
-    private async Task HandleApproval(Assignment request, bool isApproved)
+    private async Task ApplyFilters()
     {
-        request.Status = isApproved ? AssignmentStatus.已批准 : AssignmentStatus.已拒绝;
-        await AssignmentSvc.UpdateAsync(request);
-        // 审批后无需重新加载整个列表，只需刷新当前UI即可
+        if (assignments == null) return;
+
+        var filtered = assignments.AsEnumerable();
+
+        // 状态筛选
+        if (!string.IsNullOrEmpty(selectedStatus))
+        {
+            if (Enum.TryParse<AssignmentStatus>(selectedStatus, out var status))
+            {
+                filtered = filtered.Where(a => a.Status == status);
+            }
+        }
+
+        // 测试阶段筛选
+        if (!string.IsNullOrEmpty(selectedStage))
+        {
+            if (Enum.TryParse<TestStage>(selectedStage, out var stage))
+            {
+                filtered = filtered.Where(a => a.Stage == stage);
+            }
+        }
+
+        // 时间范围筛选
+        if (timeRange > 0)
+        {
+            var startDate = DateTime.Today.AddDays(-timeRange);
+            filtered = filtered.Where(a => a.RequestTime >= startDate);
+        }
+
+        // 按申请时间倒序排序
+        filtered = filtered.OrderByDescending(a => a.RequestTime);
+
+        assignments = filtered.ToList();
         StateHasChanged();
     }
 
-    private string GetRequestStatusBadge(AssignmentStatus status) => status switch
+    private async Task RefreshList()
+    {
+        await LoadAssignments();
+    }
+
+    private void ShowDetail(Assignment assignment)
+    {
+        selectedAssignment = assignment;
+        StateHasChanged();
+    }
+
+    private void CloseDetail()
+    {
+        selectedAssignment = null;
+        StateHasChanged();
+    }
+
+    private async Task HandleApproval(Assignment assignment, bool isApproved)
+    {
+        try
+        {
+            assignment.Status = isApproved ? AssignmentStatus.已批准 : AssignmentStatus.已拒绝;
+            await AssignmentSvc.UpdateAsync(assignment);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"处理审批时出错: {ex.Message}");
+        }
+    }
+
+    private async Task HandleApprovalModal(Assignment assignment, bool isApproved)
+    {
+        await HandleApproval(assignment, isApproved);
+        CloseDetail();
+    }
+
+    private string GetStatusBadgeClass(AssignmentStatus status) => status switch
     {
         AssignmentStatus.待审批 => "bg-warning text-dark",
         AssignmentStatus.已批准 => "bg-success",
         AssignmentStatus.已拒绝 => "bg-danger",
         AssignmentStatus.进行中 => "bg-primary",
         AssignmentStatus.已完成 => "bg-secondary",
+        _ => "bg-dark"
+    };
+
+    private string GetStageBadgeClass(TestStage stage) => stage switch
+    {
+        TestStage.第一轮 => "bg-primary",
+        TestStage.第二轮 => "bg-info",
+        TestStage.第三轮 => "bg-success",
+        TestStage.其他轮次 => "bg-secondary",
         _ => "bg-dark"
     };
 }

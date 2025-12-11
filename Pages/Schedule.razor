@@ -11,22 +11,23 @@
 @inject TestPlanService PlanSvc
 @inject NavigationManager NavigationManager
 
-<PageTitle>@benchName - 排产日历</PageTitle>
+<PageTitle>@benchName - 使用规划</PageTitle>
 
 <!-- 页面头部 -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h3>
+            @*
             <button class="btn btn-outline-secondary btn-sm me-2" @onclick="GoBack">
                 <span class="oi oi-chevron-left"></span>
-            </button>
-            🗓️ @benchName - 排产日历
+            </button>*@
+            🗓️ @benchName - 使用规划
         </h3>
         @if (currentBench != null)
         {
             <p class="text-muted mb-0">
-                <span class="oi oi-map-marker me-1"></span>@currentBench.Location |
-                <span class="badge @GetStatusBadgeClass(currentBenchStatus)">@currentBenchStatus</span>
+                <span class="oi oi-map-marker me-1"></span>@currentBench.Location 
+				@*<span class="badge @GetStatusBadgeClass(currentBenchStatus)">@currentBenchStatus</span>*@
             </p>
         }
     </div>
@@ -45,7 +46,7 @@ else
 {
     <!-- 左右分栏布局 -->
     <div class="row">
-        <!-- 左侧：日历视图 (70%) -->
+        <!-- 左侧：日历视图  -->
         <div class="col-12 col-md-6 col-lg-7 mb-3">
             <div class="card shadow-sm">
                 <CalendarHeader Title="@GetCurrentPeriodTitle()"
@@ -80,7 +81,7 @@ else
             </div>
         </div>
 
-        <!-- 右侧：测试计划列表 (30%) -->
+        <!-- 右侧：测试计划列表  -->
         <div class="col-12 col-md-6 col-lg-5">
             <div class="card shadow-sm sticky-top" style="top: 1rem;">
                 <div class="card-header bg-secondary text-white">
