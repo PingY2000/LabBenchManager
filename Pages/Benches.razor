@@ -29,7 +29,6 @@
                 <th>位置</th>
                 <th>测试类型</th>
                 <th>测试对象</th>
-                <th>当前状态</th>
                 <th style="width: 180px;">操作</th>
             </tr>
         </thead>
@@ -70,11 +69,6 @@
                         <td>@bench.Location</td>
                         <td>@bench.TestType</td>
                         <td>@bench.TestObject</td>
-                        <td>
-                            <span class="badge @GetStatusBadgeClass(status)">
-                                @status.ToString()
-                            </span>
-                        </td>
                         <td>
                             <div class="btn-group btn-group-sm" role="group">
                                 <button class="btn btn-outline-primary" @onclick="() => ViewSchedule(bench.Id)" title="查看排产">

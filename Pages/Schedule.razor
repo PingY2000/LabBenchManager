@@ -44,19 +44,14 @@ else
     <div class="card mb-3">
         <div class="card-header bg-primary text-white">
             <div class="row align-items-center">
-                <!-- 左侧：导航按钮 -->
                 <div class="col-auto">
                     <button class="btn btn-light btn-sm" @onclick="Previous">
                         <span class="oi oi-chevron-left"></span>
                     </button>
                 </div>
-
-                <!-- 中间：日期标题 -->
                 <div class="col text-center">
                     <h5 class="mb-0">@GetCurrentPeriodTitle()</h5>
                 </div>
-
-                <!-- 右侧：今天按钮和下一个按钮 -->
                 <div class="col-auto">
                     <button class="btn btn-light btn-sm me-2" @onclick="GoToToday">今天</button>
                     <button class="btn btn-light btn-sm" @onclick="Next">
@@ -65,7 +60,6 @@ else
                 </div>
             </div>
 
-            <!-- 视图切换按钮 -->
             <div class="text-center mt-2">
                 <div class="btn-group btn-group-sm" role="group">
                     <button type="button" class="btn @(currentView == CalendarView.Day ? "btn-warning" : "btn-light")"
@@ -163,6 +157,108 @@ else
     </div>
 }
 
+<!-- 添加/编辑测试计划模态框 -->
+@if (showPlanModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        @(editingPlan.Id == 0 ? "添加测试计划" : "编辑测试计划")
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="ClosePlanModal"></button>
+                </div>
+                <EditForm Model="@editingPlan" OnValidSubmit="SavePlan">
+                    <DataAnnotationsValidator />
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">项目名称 <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="editingPlan.ProjectName" placeholder="请输入项目名称" />
+                                <ValidationMessage For="@(() => editingPlan.ProjectName)" />
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">负责人 <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="editingPlan.AssignedTo" placeholder="请输入负责人" />
+                                <ValidationMessage For="@(() => editingPlan.AssignedTo)" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">优先级</label>
+                                <InputSelect class="form-select" @bind-Value="editingPlan.Priority">
+                                    @foreach (var priority in Enum.GetValues<PriorityLevel>())
+                                    {
+                                        <option value="@priority">@priority.ToString()</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">开始日期 <span class="text-danger">*</span></label>
+                                <InputDate class="form-control" @bind-Value="startDate" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">开始时间</label>
+                                <InputText type="time" class="form-control" @bind-Value="startTime" />
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">结束日期 <span class="text-danger">*</span></label>
+                                <InputDate class="form-control" @bind-Value="endDate" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">结束时间</label>
+                                <InputText type="time" class="form-control" @bind-Value="endTime" />
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">状态</label>
+                                <InputSelect class="form-select" @bind-Value="editingPlan.Status">
+                                    @foreach (var status in Enum.GetValues<TestPlanStatus>())
+                                    {
+                                        <option value="@status">@status.ToString()</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">备注说明</label>
+                                <InputTextArea class="form-control" @bind-Value="editingPlan.Description" rows="4"
+                                               placeholder="请输入测试相关的备注信息" />
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(validationError))
+                        {
+                            <div class="alert alert-danger">
+                                <span class="oi oi-warning me-2"></span>@validationError
+                            </div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="ClosePlanModal">取消</button>
+                        <button type="submit" class="btn btn-primary">
+                            <span class="oi oi-check me-1"></span>保存
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
 <!-- 删除确认对话框 -->
 @if (showDeleteConfirm)
 {
@@ -184,195 +280,9 @@ else
             </div>
         </div>
     </div>
+    <div class="modal-backdrop fade show"></div>
 }
 
-<style>
-    /* 日视图样式 */
-    .day-view-table {
-        font-size: 0.9rem;
-    }
-
-    .time-cell {
-        width: 80px;
-        text-align: center;
-        vertical-align: top;
-        background-color: #f8f9fa;
-    }
-
-    .hour-cell {
-        height: 60px;
-        cursor: pointer;
-        vertical-align: top;
-        padding: 4px;
-        border: 1px solid #dee2e6;
-    }
-
-        .hour-cell:hover {
-            background-color: rgba(0, 123, 255, 0.05);
-        }
-
-    /* 月视图样式 */
-    .month-view-table {
-        font-size: 0.85rem;
-    }
-
-    .month-day-cell {
-        height: 100px;
-        width: 14.28%;
-        cursor: pointer;
-        vertical-align: top;
-        padding: 4px;
-        border: 1px solid #dee2e6;
-    }
-
-        .month-day-cell:hover {
-            background-color: rgba(0, 123, 255, 0.05);
-        }
-
-    .month-day-number {
-        font-weight: bold;
-        margin-bottom: 4px;
-    }
-
-    .other-month {
-        background-color: #f8f9fa;
-        color: #adb5bd;
-    }
-
-    .today-cell {
-        background-color: #e7f3ff !important;
-    }
-
-    .day-number-badge {
-        display: inline-block;
-        width: 24px;
-        height: 24px;
-        line-height: 24px;
-        text-align: center;
-        border-radius: 50%;
-    }
-
-    .today-badge {
-        background-color: #0d6efd;
-        color: white;
-    }
-
-    /* 年视图样式 */
-    .year-view-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 15px;
-        padding: 15px;
-    }
-
-    .mini-month-card {
-        border: 1px solid #dee2e6;
-        border-radius: 4px;
-        padding: 8px;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-        .mini-month-card:hover {
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            transform: translateY(-2px);
-        }
-
-    .mini-month-title {
-        font-weight: bold;
-        text-align: center;
-        margin-bottom: 8px;
-        color: #495057;
-    }
-
-    .mini-calendar {
-        display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        gap: 2px;
-        font-size: 0.7rem;
-    }
-
-    .mini-day {
-        aspect-ratio: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 2px;
-    }
-
-    .mini-day-header {
-        font-weight: bold;
-        color: #6c757d;
-        font-size: 0.65rem;
-    }
-
-    .mini-day-has-plan {
-        background-color: #0d6efd;
-        color: white;
-    }
-
-    .mini-day-other-month {
-        color: #dee2e6;
-    }
-
-    /* 计划块样式 */
-    .plan-block {
-        border-left: 4px solid;
-        padding: 2px 4px;
-        margin-bottom: 2px;
-        border-radius: 3px;
-        font-size: 0.7rem;
-        cursor: pointer;
-        transition: all 0.2s;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-        .plan-block:hover {
-            transform: translateX(2px);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            z-index: 10;
-            white-space: normal;
-        }
-
-    .plan-block-待开始 {
-        background-color: #e9ecef;
-        border-left-color: #6c757d;
-    }
-
-    .plan-block-进行中 {
-        background-color: #fff3cd;
-        border-left-color: #ffc107;
-    }
-
-    .plan-block-已完成 {
-        background-color: #d1e7dd;
-        border-left-color: #198754;
-    }
-
-    .plan-block-已暂停 {
-        background-color: #f8d7da;
-        border-left-color: #dc3545;
-    }
-
-    .badge-sm {
-        font-size: 0.65rem;
-        padding: 2px 4px;
-    }
-
-    @@media (max-width: 768px) {
-        .year-view-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-
-    @@media (max-width: 576px) {
-        .year-view-grid {
-            grid-template-columns: repeat(1, 1fr);
-        }
-    }
-</style>
 @code {
     [Parameter]
     public int BenchId { get; set; }
@@ -387,12 +297,22 @@ else
     private Bench? currentBench;
     private string benchName = "加载中...";
     private List<TestPlan>? testPlans;
-    private CalendarView currentView = CalendarView.Month; // 默认月视图
+    private CalendarView currentView = CalendarView.Month;
     private DateTime currentDate = DateTime.Today;
-    private BenchStatus currentBenchStatus = BenchStatus.空闲; // 添加状态字段
+    private BenchStatus currentBenchStatus = BenchStatus.空闲;
 
+    // 删除确认
     private bool showDeleteConfirm = false;
     private TestPlan? planToDelete = null;
+
+    // 添加/编辑计划
+    private bool showPlanModal = false;
+    private TestPlan editingPlan = new();
+    private DateTime startDate = DateTime.Today;
+    private DateTime endDate = DateTime.Today.AddDays(1);
+    private string startTime = "09:00";
+    private string endTime = "18:00";
+    private string validationError = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -408,12 +328,172 @@ else
     {
         currentBench = await BenchSvc.GetByIdAsync(BenchId);
         benchName = currentBench?.Name ?? "未知设备";
-
-        // 获取动态计算的状态
         currentBenchStatus = await BenchSvc.GetBenchStatusAsync(BenchId);
 
         var allPlans = await PlanSvc.GetAllPlansAsync();
         testPlans = allPlans.Where(p => p.BenchId == BenchId).ToList();
+    }
+
+    // ==================== 计划管理 ====================
+    private void AddNewPlan()
+    {
+        editingPlan = new TestPlan
+            {
+                BenchId = BenchId,
+                Priority = PriorityLevel.中,
+                Status = TestPlanStatus.待开始
+            };
+        startDate = DateTime.Today;
+        endDate = DateTime.Today.AddDays(1);
+        startTime = "09:00";
+        endTime = "18:00";
+        validationError = "";
+        showPlanModal = true;
+    }
+
+    private void AddPlanAtTime(DateTime time)
+    {
+        editingPlan = new TestPlan
+            {
+                BenchId = BenchId,
+                Priority = PriorityLevel.中,
+                Status = TestPlanStatus.待开始
+            };
+        startDate = time.Date;
+        endDate = time.Date;
+        startTime = time.ToString("HH:mm");
+        endTime = time.AddHours(2).ToString("HH:mm");
+        validationError = "";
+        showPlanModal = true;
+    }
+
+    private void EditPlan(TestPlan plan)
+    {
+        editingPlan = new TestPlan
+            {
+                Id = plan.Id,
+                BenchId = plan.BenchId,
+                ProjectName = plan.ProjectName,
+                AssignedTo = plan.AssignedTo,
+                Priority = plan.Priority,
+                Status = plan.Status,
+                Description = plan.Description,
+                PlannedStartTime = plan.PlannedStartTime,
+                PlannedEndTime = plan.PlannedEndTime
+            };
+
+        if (plan.PlannedStartTime.HasValue)
+        {
+            startDate = plan.PlannedStartTime.Value.Date;
+            startTime = plan.PlannedStartTime.Value.ToString("HH:mm");
+        }
+
+        if (plan.PlannedEndTime.HasValue)
+        {
+            endDate = plan.PlannedEndTime.Value.Date;
+            endTime = plan.PlannedEndTime.Value.ToString("HH:mm");
+        }
+
+        validationError = "";
+        showPlanModal = true;
+    }
+
+    private async Task SavePlan()
+    {
+        // 验证时间
+        if (!TimeSpan.TryParse(startTime, out var startTimeSpan))
+        {
+            validationError = "开始时间格式不正确";
+            return;
+        }
+
+        if (!TimeSpan.TryParse(endTime, out var endTimeSpan))
+        {
+            validationError = "结束时间格式不正确";
+            return;
+        }
+
+        // 组合日期和时间
+        editingPlan.PlannedStartTime = startDate.Date.Add(startTimeSpan);
+        editingPlan.PlannedEndTime = endDate.Date.Add(endTimeSpan);
+
+        // 验证结束时间必须晚于开始时间
+        if (editingPlan.PlannedEndTime <= editingPlan.PlannedStartTime)
+        {
+            validationError = "结束时间必须晚于开始时间";
+            return;
+        }
+
+        // 检查时间冲突
+        var conflictingPlan = testPlans?.FirstOrDefault(p =>
+            p.Id != editingPlan.Id &&
+            p.PlannedStartTime < editingPlan.PlannedEndTime &&
+            p.PlannedEndTime > editingPlan.PlannedStartTime);
+
+        if (conflictingPlan != null)
+        {
+            validationError = $"时间与现有计划 '{conflictingPlan.ProjectName}' 冲突";
+            return;
+        }
+
+        try
+        {
+            if (editingPlan.Id == 0)
+            {
+                await PlanSvc.AddAsync(editingPlan);
+            }
+            else
+            {
+                await PlanSvc.UpdateAsync(editingPlan);
+            }
+
+            showPlanModal = false;
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            validationError = $"保存失败: {ex.Message}";
+        }
+    }
+
+    private void ClosePlanModal()
+    {
+        showPlanModal = false;
+        validationError = "";
+    }
+
+    // ==================== 删除管理 ====================
+    private void ConfirmDeletePlan(TestPlan plan)
+    {
+        planToDelete = plan;
+        showDeleteConfirm = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+        planToDelete = null;
+    }
+
+    private async Task ExecuteDelete()
+    {
+        if (planToDelete != null)
+        {
+            await PlanSvc.DeleteAsync(planToDelete.Id);
+            showDeleteConfirm = false;
+            planToDelete = null;
+            await LoadData();
+        }
+    }
+
+    private async Task ChangePriority(TestPlan plan, int delta)
+    {
+        var newPriority = (int)plan.Priority + delta;
+        if (newPriority >= 1 && newPriority <= 4)
+        {
+            await PlanSvc.UpdatePriorityAsync(plan.Id, (PriorityLevel)newPriority);
+            await LoadData();
+        }
     }
 
     // ==================== 视图切换 ====================
@@ -585,7 +665,6 @@ else
         if (startDate > firstDay) startDate = startDate.AddDays(-7);
 
         <div class="mini-calendar">
-            <!-- 星期标题 -->
             <div class="mini-day mini-day-header">一</div>
             <div class="mini-day mini-day-header">二</div>
             <div class="mini-day mini-day-header">三</div>
@@ -594,7 +673,6 @@ else
             <div class="mini-day mini-day-header">六</div>
             <div class="mini-day mini-day-header">日</div>
 
-            <!-- 日期 -->
             @for (int i = 0; i < 42; i++)
             {
                 var cellDate = startDate.AddDays(i);
@@ -652,56 +730,7 @@ else
         currentView = CalendarView.Month;
     }
 
-    private void AddNewPlan()
-    {
-        // 打开添加计划对话框，预设 BenchId
-        Console.WriteLine($"添加新计划到设备 {BenchId}");
-    }
-
-    private void AddPlanAtTime(DateTime time)
-    {
-        // 打开添加计划对话框，预设时间和 BenchId
-        Console.WriteLine($"在 {time} 添加计划到设备 {BenchId}");
-    }
-
-    private void EditPlan(TestPlan plan)
-    {
-        Console.WriteLine($"编辑计划 {plan.Id}");
-    }
-
-    private void ConfirmDeletePlan(TestPlan plan)
-    {
-        planToDelete = plan;
-        showDeleteConfirm = true;
-    }
-
-    private void CancelDelete()
-    {
-        showDeleteConfirm = false;
-        planToDelete = null;
-    }
-
-    private async Task ExecuteDelete()
-    {
-        if (planToDelete != null)
-        {
-            await PlanSvc.DeleteAsync(planToDelete.Id);
-            showDeleteConfirm = false;
-            planToDelete = null;
-            await LoadData();
-        }
-    }
-
-    private async Task ChangePriority(TestPlan plan, int delta)
-    {
-        var newPriority = (int)plan.Priority + delta;
-        if (newPriority >= 1 && newPriority <= 4)
-        {
-            await PlanSvc.UpdatePriorityAsync(plan.Id, (PriorityLevel)newPriority);
-            await LoadData();
-        }
-    }
-
+    // ==================== 样式辅助方法 ====================
     private string GetPlanBlockClass(TestPlan plan) => $"plan-block-{plan.Status}";
 
     private string GetPlanListClass(TestPlan plan) => plan.Status switch
