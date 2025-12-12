@@ -4,9 +4,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LabBenchManager.Models
 {
-    public enum AssignmentStatus { 待审批, 已批准, 已拒绝, 进行中, 已完成 }
-    
-    public enum TestStage { 第一轮, 第二轮, 第三轮, 其他轮次 }
+    public enum AssignmentStatus { 待审批, 待分配, 已拒绝, 进行中, 已完成 ,未开始}
+
+    public enum TestStage { 第一轮, 第二轮, 第三轮, 第四轮, 其他轮次 }
 
     public class Assignment
     {
@@ -40,6 +40,13 @@ namespace LabBenchManager.Models
 
         [ForeignKey("BenchId")]
         public virtual Bench? Bench { get; set; }
+
+        // 新增：可选的外键关联到 TestPlan
+        [Display(Name = "测试计划")]
+        public int? TestPlanId { get; set; }
+
+        [ForeignKey("TestPlanId")]
+        public virtual TestPlan? TestPlan { get; set; }
 
         public DateTime RequestTime { get; set; }
 

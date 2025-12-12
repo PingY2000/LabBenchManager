@@ -84,6 +84,30 @@ else
         <!-- 右侧：测试计划列表  -->
         <div class="col-12 col-md-6 col-lg-5">
             <div class="card shadow-sm sticky-top" style="top: 1rem;">
+                @if (pendingAssignments != null && pendingAssignments.Any())
+                {
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">⌛ 待创建计划的申请</h5>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        @foreach (var assignment in pendingAssignments)
+                        {
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">@assignment.ProjectName</h6>
+                                        <small class="text-muted">
+                                            <span class="oi oi-person me-1"></span>@assignment.ApplicantName
+                                        </small>
+                                    </div>
+                                    <button class="btn btn-sm btn-primary" @onclick="() => CreatePlanFromAssignment(assignment)">
+                                        <span class="oi oi-plus me-1"></span>创建计划
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
                 <div class="card-header bg-secondary text-white">
                     <h5 class="mb-0">📋 测试计划</h5>
                 </div>
@@ -286,6 +310,8 @@ else
     <div class="modal-backdrop fade show"></div>
 }
 
+@inject AssignmentService AssignmentSvc
+
 @code {
     [Parameter]
     public int BenchId { get; set; }
@@ -296,6 +322,7 @@ else
     private CalendarViewType currentView = CalendarViewType.Month;
     private DateTime currentDate = DateTime.Today;
     private BenchStatus currentBenchStatus = BenchStatus.空闲;
+    private List<Assignment>? pendingAssignments;
 
     // 删除确认
     private bool showDeleteConfirm = false;
@@ -326,8 +353,19 @@ else
         benchName = currentBench?.Name ?? "未知设备";
         currentBenchStatus = await BenchSvc.GetBenchStatusAsync(BenchId);
 
+        // 加载此测试台的所有测试计划
         var allPlans = await PlanSvc.GetAllPlansAsync();
         testPlans = allPlans.Where(p => p.BenchId == BenchId).ToList();
+
+        // 新增：加载所有已分配到此测试台但尚未创建计划的申请
+        var allAssignments = await AssignmentSvc.GetAllAsync();
+        pendingAssignments = allAssignments
+            .Where(a => a.BenchId == BenchId &&
+                        a.Status == AssignmentStatus.未开始 &&
+                        a.TestPlanId == null) // 确保还没有关联的计划
+            .ToList();
+
+        StateHasChanged(); // 确保UI更新
     }
 
     // ==================== 计划管理 ====================
@@ -366,17 +404,17 @@ else
     private void EditPlan(TestPlan plan)
     {
         editingPlan = new TestPlan
-            {
-                Id = plan.Id,
-                BenchId = plan.BenchId,
-                ProjectName = plan.ProjectName,
-                AssignedTo = plan.AssignedTo,
-                Priority = plan.Priority,
-                Status = plan.Status,
-                Description = plan.Description,
-                PlannedStartTime = plan.PlannedStartTime,
-                PlannedEndTime = plan.PlannedEndTime
-            };
+        {
+            Id = plan.Id,
+            BenchId = plan.BenchId,
+            ProjectName = plan.ProjectName,
+            AssignedTo = plan.AssignedTo,
+            Priority = plan.Priority,
+            Status = plan.Status,
+            Description = plan.Description,
+            PlannedStartTime = plan.PlannedStartTime,
+            PlannedEndTime = plan.PlannedEndTime
+        };
 
         if (plan.PlannedStartTime.HasValue)
         {
@@ -389,6 +427,32 @@ else
             endDate = plan.PlannedEndTime.Value.Date;
             endTime = plan.PlannedEndTime.Value.ToString("HH:mm");
         }
+
+        validationError = "";
+        showPlanModal = true;
+    }
+
+    private void CreatePlanFromAssignment(Assignment assignment)
+    {
+        editingPlan = new TestPlan
+        {
+            BenchId = BenchId,
+            AssignmentId = assignment.Id, // 关键：关联Assignment ID
+            ProjectName = assignment.ProjectName,
+            Description = assignment.TestContent, // 使用测试内容作为描述
+            AssignedTo = "", // 留空让用户填写
+            RequestedBy = assignment.ApplicantName,
+            SampleNumber = assignment.SampleBatchNo,
+            SampleQuantity = assignment.SampleQuantity,
+            Priority = assignment.IsUrgent ? PriorityLevel.紧急 : PriorityLevel.中,
+            Status = TestPlanStatus.待开始
+        };
+
+        // 使用申请中期望的时间作为默认值
+        startDate = assignment.EstimatedSampleTime.Date;
+        startTime = "09:00"; // 或者使用一个默认时间
+        endDate = assignment.DesiredCompletionTime.Date;
+        endTime = "18:00";
 
         validationError = "";
         showPlanModal = true;
@@ -442,7 +506,17 @@ else
             {
                 await PlanSvc.UpdateAsync(editingPlan);
             }
-
+            // 如果此计划是从一个申请创建的，则更新该申请
+            if (editingPlan.AssignmentId.HasValue)
+            {
+                var relatedAssignment = await AssignmentSvc.GetByIdAsync(editingPlan.AssignmentId.Value);
+                if (relatedAssignment != null)
+                {
+                    relatedAssignment.TestPlanId = editingPlan.Id; // 相互关联
+                    relatedAssignment.Status = AssignmentStatus.进行中; // 更新状态为进行中
+                    await AssignmentSvc.UpdateAsync(relatedAssignment);
+                }
+            }
             showPlanModal = false;
             await LoadData();
         }

@@ -33,6 +33,13 @@ namespace LabBenchManager.Models
         [ForeignKey("BenchId")]
         public virtual Bench? Bench { get; set; }
 
+        // 新增：可选的外键关联到 Assignment
+        [Display(Name = "关联的测试申请")]
+        public int? AssignmentId { get; set; }
+
+        [ForeignKey("AssignmentId")]
+        public virtual Assignment? Assignment { get; set; }
+
         // === 测试计划基本信息 ===
         [Required(ErrorMessage = "测试项目名称不能为空")]
         [StringLength(200)]
