@@ -14,34 +14,26 @@ namespace LabBenchManager.Services
             _db = db;
         }
 
-        /// <summary>
-        /// 获取所有设备，按 ID 排序
-        /// </summary>
+        // 获取所有设备
         public async Task<List<Bench>> GetAllAsync()
         {
             return await _db.Benches.OrderBy(b => b.Id).ToListAsync();
         }
 
-        /// <summary>
-        /// 根据 ID 获取单个设备
-        /// </summary>
+        // 根据ID获取单个设备
         public async Task<Bench?> GetByIdAsync(int id)
         {
             return await _db.Benches.FindAsync(id);
         }
 
-        /// <summary>
-        /// 添加一个新设备
-        /// </summary>
+        // 添加新设备
         public async Task AddAsync(Bench bench)
         {
             _db.Benches.Add(bench);
             await _db.SaveChangesAsync();
         }
 
-        /// <summary>
-        /// 根据 ID 删除一个设备
-        /// </summary>
+        // 删除设备
         public async Task RemoveAsync(int id)
         {
             var entity = await _db.Benches.FindAsync(id);
@@ -52,20 +44,13 @@ namespace LabBenchManager.Services
             }
         }
 
-        /// <summary>
-        /// 更新一个现有设备。
-        /// 这种实现方式更安全，因为它只更新从表单传递过来的属性，
-        /// 而不会覆盖数据库中可能已被其他进程更改的其他字段。
-        /// </summary>
+        // 更新设备基本信息
         public async Task UpdateAsync(Bench bench)
         {
-            // 1. 从数据库中找到现有的实体
             var entityToUpdate = await _db.Benches.FindAsync(bench.Id);
-
             if (entityToUpdate != null)
             {
-                // 2. 将传入对象的属性值手动赋给从数据库中取出的实体
-                //    这确保了我们只更新了"设备管理"页面关心的字段。
+                // 手动更新从表单传递的字段
                 entityToUpdate.Name = bench.Name;
                 entityToUpdate.EquipmentNo = bench.EquipmentNo;
                 entityToUpdate.AssetNo = bench.AssetNo;
@@ -77,51 +62,47 @@ namespace LabBenchManager.Services
                 entityToUpdate.BasicPerformanceAndConfiguration = bench.BasicPerformanceAndConfiguration;
                 entityToUpdate.PictureUrl = bench.PictureUrl;
 
-                // 注意：状态字段已移除，状态通过测试计划动态计算
-                // 注意：我们没有更新 CurrentUser, Project, NextAvailableTime 等动态字段，
-                // 因为"设备管理"表单并不负责编辑它们。这是一种良好的实践。
-
-                // 3. EF Core 的更改跟踪器会自动检测到哪些属性被修改，并生成精确的 UPDATE 语句。
+                // 注意：动态字段 CurrentUser, Project 等不在这里更新
                 await _db.SaveChangesAsync();
             }
-            // 如果 entityToUpdate 为 null，可以选择抛出异常或静默处理。
         }
 
         /// <summary>
-        /// 计算设备的当前状态（基于测试计划）
+        /// 计算设备的当前状态（基于以天为单位的测试计划）
         /// </summary>
         public async Task<BenchStatus> GetBenchStatusAsync(int benchId)
         {
-            var now = DateTime.Now;
+            var today = DateTime.Today;
 
-            // 查找当前正在进行的测试计划
-            var currentPlan = await _db.TestPlans
-                .Where(p => p.BenchId == benchId
-                            && p.PlannedStartTime <= now
-                            && p.PlannedEndTime >= now)
-                .OrderByDescending(p => p.Priority)
-                .FirstOrDefaultAsync();
+            // 由于无法在数据库中直接查询字符串解析后的日期，我们先将相关计划加载到内存中
+            var plans = await _db.TestPlans
+                                 .Where(p => p.BenchId == benchId)
+                                 .ToListAsync();
 
-            if (currentPlan != null)
+            // 1. 检查今天是否有计划
+            var activePlanToday = plans.FirstOrDefault(p => p.GetScheduledDates().Contains(today));
+
+            if (activePlanToday != null)
             {
-                return currentPlan.Status switch
+                // 如果今天有计划，则根据计划的状态决定设备状态
+                return activePlanToday.Status switch
                 {
                     TestPlanStatus.进行中 => BenchStatus.使用中,
                     TestPlanStatus.已暂停 => BenchStatus.维护中,
-                    TestPlanStatus.待开始 => BenchStatus.已预定,
-                    _ => BenchStatus.空闲
+                    TestPlanStatus.待开始 => BenchStatus.已预定, // 计划在今天，但还未开始
+                    _ => BenchStatus.空闲 // 已完成或已取消的计划意味着设备今天空闲
                 };
             }
 
-            // 检查未来的预定
-            var futurePlan = await _db.TestPlans
-                .Where(p => p.BenchId == benchId
-                            && p.PlannedStartTime > now
-                            && p.Status == TestPlanStatus.待开始)
-                .OrderBy(p => p.PlannedStartTime)
-                .FirstOrDefaultAsync();
+            // 2. 如果今天没有计划，检查未来是否有预定
+            var hasFutureBooking = plans.Any(p => p.GetScheduledDates().Any(d => d > today));
+            if (hasFutureBooking)
+            {
+                return BenchStatus.已预定;
+            }
 
-            return futurePlan != null ? BenchStatus.已预定 : BenchStatus.空闲;
+            // 3. 如果既没有今天的计划，也没有未来的预定，则设备为空闲
+            return BenchStatus.空闲;
         }
 
         /// <summary>
@@ -129,93 +110,81 @@ namespace LabBenchManager.Services
         /// </summary>
         public async Task<List<BenchWithStatus>> GetAllWithStatusAsync()
         {
+            // 为了优化性能，一次性加载所有计划
+            var allPlans = await _db.TestPlans.ToListAsync();
             var benches = await GetAllAsync();
             var result = new List<BenchWithStatus>();
 
             foreach (var bench in benches)
             {
-                var status = await GetBenchStatusAsync(bench.Id);
+                var today = DateTime.Today;
+                var plansForBench = allPlans.Where(p => p.BenchId == bench.Id).ToList();
+
+                // --- 重复 GetBenchStatusAsync 的逻辑以避免多次数据库调用 ---
+                var status = BenchStatus.空闲;
+                var activePlanToday = plansForBench.FirstOrDefault(p => p.GetScheduledDates().Contains(today));
+
+                if (activePlanToday != null)
+                {
+                    status = activePlanToday.Status switch
+                    {
+                        TestPlanStatus.进行中 => BenchStatus.使用中,
+                        TestPlanStatus.已暂停 => BenchStatus.维护中,
+                        TestPlanStatus.待开始 => BenchStatus.已预定,
+                        _ => BenchStatus.空闲
+                    };
+                }
+                else if (plansForBench.Any(p => p.GetScheduledDates().Any(d => d > today)))
+                {
+                    status = BenchStatus.已预定;
+                }
+                // --- 逻辑结束 ---
+
                 result.Add(new BenchWithStatus
                 {
                     Bench = bench,
                     Status = status
                 });
             }
-
             return result;
         }
 
         /// <summary>
-        /// 更新设备的动态信息（当前使用者、项目、下次可用时间）
-        /// 通常由测试计划服务调用
-        /// </summary>
-        public async Task UpdateDynamicInfoAsync(int benchId, string? currentUser, string? project, DateTime? nextAvailableTime)
-        {
-            var bench = await _db.Benches.FindAsync(benchId);
-            if (bench != null)
-            {
-                bench.CurrentUser = currentUser;
-                bench.Project = project;
-                bench.NextAvailableTime = nextAvailableTime;
-                await _db.SaveChangesAsync();
-            }
-        }
-
-        /// <summary>
-        /// 根据测试计划自动更新设备的动态信息
+        /// 根据测试计划自动更新设备的动态信息 (CurrentUser, Project)
         /// </summary>
         public async Task UpdateDynamicInfoFromPlansAsync(int benchId)
         {
-            var now = DateTime.Now;
+            var bench = await _db.Benches.FindAsync(benchId);
+            if (bench == null) return;
 
-            // 查找当前正在进行的测试计划
-            var currentPlan = await _db.TestPlans
-                .Where(p => p.BenchId == benchId
-                            && p.PlannedStartTime <= now
-                            && p.PlannedEndTime >= now
-                            && p.Status == TestPlanStatus.进行中)
-                .OrderByDescending(p => p.Priority)
-                .FirstOrDefaultAsync();
+            var today = DateTime.Today;
+
+            // 查找今天状态为“进行中”的计划
+            var plans = await _db.TestPlans
+                                 .Where(p => p.BenchId == benchId && p.Status == TestPlanStatus.进行中)
+                                 .ToListAsync();
+
+            var currentPlan = plans.FirstOrDefault(p => p.GetScheduledDates().Contains(today));
 
             if (currentPlan != null)
             {
-                await UpdateDynamicInfoAsync(
-                    benchId,
-                    currentPlan.AssignedTo,
-                    currentPlan.ProjectName,
-                    currentPlan.PlannedEndTime
-                );
+                // 如果找到，则更新设备上的动态信息
+                bench.CurrentUser = currentPlan.AssignedTo;
+                bench.Project = currentPlan.ProjectName;
             }
             else
             {
-                // 查找下一个待开始的计划
-                var nextPlan = await _db.TestPlans
-                    .Where(p => p.BenchId == benchId
-                                && p.PlannedStartTime > now
-                                && p.Status == TestPlanStatus.待开始)
-                    .OrderBy(p => p.PlannedStartTime)
-                    .FirstOrDefaultAsync();
-
-                if (nextPlan != null)
-                {
-                    await UpdateDynamicInfoAsync(
-                        benchId,
-                        nextPlan.AssignedTo,
-                        nextPlan.ProjectName,
-                        nextPlan.PlannedStartTime
-                    );
-                }
-                else
-                {
-                    // 没有计划，清空动态信息
-                    await UpdateDynamicInfoAsync(benchId, null, null, null);
-                }
+                // 如果今天没有“进行中”的计划，则清空动态信息
+                bench.CurrentUser = null;
+                bench.Project = null;
             }
+
+            // 移除了对 NextAvailableTime 的更新
+            await _db.SaveChangesAsync();
         }
 
         /// <summary>
         /// 批量更新所有设备的动态信息
-        /// 可以定期调用此方法以保持状态同步
         /// </summary>
         public async Task UpdateAllDynamicInfoAsync()
         {

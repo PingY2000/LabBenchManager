@@ -1,49 +1,37 @@
 ﻿@* Components/Calendar/CalendarHeader.razor *@
 
-<div class="card-header bg-primary text-white">
-    <div class="row align-items-center">
-        <div class="col-auto">
-            <button class="btn btn-light btn-sm" @onclick="() => OnPrevious.InvokeAsync()">
+<div class="card-header bg-light border-bottom p-3">
+    <div class="d-flex justify-content-between align-items-center">
+        <!-- 左侧：上一个月和下一个月按钮 -->
+        <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary" @onclick="() => OnPrevious.InvokeAsync()" title="上个月">
                 <span class="oi oi-chevron-left"></span>
             </button>
-        </div>
-        <div class="col text-center">
-            <h5 class="mb-0">@Title</h5>
-        </div>
-        <div class="col-auto">
-            <button class="btn btn-light btn-sm me-2" @onclick="() => OnToday.InvokeAsync()">今天</button>
-            <button class="btn btn-light btn-sm" @onclick="() => OnNext.InvokeAsync()">
+            <button class="btn btn-outline-secondary" @onclick="() => OnNext.InvokeAsync()" title="下个月">
                 <span class="oi oi-chevron-right"></span>
             </button>
         </div>
-    </div>
 
-    <div class="text-center mt-2">
-        <div class="btn-group btn-group-sm" role="group">
-            <button type="button" class="btn @(CurrentView == CalendarViewType.Day ? "btn-warning" : "btn-light")"
-                    @onclick="() => OnViewChange.InvokeAsync(CalendarViewType.Day)">
-                天
-            </button>
-            <button type="button" class="btn @(CurrentView == CalendarViewType.Month ? "btn-warning" : "btn-light")"
-                    @onclick="() => OnViewChange.InvokeAsync(CalendarViewType.Month)">
-                月
-            </button>
-            <button type="button" class="btn @(CurrentView == CalendarViewType.Year ? "btn-warning" : "btn-light")"
-                    @onclick="() => OnViewChange.InvokeAsync(CalendarViewType.Year)">
-                年
-            </button>
+        <!-- 中间：标题 -->
+        <h5 class="mb-0 fw-bold text-primary">@Title</h5>
+
+        <!-- 右侧：返回今天按钮 -->
+        <div>
+            <button class="btn btn-outline-primary btn-sm" @onclick="() => OnToday.InvokeAsync()">返回今天</button>
         </div>
     </div>
 </div>
 
 @code {
+    // 移除了与视图切换相关的参数
     [Parameter] public string Title { get; set; } = "";
-    [Parameter] public CalendarViewType CurrentView { get; set; }
     [Parameter] public EventCallback OnPrevious { get; set; }
     [Parameter] public EventCallback OnNext { get; set; }
     [Parameter] public EventCallback OnToday { get; set; }
-    [Parameter] public EventCallback<CalendarViewType> OnViewChange { get; set; }
 
+    // CalendarViewType 枚举可以保留，也可以删除或移动到其他地方，
+    // 因为这个组件不再直接使用它了。
+    // 如果其他日历组件（如 DayView, YearView）还在项目里并使用它，就保留。
     public enum CalendarViewType
     {
         Day,
