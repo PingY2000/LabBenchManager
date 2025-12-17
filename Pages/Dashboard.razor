@@ -54,11 +54,11 @@ else
                                     <p class="card-subtitle mb-2 text-muted small">
                                         @if (!string.IsNullOrEmpty(bench.EquipmentNo))
                                         {
-                                            <span>设备: #@bench.EquipmentNo</span>
+                                            <span>设备号: @bench.EquipmentNo</span>
                                         }
                                         @if (!string.IsNullOrEmpty(bench.AssetNo))
                                         {
-                                            <span class="ms-2">资产: #@bench.AssetNo</span>
+                                            <span class="ms-2">资产号: @bench.AssetNo</span>
                                         }
                                     </p>
                                     <hr class="my-2" />
@@ -71,11 +71,6 @@ else
                                 </ul>
 
                                 <div class="mt-auto">
-                                    <hr class="my-2" />
-                                    <div class="small">
-                                        <div><strong><span class="oi oi-person me-1"></span>使用者:</strong> @(bench.CurrentUser ?? "N/A")</div>
-                                        <div><strong><span class="oi oi-timer me-1"></span>结束时间:</strong> @(bench.NextAvailableTime?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")</div>
-                                    </div>
                                     <!-- 添加查看排产按钮 -->
                                     <div class="mt-2">
                                         <button class="btn btn-primary btn-sm w-100" @onclick="() => ViewSchedule(bench.Id)">

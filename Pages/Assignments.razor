@@ -2,8 +2,10 @@
 
 @using LabBenchManager.Services
 @using LabBenchManager.Models
+@using LabBenchManager.Components 
+
 @inject AssignmentService AssignmentSvc
-@inject BenchService BenchSvc // 新增：注入Bench服务以获取测试台列表
+@inject BenchService BenchSvc
 
 <PageTitle>申请管理</PageTitle>
 
@@ -20,7 +22,7 @@
         </div>
     </div>
 
-    <!-- 筛选和搜索 (与之前相同) -->
+    <!-- 筛选和搜索 -->
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <div class="row g-3">
@@ -62,7 +64,7 @@
         </div>
     </div>
 
-    <!-- 统计信息 (已更新) -->
+    <!-- 统计信息 -->
     @if (filteredAssignments != null)
     {
         <div class="row mb-4">
@@ -101,7 +103,7 @@
         </div>
     }
 
-    <!-- 申请列表 (已更新) -->
+    <!-- 申请列表 -->
     <div class="card shadow-sm">
         <div class="card-body p-0">
             @if (filteredAssignments == null)
@@ -175,10 +177,10 @@
                                             </button>
                                             @if (assignment.Status == AssignmentStatus.待审批)
                                             {
-                                                <button class="btn btn-outline-success" @onclick="() => HandleApproval(assignment, true)">
+                                                <button class="btn btn-outline-success" @onclick="() => ProcessApproval(assignment, true)">
                                                     <span class="oi oi-check" title="批准"></span>
                                                 </button>
-                                                <button class="btn btn-outline-danger" @onclick="() => HandleApproval(assignment, false)">
+                                                <button class="btn btn-outline-danger" @onclick="() => ProcessApproval(assignment, false)">
                                                     <span class="oi oi-x" title="拒绝"></span>
                                                 </button>
                                             }
@@ -200,235 +202,17 @@
     </div>
 </div>
 
-<!-- 详情模态框 -->
-@if (selectedAssignment != null)
-{
-    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        申请详情 #@selectedAssignment.Id
-                        @if (selectedAssignment.IsUrgent)
-                        {
-                            <span class="badge bg-danger ms-2">加急</span>
-                        }
-                    </h5>
-                    <button type="button" class="btn-close" @onclick="CloseDetail"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6 class="text-muted border-bottom pb-2 mb-3">申请信息</h6>
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">项目名称</label>
-                                <div class="form-control-plaintext">@selectedAssignment.ProjectName</div>
-                            </div>
-                            <div class="row mb-3">
-                                <div class="col-6">
-                                    <label class="form-label fw-bold">申请人</label>
-                                    <div class="form-control-plaintext">@selectedAssignment.ApplicantName</div>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label fw-bold">部门/单位</label>
-                                    <div class="form-control-plaintext">@selectedAssignment.Department</div>
-                                </div>
-                            </div>
-                            <div class="row mb-3">
-                                <div class="col-6">
-                                    <label class="form-label fw-bold">联系电话</label>
-                                    <div class="form-control-plaintext">@selectedAssignment.ContactPhone</div>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label fw-bold">电子邮箱</label>
-                                    <div class="form-control-plaintext">@selectedAssignment.ContactEmail</div>
-                                </div>
-                            </div>
-                            <div class="row mb-3">
-                                <div class="col-6">
-                                    <label class="form-label fw-bold">申请时间</label>
-                                    <div class="form-control-plaintext">@selectedAssignment.RequestTime.ToString("yyyy-MM-dd HH:mm")</div>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label fw-bold">状态</label>
-                                    <div>
-                                        <span class="badge @GetStatusBadgeClass(selectedAssignment.Status)">@selectedAssignment.Status</span>
-                                    </div>
-                                </div>
-                            </div>
-                            @if (selectedAssignment.BenchId.HasValue)
-                            {
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">已分配设备</label>
-                                    <div class="form-control-plaintext text-success">@selectedAssignment.Bench?.Name</div>
-                                </div>
-                            }
-                        </div>
-                        <div class="col-md-6">
-                            <h6 class="text-muted border-bottom pb-2 mb-3">样品信息</h6>
-                            <div class="row mb-3">
-                                <div class="col-6">
-                                    <label class="form-label fw-bold">样品数量</label>
-                                    <div class="form-control-plaintext">@selectedAssignment.SampleQuantity 个</div>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label fw-bold">测试阶段</label>
-                                    <div>
-                                        <span class="badge @GetStageBadgeClass(selectedAssignment.Stage)">@selectedAssignment.Stage</span>
-                                        @if (!string.IsNullOrEmpty(selectedAssignment.StageDescription))
-                                        {
-                                            <div class="small text-muted mt-1">@selectedAssignment.StageDescription</div>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                            @if (!string.IsNullOrEmpty(selectedAssignment.SampleSpecification))
-                            {
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">样品规格/型号</label>
-                                    <div class="form-control-plaintext">@selectedAssignment.SampleSpecification</div>
-                                </div>
-                            }
-                            @if (!string.IsNullOrEmpty(selectedAssignment.SampleBatchNo))
-                            {
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">样品批号</label>
-                                    <div class="form-control-plaintext">@selectedAssignment.SampleBatchNo</div>
-                                </div>
-                            }
-                            @if (!string.IsNullOrEmpty(selectedAssignment.SampleRequirements))
-                            {
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">样品特殊要求</label>
-                                    <pre class="form-control-plaintext bg-light p-2 rounded small">@selectedAssignment.SampleRequirements</pre>
-                                </div>
-                            }
-                        </div>
-                    </div>
+<!-- 新的模态框组件调用方式 -->
+<AssignmentDetailModal Assignment="selectedAssignment"
+                       OnClose="CloseDetail"
+                       OnApprove="HandleApproval"
+                       OnReject="HandleRejection"
+                       OnGoToAllocate="HandleGoToAllocate" />
 
-                    <div class="row mt-3">
-                        <div class="col-md-6">
-                            <h6 class="text-muted border-bottom pb-2 mb-3">时间规划</h6>
-                            <div class="row">
-                                <div class="col-6">
-                                    <label class="form-label fw-bold">预计交样时间</label>
-                                    <div class="form-control-plaintext">@selectedAssignment.EstimatedSampleTime.ToString("yyyy-MM-dd")</div>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label fw-bold">期望完成时间</label>
-                                    <div class="form-control-plaintext">@selectedAssignment.DesiredCompletionTime.ToString("yyyy-MM-dd")</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <h6 class="text-muted border-bottom pb-2 mb-3">测试要求</h6>
-                            <div class="mb-2">
-                                <label class="form-label fw-bold">测试标准/依据</label>
-                                <div class="form-control-plaintext">@(selectedAssignment.TestStandard ?? "---")</div>
-                            </div>
-                            @if (!string.IsNullOrEmpty(selectedAssignment.TestParameters))
-                            {
-                                <div class="mb-2">
-                                    <label class="form-label fw-bold">测试参数/条件</label>
-                                    <pre class="form-control-plaintext bg-light p-2 rounded small">@selectedAssignment.TestParameters</pre>
-                                </div>
-                            }
-                        </div>
-                    </div>
-
-                    <div class="mt-3">
-                        <h6 class="text-muted border-bottom pb-2 mb-3">测试内容</h6>
-                        <pre class="form-control-plaintext bg-light p-3 rounded">@selectedAssignment.TestContent</pre>
-                    </div>
-
-                    @if (!string.IsNullOrEmpty(selectedAssignment.SpecialRequirements))
-                    {
-                        <div class="mt-3">
-                            <h6 class="text-muted border-bottom pb-2 mb-3">特殊要求</h6>
-                            <pre class="form-control-plaintext bg-light p-3 rounded">@selectedAssignment.SpecialRequirements</pre>
-                        </div>
-                    }
-
-                    @if (!string.IsNullOrEmpty(selectedAssignment.UrgentReason))
-                    {
-                        <div class="mt-3">
-                            <h6 class="text-muted border-bottom pb-2 mb-3">加急原因</h6>
-                            <pre class="form-control-plaintext bg-warning-light p-3 rounded">@selectedAssignment.UrgentReason</pre>
-                        </div>
-                    }
-
-                    @if (!string.IsNullOrEmpty(selectedAssignment.Notes))
-                    {
-                        <div class="mt-3">
-                            <h6 class="text-muted border-bottom pb-2 mb-3">备注说明</h6>
-                            <pre class="form-control-plaintext bg-light p-3 rounded">@selectedAssignment.Notes</pre>
-                        </div>
-                    }
-                </div>
-                <div class="modal-footer">
-                    @if (selectedAssignment.Status == AssignmentStatus.待审批)
-                    {
-                        <button class="btn btn-success" @onclick="() => HandleApprovalInModal(selectedAssignment, true)">
-                            <span class="oi oi-check me-1"></span>批准申请
-                        </button>
-                        <button class="btn btn-danger" @onclick="() => HandleApprovalInModal(selectedAssignment, false)">
-                            <span class="oi oi-x me-1"></span>拒绝申请
-                        </button>
-                    }
-                    @if (selectedAssignment.Status == AssignmentStatus.待分配)
-                    {
-                        <button class="btn btn-info" @onclick="() => { CloseDetail(); ShowAllocationModal(selectedAssignment); }">
-                            <span class="oi oi-fork me-1"></span>去分配
-                        </button>
-                    }
-                    <button class="btn btn-secondary" @onclick="CloseDetail">关闭</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
-<!-- 新增：分配模态框 -->
-@if (assignmentToAllocate != null)
-{
-    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">分配测试台 - 申请 #@assignmentToAllocate.Id</h5>
-                    <button type="button" class="btn-close" @onclick="CloseAllocationModal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>正在为项目 <strong>@assignmentToAllocate.ProjectName</strong> 分配测试台。</p>
-                    
-                    @if(benches == null)
-                    {
-                        <p>正在加载测试台列表...</p>
-                    }
-                    else
-                    {
-                        <div class="mb-3">
-                            <label for="benchSelect" class="form-label">选择一个测试台</label>
-                            <select id="benchSelect" class="form-select" @bind="selectedBenchIdForAllocation">
-                                <option value="0">-- 请选择 --</option>
-                                @foreach (var bench in benches)
-                                {
-                                    <option value="@bench.Id">@bench.Name (@bench.Location)</option>
-                                }
-                            </select>
-                        </div>
-                    }
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="CloseAllocationModal">取消</button>
-                    <button class="btn btn-primary" @onclick="HandleAllocationAsync" disabled="@(selectedBenchIdForAllocation == 0)">
-                        <span class="oi oi-check me-1"></span>确认分配
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
+<AssignmentAllocationModal AssignmentToAllocate="assignmentToAllocate"
+                           Benches="benches"
+                           OnClose="CloseAllocationModal"
+                           OnConfirmAllocation="HandleAllocationConfirmed" />
 
 
 @code {
@@ -438,10 +222,10 @@
     private List<Assignment>? filteredAssignments;
     private List<Bench>? benches;
 
+    // 控制模态框显示的状态
     private Assignment? selectedAssignment;
     private Assignment? assignmentToAllocate;
-    private int selectedBenchIdForAllocation;
-    
+
     // 筛选参数
     private string selectedStatus = "";
     private string selectedStage = "";
@@ -453,43 +237,29 @@
     {
         await LoadData();
     }
+
     private async Task LoadData()
     {
         errorMessage = null;
         try
         {
-            Console.WriteLine("1. LoadData started.");
-            filteredAssignments = null;
+            filteredAssignments = null; // 显示加载动画
             StateHasChanged();
 
-            // --- 这是关键的修改 ---
-            // 将并行操作改为串行操作
-
-            Console.WriteLine("2. Fetching assignments...");
-            // 首先，完成第一个数据库查询
+            // 串行加载数据以避免潜在的并发问题
             allAssignments = await AssignmentSvc.GetAllAsync();
-            Console.WriteLine($"3. Loaded {allAssignments?.Count} assignments.");
-
-            Console.WriteLine("4. Fetching benches...");
-            // 然后，完成第二个数据库查询
             benches = await BenchSvc.GetAllAsync();
-            Console.WriteLine($"5. Loaded {benches?.Count} benches.");
-            // --- 修改结束 ---
 
-            Console.WriteLine("6. All data loaded. Applying filters...");
             ApplyFilters();
-            Console.WriteLine("7. Filters applied.");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"ERROR in LoadData: {ex.ToString()}");
             errorMessage = $"数据加载失败: {ex.Message}";
             allAssignments = new List<Assignment>();
             filteredAssignments = new List<Assignment>();
         }
         finally
         {
-            Console.WriteLine("8. LoadData finished. Forcing UI update.");
             StateHasChanged();
         }
     }
@@ -517,87 +287,88 @@
         }
 
         filteredAssignments = query.OrderByDescending(a => a.RequestTime).ToList();
-        
-        StateHasChanged();
     }
 
     private async Task RefreshList()
     {
-        allAssignments = null; // 清空以显示加载动画
+        allAssignments = null;
         filteredAssignments = null;
         await LoadData();
     }
 
+    // --- 模态框控制方法 ---
     private void ShowDetail(Assignment assignment) => selectedAssignment = assignment;
     private void CloseDetail() => selectedAssignment = null;
 
-    private void ShowAllocationModal(Assignment assignment)
-    {
-        assignmentToAllocate = assignment;
-        selectedBenchIdForAllocation = 0; // 重置选择
-    }
-    
+    private void ShowAllocationModal(Assignment assignment) => assignmentToAllocate = assignment;
     private void CloseAllocationModal() => assignmentToAllocate = null;
 
-    private async Task HandleApproval(Assignment assignment, bool isApproved)
+    // --- 响应子组件事件的方法 ---
+
+    private async Task HandleApproval(Assignment assignment) => await ProcessApproval(assignment, true);
+    private async Task HandleRejection(Assignment assignment) => await ProcessApproval(assignment, false);
+
+    // 统一处理审批/拒绝逻辑，可被列表按钮和模态框按钮复用
+    private async Task ProcessApproval(Assignment assignment, bool isApproved)
     {
         try
         {
-            // 批准后进入"待分配"状态
             assignment.Status = isApproved ? AssignmentStatus.待分配 : AssignmentStatus.已拒绝;
             await AssignmentSvc.UpdateAsync(assignment);
-            ApplyFilters(); // 重新应用筛选以更新UI
+
+            if (selectedAssignment != null) CloseDetail(); // 如果操作来自模态框，则关闭它
+
+            ApplyFilters(); // 刷新列表UI
+            StateHasChanged();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"处理审批时出错: {ex.Message}");
+            errorMessage = $"处理审批时出错: {ex.Message}";
+            Console.WriteLine(errorMessage);
         }
     }
 
-    private async Task HandleAllocationAsync()
+    // 响应分配模态框的确认事件
+    private async Task HandleAllocationConfirmed((int AssignmentId, int BenchId) allocationData)
     {
-        if (assignmentToAllocate == null || selectedBenchIdForAllocation == 0) return;
+        var assignment = allAssignments?.FirstOrDefault(a => a.Id == allocationData.AssignmentId);
+        if (assignment == null) return;
 
         try
         {
-            assignmentToAllocate.BenchId = selectedBenchIdForAllocation;
-            assignmentToAllocate.Status = AssignmentStatus.未开始; // 分配后状态变为"未开始"
-            await AssignmentSvc.UpdateAsync(assignmentToAllocate);
-            
+            assignment.BenchId = allocationData.BenchId;
+            assignment.Status = AssignmentStatus.未开始;
+            await AssignmentSvc.UpdateAsync(assignment);
+
             CloseAllocationModal();
-            ApplyFilters(); // 刷新列表
+            ApplyFilters();
+            StateHasChanged();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"分配测试台时出错: {ex.Message}");
+            errorMessage = $"分配测试台时出错: {ex.Message}";
+            Console.WriteLine(errorMessage);
         }
     }
 
-    private async Task HandleApprovalInModal(Assignment assignment, bool isApproved)
+    // 响应详情模态框中的 "去分配" 按钮
+    private void HandleGoToAllocate(Assignment assignment)
     {
-        // 1. 调用通用的审批逻辑
-        await HandleApproval(assignment, isApproved);
-
-        // 2. 关闭详情模态框
         CloseDetail();
+        ShowAllocationModal(assignment);
     }
 
+    // --- 辅助方法 ---
+
+    // 此方法保留在父组件中，因为主列表需要它
     private string GetStatusBadgeClass(AssignmentStatus status) => status switch
     {
         AssignmentStatus.待审批 => "bg-warning text-dark",
-        AssignmentStatus.待分配 => "bg-info text-white", // 新增
+        AssignmentStatus.待分配 => "bg-info text-white",
         AssignmentStatus.已拒绝 => "bg-danger",
-        AssignmentStatus.未开始 => "bg-light text-dark", // 新增
+        AssignmentStatus.未开始 => "bg-light text-dark",
         AssignmentStatus.进行中 => "bg-primary",
         AssignmentStatus.已完成 => "bg-secondary",
         _ => "bg-dark"
-    };
-
-    private string GetStageBadgeClass(TestStage stage) => stage switch
-    {
-        TestStage.第一轮 => "bg-info",
-        TestStage.第二轮 => "bg-primary",
-        TestStage.第三轮 => "bg-success",
-        _ => "bg-secondary"
     };
 }

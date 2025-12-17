@@ -63,7 +63,7 @@
 
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">
-                                    <span class="text-danger"></span>部门/单位
+                                    <span class="text-danger"></span>部门
                                 </label>
                                 <InputText class="form-control" @bind-Value="newAssignment.Department"
                                            placeholder="请输入部门或单位名称" />
@@ -71,74 +71,45 @@
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">
-                                    <span class="text-danger"></span>联系电话
-                                </label>
-                                <InputText class="form-control" @bind-Value="newAssignment.ContactPhone"
-                                           placeholder="请输入联系电话" />
-                                <ValidationMessage For="(() => newAssignment.ContactPhone)" class="text-danger small" />
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">
-                                    <span class="text-danger"></span>电子邮箱
-                                </label>
-                                <InputText class="form-control" @bind-Value="newAssignment.ContactEmail"
-                                           placeholder="请输入电子邮箱" />
-                                <ValidationMessage For="(() => newAssignment.ContactEmail)" class="text-danger small" />
-                            </div>
-                        </div>
+                        
                     </div>
                 </div>
-
-                <!-- 样品信息 -->
+                <!-- 测试要求详情 -->
                 <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-info text-white">
+                    <div class="card-header bg-warning text-dark">
                         <h5 class="mb-0">
-                            <span class="oi oi-beaker me-2"></span>样品信息
+                            <span class="oi oi-clipboard me-2"></span>测试要求详情
                         </h5>
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">
-                                    <span class="text-danger">*</span>样品数量
-                                </label>
-                                <InputNumber class="form-control" @bind-Value="newAssignment.SampleQuantity" />
-                                <ValidationMessage For="(() => newAssignment.SampleQuantity)" class="text-danger small" />
-                                <div class="form-text">本次测试的样品总数量</div>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">
-                                    样品规格/型号
-                                </label>
-                                <InputText class="form-control" @bind-Value="newAssignment.SampleSpecification"
-                                           placeholder="例如：型号、尺寸、规格等" />
-                            </div>
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <span class="text-danger">*</span>测试内容
+                            </label>
+                            <InputTextArea class="form-control" @bind-Value="newAssignment.TestContent" rows="4"
+                                           placeholder="请详细描述测试内容，包括测试目的、方法、预期结果等" />
+                            <ValidationMessage For="(() => newAssignment.TestContent)" class="text-danger small" />
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">
-                                    样品批号
-                                </label>
-                                <InputText class="form-control" @bind-Value="newAssignment.SampleBatchNo"
-                                           placeholder="样品生产批号或编号" />
-                            </div>
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <span class="text-danger"></span>测试标准/依据
+                            </label>
+                            <InputText class="form-control" @bind-Value="newAssignment.TestStandard"
+                                       placeholder="例如：GB/T 2423.1-2008 等" />
+                            <ValidationMessage For="(() => newAssignment.TestStandard)" class="text-danger small" />
+                        </div>
 
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">
-                                    样品特殊要求
-                                </label>
-                                <InputText class="form-control" @bind-Value="newAssignment.SampleRequirements"
-                                           placeholder="存储、运输等特殊要求" />
-                            </div>
+                        <div class="mb-3">
+                            <label class="form-label">
+                                测试参数/条件
+                            </label>
+                            <InputTextArea class="form-control" @bind-Value="newAssignment.TestParameters" rows="3"
+                                           placeholder="例如：温度范围、湿度条件、压力参数等" />
                         </div>
                     </div>
                 </div>
+                
             </div>
 
             <!-- 右侧：测试需求 -->
@@ -207,42 +178,53 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- 测试要求详情 -->
+                <!-- 样品信息 -->
                 <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-warning text-dark">
+                    <div class="card-header bg-info text-white">
                         <h5 class="mb-0">
-                            <span class="oi oi-clipboard me-2"></span>测试要求详情
+                            <span class="oi oi-beaker me-2"></span>样品信息
                         </h5>
                     </div>
                     <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label">
-                                <span class="text-danger">*</span>测试内容
-                            </label>
-                            <InputTextArea class="form-control" @bind-Value="newAssignment.TestContent" rows="4"
-                                           placeholder="请详细描述测试内容，包括测试目的、方法、预期结果等" />
-                            <ValidationMessage For="(() => newAssignment.TestContent)" class="text-danger small" />
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    <span class="text-danger">*</span>样品数量
+                                </label>
+                                <InputNumber class="form-control" @bind-Value="newAssignment.SampleQuantity" />
+                                <ValidationMessage For="(() => newAssignment.SampleQuantity)" class="text-danger small" />
+                                <div class="form-text">本次测试的样品总数量</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    样品规格/型号
+                                </label>
+                                <InputText class="form-control" @bind-Value="newAssignment.SampleSpecification"
+                                           placeholder="例如：型号、尺寸、规格等" />
+                            </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">
-                                <span class="text-danger"></span>测试标准/依据
-                            </label>
-                            <InputText class="form-control" @bind-Value="newAssignment.TestStandard"
-                                       placeholder="例如：GB/T 2423.1-2008 等" />
-                            <ValidationMessage For="(() => newAssignment.TestStandard)" class="text-danger small" />
-                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    样品批号
+                                </label>
+                                <InputText class="form-control" @bind-Value="newAssignment.SampleBatchNo"
+                                           placeholder="样品生产批号或编号" />
+                            </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">
-                                测试参数/条件
-                            </label>
-                            <InputTextArea class="form-control" @bind-Value="newAssignment.TestParameters" rows="3"
-                                           placeholder="例如：温度范围、湿度条件、压力参数等" />
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    样品特殊要求
+                                </label>
+                                <InputText class="form-control" @bind-Value="newAssignment.SampleRequirements"
+                                           placeholder="存储、运输等特殊要求" />
+                            </div>
                         </div>
                     </div>
                 </div>
+                
             </div>
         </div>
 
