@@ -1,12 +1,20 @@
-﻿/* 月视图表格 */
-.month-view-table {
-    font-size: 0.85rem;
+﻿/* 天视图表格 */
+.day-view-table {
+    font-size: 0.9rem;
 }
 
-/* 月视图日期格子 */
-.month-day-cell {
-    height: 120px;
-    width: 14.28%;
+/* 时间列 */
+.time-cell {
+    width: 80px;
+    text-align: center;
+    vertical-align: top;
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+/* 小时格子 */
+.hour-cell {
+    height: 60px;
     cursor: pointer;
     vertical-align: top;
     padding: 4px;
@@ -14,43 +22,11 @@
     transition: background-color 0.2s;
 }
 
-    .month-day-cell:hover {
+    .hour-cell:hover {
         background-color: rgba(0, 123, 255, 0.05);
     }
 
-/* 日期数字 */
-.month-day-number {
-    font-weight: bold;
-    margin-bottom: 4px;
-}
-
-/* 非当前月 */
-.other-month {
-    background-color: #f8f9fa;
-    color: #adb5bd;
-}
-
-/* 今天 */
-.today-cell {
-    background-color: #e7f3ff !important;
-}
-
-/* 日期徽章 */
-.day-number-badge {
-    display: inline-block;
-    width: 24px;
-    height: 24px;
-    line-height: 24px;
-    text-align: center;
-    border-radius: 50%;
-}
-
-.today-badge {
-    background-color: #0d6efd;
-    color: white;
-}
-
-/* 计划块 */
+/* 计划块（继承 MonthView 的样式） */
 .plan-block {
     border-left: 4px solid;
     padding: 2px 4px;
@@ -71,7 +47,6 @@
         white-space: normal;
     }
 
-/* 计划状态颜色 */
 .plan-block-待开始 {
     background-color: #e9ecef;
     border-left-color: #6c757d;
@@ -94,11 +69,7 @@
 
 /* 响应式 */
 @media (max-width: 768px) {
-    .month-day-cell {
-        height: 80px;
-    }
-
-    .plan-block {
-        font-size: 0.65rem;
+    .hour-cell {
+        height: 50px;
     }
 }

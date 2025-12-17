@@ -228,6 +228,12 @@ namespace LabBenchManager.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("ActualEndTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ActualStartTime")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("AssignedTo")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -246,7 +252,17 @@ namespace LabBenchManager.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("PlannedEndTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("PlannedStartTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
 
                     b.Property<string>("ProjectName")
                         .IsRequired()
@@ -254,17 +270,18 @@ namespace LabBenchManager.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("RequestedBy")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("SampleNumber")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<int?>("SampleQuantity")
                         .HasColumnType("int");
 
-                    b.Property<string>("ScheduledDates")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");

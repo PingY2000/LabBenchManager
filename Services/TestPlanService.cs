@@ -1,3 +1,4 @@
+// Services/TestPlanService.cs
 using LabBenchManager.Data;
 using LabBenchManager.Models;
 using Microsoft.EntityFrameworkCore;
@@ -13,47 +14,39 @@ namespace LabBenchManager.Services
             _db = db;
         }
 
-        // 获取某个测试台的所有测试计划
+        // 获取某个测试台的所有测试计划，按优先级和排序序号排序
         public async Task<List<TestPlan>> GetPlansByBenchIdAsync(int benchId)
         {
-            // 新的排序逻辑：按计划的第一个日期排序
-            var plans = await _db.TestPlans
-                                 .Where(p => p.BenchId == benchId)
-                                 .Include(p => p.Bench)
-                                 .ToListAsync();
-
-            // 在内存中排序，因为数据库无法直接解析 ScheduledDateList
-            return plans.OrderBy(p => p.ScheduledDateList.FirstOrDefault()).ToList();
+            return await _db.TestPlans
+                            .Where(p => p.BenchId == benchId)
+                            .OrderByDescending(p => p.Priority)  // 优先级高的在前
+                            .ThenBy(p => p.SortOrder)            // 同优先级按排序号
+                            .ThenBy(p => p.PlannedStartTime)     // 同排序号按计划时间
+                            .Include(p => p.Bench)
+                            .ToListAsync();
         }
 
         // 获取所有测试计划
         public async Task<List<TestPlan>> GetAllPlansAsync()
         {
-            // 新的排序逻辑
-            var plans = await _db.TestPlans
-                                 .Include(p => p.Bench)
-                                 .OrderBy(p => p.BenchId)
-                                 .ToListAsync();
-
-            // 在内存中排序
-            return plans.OrderBy(p => p.BenchId)
-                        .ThenBy(p => p.ScheduledDateList.FirstOrDefault())
-                        .ToList();
-        }
-
-        // 根据ID获取单个计划
-        public async Task<TestPlan?> GetByIdAsync(int id)
-        {
             return await _db.TestPlans
                             .Include(p => p.Bench)
-                            .FirstOrDefaultAsync(p => p.Id == id);
+                            .OrderBy(p => p.BenchId)
+                            .ThenByDescending(p => p.Priority)
+                            .ThenBy(p => p.SortOrder)
+                            .ToListAsync();
         }
 
         // 添加新测试计划
         public async Task AddAsync(TestPlan plan)
         {
+            // 自动设置 SortOrder 为当前队列的最后一位
+            var maxOrder = await _db.TestPlans
+                                    .Where(p => p.BenchId == plan.BenchId)
+                                    .MaxAsync(p => (int?)p.SortOrder) ?? 0;
+            plan.SortOrder = maxOrder + 1;
             plan.CreatedAt = DateTime.Now;
-            // 不再需要设置 SortOrder
+
             _db.TestPlans.Add(plan);
             await _db.SaveChangesAsync();
         }
@@ -67,34 +60,53 @@ namespace LabBenchManager.Services
                 plan.Status = newStatus;
                 plan.UpdatedAt = DateTime.Now;
 
-                // 移除了与 ActualStartTime/EndTime 相关的逻辑
+                // 如果状态变为"进行中"且没有实际开始时间，自动设置
+                if (newStatus == TestPlanStatus.进行中 && plan.ActualStartTime == null)
+                {
+                    plan.ActualStartTime = DateTime.Now;
+                }
+
+                // 如果状态变为"已完成"且没有实际结束时间，自动设置
+                if (newStatus == TestPlanStatus.已完成 && plan.ActualEndTime == null)
+                {
+                    plan.ActualEndTime = DateTime.Now;
+                }
+
                 await _db.SaveChangesAsync();
             }
+        }
+
+        // 调整优先级
+        public async Task UpdatePriorityAsync(int planId, PriorityLevel newPriority)
+        {
+            var plan = await _db.TestPlans.FindAsync(planId);
+            if (plan != null)
+            {
+                plan.Priority = newPriority;
+                plan.UpdatedAt = DateTime.Now;
+                await _db.SaveChangesAsync();
+            }
+        }
+
+        // 调整排序（手动拖拽后）
+        public async Task ReorderPlansAsync(int benchId, List<int> newOrderedIds)
+        {
+            for (int i = 0; i < newOrderedIds.Count; i++)
+            {
+                var plan = await _db.TestPlans.FindAsync(newOrderedIds[i]);
+                if (plan != null && plan.BenchId == benchId)
+                {
+                    plan.SortOrder = i;
+                }
+            }
+            await _db.SaveChangesAsync();
         }
 
         // 更新测试计划（完整编辑）
         public async Task UpdateAsync(TestPlan plan)
         {
-            var existingPlan = await _db.TestPlans.FindAsync(plan.Id);
-            if (existingPlan == null)
-            {
-                // 可以抛出异常或返回一个结果对象
-                return;
-            }
-
-            // 手动更新字段，以避免EF Core跟踪问题
-            existingPlan.ProjectName = plan.ProjectName;
-            existingPlan.Description = plan.Description;
-            existingPlan.Status = plan.Status;
-            existingPlan.ScheduledDates = plan.ScheduledDates;
-            existingPlan.AssignedTo = plan.AssignedTo;
-            existingPlan.RequestedBy = plan.RequestedBy;
-            existingPlan.SampleNumber = plan.SampleNumber;
-            existingPlan.SampleQuantity = plan.SampleQuantity;
-            existingPlan.Notes = plan.Notes;
-            existingPlan.UpdatedAt = DateTime.Now;
-
-            _db.TestPlans.Update(existingPlan);
+            plan.UpdatedAt = DateTime.Now;
+            _db.Entry(plan).State = EntityState.Modified;
             await _db.SaveChangesAsync();
         }
 
@@ -108,9 +120,5 @@ namespace LabBenchManager.Services
                 await _db.SaveChangesAsync();
             }
         }
-
-        // --- 以下方法已被移除或不再需要 ---
-        // public async Task UpdatePriorityAsync(...) { ... }
-        // public async Task ReorderPlansAsync(...) { ... }
     }
 }

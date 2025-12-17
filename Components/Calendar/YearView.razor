@@ -1,0 +1,54 @@
+﻿@* Components/Calendar/YearView.razor *@
+@using LabBenchManager.Models
+
+<div class="year-view-grid">
+    @for (int month = 1; month <= 12; month++)
+    {
+        var monthDate = new DateTime(CurrentDate.Year, month, 1);
+        var monthName = monthDate.ToString("MM月");
+
+        <div class="mini-month-card" @onclick="() => OnMonthClick.InvokeAsync(monthDate)">
+            <div class="mini-month-title">@monthName</div>
+            @RenderMiniMonth(monthDate)
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public DateTime CurrentDate { get; set; }
+    [Parameter] public List<TestPlan>? Plans { get; set; }
+    [Parameter] public EventCallback<DateTime> OnMonthClick { get; set; }
+
+    private RenderFragment RenderMiniMonth(DateTime monthDate) => __builder =>
+    {
+        var firstDay = new DateTime(monthDate.Year, monthDate.Month, 1);
+        var lastDay = firstDay.AddMonths(1).AddDays(-1);
+        var startDate = firstDay.AddDays(-(int)firstDay.DayOfWeek + (int)DayOfWeek.Monday);
+        if (startDate > firstDay) startDate = startDate.AddDays(-7);
+
+        <div class="mini-calendar">
+            <div class="mini-day mini-day-header">一</div>
+            <div class="mini-day mini-day-header">二</div>
+            <div class="mini-day mini-day-header">三</div>
+            <div class="mini-day mini-day-header">四</div>
+            <div class="mini-day mini-day-header">五</div>
+            <div class="mini-day mini-day-header">六</div>
+            <div class="mini-day mini-day-header">日</div>
+
+            @for (int i = 0; i < 42; i++)
+            {
+                var cellDate = startDate.AddDays(i);
+                var isCurrentMonth = cellDate.Month == monthDate.Month;
+                var hasPlan = Plans?.Any(p =>
+                p.PlannedStartTime.HasValue &&
+                p.PlannedStartTime.Value.Date == cellDate.Date) ?? false;
+
+                if (i >= 35 && cellDate > lastDay) break;
+
+                <div class="mini-day @(!isCurrentMonth ? "mini-day-other-month" : "") @(hasPlan ? "mini-day-has-plan" : "")">
+                    @cellDate.Day
+                </div>
+            }
+        </div>
+    };
+}

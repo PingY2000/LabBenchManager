@@ -20,6 +20,7 @@ builder.Services.AddDbContext<LabDbContext>(options =>
     options.UseSqlServer(connectionString));
 
 // --- 业务逻辑服务 ---
+builder.Services.AddScoped<BenchService>();
 builder.Services.AddScoped<AssignmentService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<TestPlanService>();

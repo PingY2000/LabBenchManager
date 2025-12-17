@@ -5,7 +5,6 @@
     <table class="table table-bordered mb-0 month-view-table">
         <thead class="table-light">
             <tr>
-                <!-- 表头保持不变 -->
                 <th class="text-center">周一</th>
                 <th class="text-center">周二</th>
                 <th class="text-center">周三</th>
@@ -22,8 +21,7 @@
                     @foreach (var day in week)
                     {
                         var plansInDay = GetPlansForDay(day.Date);
-                        // 传入了所有被占用的日期和当前选择的日期，以决定单元格样式
-                        var cellClass = GetDayCellClass(day);
+                        var cellClass = GetDayCellClass(day.Date);
 
                         <td class="month-day-cell @cellClass" @onclick="() => OnDayClick.InvokeAsync(day.Date)">
                             <div class="month-day-number">
@@ -31,7 +29,7 @@
                                     @day.Date.Day
                                 </span>
                             </div>
-                            @foreach (var plan in plansInDay.Take(2)) // 减少显示数量，为选中样式留出空间
+                            @foreach (var plan in plansInDay.Take(3))
                             {
                                 <div class="plan-block plan-block-@plan.Status"
                                      @onclick:stopPropagation="true"
@@ -40,9 +38,9 @@
                                     @plan.ProjectName
                                 </div>
                             }
-                            @if (plansInDay.Count > 2)
+                            @if (plansInDay.Count > 3)
                             {
-                                <div class="small text-muted">+@(plansInDay.Count - 2) 更多...</div>
+                                <div class="small text-muted">+@(plansInDay.Count - 3) 更多...</div>
                             }
                         </td>
                     }
@@ -58,9 +56,6 @@
     [Parameter] public EventCallback<DateTime> OnDayClick { get; set; }
     [Parameter] public EventCallback<TestPlan> OnPlanClick { get; set; }
 
-    // 新增：接收当前正在编辑的计划所选择的日期
-    [Parameter] public List<DateTime> SelectedDatesForPlan { get; set; } = new();
-
     private class DayInfo
     {
         public DateTime Date { get; set; }
@@ -70,7 +65,6 @@
 
     private List<List<DayInfo>> GetWeeks()
     {
-        // 此方法保持不变
         var firstDayOfMonth = new DateTime(CurrentDate.Year, CurrentDate.Month, 1);
         var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
         var startDate = firstDayOfMonth.AddDays(-(int)firstDayOfMonth.DayOfWeek + (int)DayOfWeek.Monday);
@@ -81,7 +75,7 @@
 
         for (int week = 0; week < 6; week++)
         {
-            if (week > 0 && currentDate > lastDayOfMonth) break; // 修正循环退出条件
+            if (week > 0 && currentDate > lastDayOfMonth.AddDays(6)) break;
 
             var weekDays = new List<DayInfo>();
             for (int day = 0; day < 7; day++)
@@ -96,42 +90,29 @@
             }
             weeks.Add(weekDays);
         }
+
         return weeks;
     }
 
     private List<TestPlan> GetPlansForDay(DateTime date)
     {
         if (Plans == null) return new List<TestPlan>();
-        // 逻辑更新：检查某个计划是否包含这一天
-        return Plans.Where(p => p.GetScheduledDates().Contains(date.Date))
-                    .ToList();
+
+        var dayStart = date.Date;
+        var dayEnd = date.Date.AddDays(1);
+
+        return Plans.Where(p =>
+            p.PlannedStartTime.HasValue &&
+            p.PlannedEndTime.HasValue &&
+            p.PlannedStartTime.Value < dayEnd &&
+            p.PlannedEndTime.Value > dayStart
+        ).OrderBy(p => p.PlannedStartTime).ToList();
     }
 
-    // 核心更新：根据更多状态返回单元格样式
-    private string GetDayCellClass(DayInfo day)
+    private string GetDayCellClass(DateTime date)
     {
-        var classes = new List<string>();
-        if (!day.IsCurrentMonth)
-        {
-            classes.Add("other-month");
-        }
-        else
-        {
-            if (day.IsToday)
-            {
-                classes.Add("today-cell");
-            }
-            // 如果这个日期被当前正在编辑的计划选中了
-            if (SelectedDatesForPlan.Contains(day.Date))
-            {
-                classes.Add("selected-for-plan");
-            }
-            // 如果这个日期已经被其他计划预定
-            else if (GetPlansForDay(day.Date).Any())
-            {
-                classes.Add("booked-day");
-            }
-        }
-        return string.Join(" ", classes);
+        if (date.Month != CurrentDate.Month) return "other-month";
+        if (date.Date == DateTime.Today) return "today-cell";
+        return "";
     }
 }

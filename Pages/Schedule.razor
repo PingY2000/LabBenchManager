@@ -1,7 +1,7 @@
-﻿@page "/schedule/{BenchId:int}"
+﻿@*Pages\Schedule.razor*@
+@page "/schedule/{BenchId:int}"
 @attribute [Authorize(Roles = $"{AppRoles.TestEngineer},{AppRoles.Admin}")]
 
-@using System.Globalization
 @using LabBenchManager.Models
 @using LabBenchManager.Services
 @using LabBenchManager.Components.Calendar
@@ -9,7 +9,6 @@
 
 @inject BenchService BenchSvc
 @inject TestPlanService PlanSvc
-@inject AssignmentService AssignmentSvc
 @inject NavigationManager NavigationManager
 
 <PageTitle>@benchName - 使用规划</PageTitle>
@@ -17,10 +16,19 @@
 <!-- 页面头部 -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h3>🗓️ @benchName - 使用规划</h3>
+        <h3>
+            @*
+            <button class="btn btn-outline-secondary btn-sm me-2" @onclick="GoBack">
+                <span class="oi oi-chevron-left"></span>
+            </button>*@
+            🗓️ @benchName - 使用规划
+        </h3>
         @if (currentBench != null)
         {
-            <p class="text-muted mb-0"><span class="oi oi-map-marker me-1"></span>@currentBench.Location</p>
+            <p class="text-muted mb-0">
+                <span class="oi oi-map-marker me-1"></span>@currentBench.Location 
+				@*<span class="badge @GetStatusBadgeClass(currentBenchStatus)">@currentBenchStatus</span>*@
+            </p>
         }
     </div>
     <button class="btn btn-success" @onclick="AddNewPlan">
@@ -30,7 +38,9 @@
 
 @if (currentBench == null)
 {
-    <div class="alert alert-warning"><span class="oi oi-warning me-2"></span>未找到该设备信息</div>
+    <div class="alert alert-warning">
+        <span class="oi oi-warning me-2"></span>未找到该设备信息
+    </div>
 }
 else
 {
@@ -39,28 +49,46 @@ else
         <!-- 左侧：日历视图  -->
         <div class="col-12 col-md-6 col-lg-7 mb-3">
             <div class="card shadow-sm">
-                <!-- 简化的日历头部，移除了视图切换 -->
-                <CalendarHeader Title="@currentDate.ToString("yyyy年MM月")"
+                <CalendarHeader Title="@GetCurrentPeriodTitle()"
+                                CurrentView="@currentView"
                                 OnPrevious="Previous"
                                 OnNext="Next"
-                                OnToday="GoToToday" />
+                                OnToday="GoToToday"
+                                OnViewChange="HandleViewChange" />
+
                 <div class="card-body p-0">
-                    <MonthView CurrentDate="@currentDate"
-                               Plans="@testPlans"
-                               SelectedDatesForPlan="@selectedDatesForEditing"
-                               OnDayClick="HandleDayClick"
-                               OnPlanClick="EditPlan" />
+                    @if (currentView == CalendarViewType.Day)
+                    {
+                        <DayView CurrentDate="@currentDate"
+                                 Plans="@testPlans"
+                                 OnTimeSlotClick="AddPlanAtTime"
+                                 OnPlanClick="EditPlan" />
+                    }
+                    else if (currentView == CalendarViewType.Month)
+                    {
+                        <MonthView CurrentDate="@currentDate"
+                                   Plans="@testPlans"
+                                   OnDayClick="OnDayClick"
+                                   OnPlanClick="EditPlan" />
+                    }
+                    else if (currentView == CalendarViewType.Year)
+                    {
+                        <YearView CurrentDate="@currentDate"
+                                  Plans="@testPlans"
+                                  OnMonthClick="OnMonthClick" />
+                    }
                 </div>
             </div>
         </div>
 
-        <!-- 右侧：测试计划列表 (已更新) -->
+        <!-- 右侧：测试计划列表  -->
         <div class="col-12 col-md-6 col-lg-5">
             <div class="card shadow-sm sticky-top" style="top: 1rem;">
-                <!-- 待创建计划部分保持不变 -->
                 @if (pendingAssignments != null && pendingAssignments.Any())
                 {
-                    <div class="card-header bg-info text-white"><h5 class="mb-0">⌛ 待创建计划的申请</h5></div>
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">⌛ 待创建计划的申请</h5>
+                    </div>
                     <div class="list-group list-group-flush">
                         @foreach (var assignment in pendingAssignments)
                         {
@@ -68,52 +96,84 @@ else
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1">@assignment.ProjectName</h6>
-                                        <small class="text-muted"><span class="oi oi-person me-1"></span>@assignment.ApplicantName</small>
+                                        <small class="text-muted">
+                                            <span class="oi oi-person me-1"></span>@assignment.ApplicantName
+                                        </small>
                                     </div>
-                                    <button class="btn btn-sm btn-primary" @onclick="() => CreatePlanFromAssignment(assignment)"><span class="oi oi-plus me-1"></span>创建计划</button>
+                                    <button class="btn btn-sm btn-primary" @onclick="() => CreatePlanFromAssignment(assignment)">
+                                        <span class="oi oi-plus me-1"></span>创建计划
+                                    </button>
                                 </div>
                             </div>
                         }
                     </div>
                 }
-                <div class="card-header bg-secondary text-white"><h5 class="mb-0">📋 测试计划</h5></div>
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">📋 测试计划</h5>
+                </div>
                 <div class="card-body p-0" style="max-height: calc(100vh - 200px); overflow-y: auto;">
                     @if (testPlans == null || !testPlans.Any())
                     {
                         <div class="p-4 text-center text-muted">
                             <span class="oi oi-document" style="font-size: 3rem; opacity: 0.3;"></span>
                             <p class="mt-2">暂无测试计划</p>
+                            <button class="btn btn-sm btn-primary" @onclick="AddNewPlan">
+                                <span class="oi oi-plus me-1"></span>添加计划
+                            </button>
                         </div>
                     }
                     else
                     {
                         <div class="list-group list-group-flush">
-                            @foreach (var plan in testPlans.OrderBy(p => p.ScheduledDateList.FirstOrDefault()))
+                            @foreach (var plan in testPlans.OrderBy(p => p.Priority).ThenBy(p => p.PlannedStartTime))
                             {
-                                <div class="list-group-item list-group-item-action @GetPlanListClass(plan)" @onclick="() => EditPlan(plan)" style="cursor: pointer;">
+                                <div class="list-group-item list-group-item-action @GetPlanListClass(plan)"
+                                     @onclick="() => EditPlan(plan)"
+                                     style="cursor: pointer;">
                                     <div class="d-flex w-100 justify-content-between align-items-start mb-2">
-                                        <span class="badge @GetStatusBadge(plan.Status)">@plan.Status</span>
+                                        <div class="flex-grow-1">
+                                            <span class="badge @GetPriorityBadge(plan.Priority) me-1">
+                                                @plan.Priority
+                                            </span>
+                                            <span class="badge @GetStatusBadge(plan.Status)">
+                                                @plan.Status
+                                            </span>
+                                        </div>
                                         <div class="btn-group btn-group-sm" @onclick:stopPropagation="true">
-                                            <button class="btn btn-outline-secondary btn-sm" @onclick="() => EditPlan(plan)" title="编辑"><span class="oi oi-pencil"></span></button>
-                                            <button class="btn btn-outline-danger btn-sm" @onclick="() => ConfirmDeletePlan(plan)" title="删除"><span class="oi oi-trash"></span></button>
+                                            <button class="btn btn-outline-secondary btn-sm" @onclick="() => EditPlan(plan)" title="编辑">
+                                                <span class="oi oi-pencil"></span>
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-sm" @onclick="() => ConfirmDeletePlan(plan)" title="删除">
+                                                <span class="oi oi-trash"></span>
+                                            </button>
                                         </div>
                                     </div>
                                     <h6 class="mb-1">@plan.ProjectName</h6>
                                     <small class="text-muted">
-                                        <div class="mb-1"><span class="oi oi-person me-1"></span>@(plan.AssignedTo ?? "未分配")</div>
+                                        <div class="mb-1">
+                                            <span class="oi oi-person me-1"></span>@(plan.AssignedTo ?? "未分配")
+                                        </div>
                                         <div>
-                                            <span class="oi oi-calendar me-1"></span>
-                                            <!-- 显示日期列表 -->
-                                            @if (plan.ScheduledDateList.Any())
-                                            {
-                                                @string.Join(", ", plan.ScheduledDateList.Select(d => d.ToString("MM-dd")))
-                                            }
-                                            else
-                                            {
-                                                <span>未排期</span>
-                                            }
+                                            <span class="oi oi-clock me-1"></span>
+                                            @plan.PlannedStartTime?.ToString("MM-dd HH:mm") ~
+                                            @plan.PlannedEndTime?.ToString("HH:mm")
                                         </div>
                                     </small>
+                                    @if (!string.IsNullOrEmpty(plan.Description))
+                                    {
+                                        <div class="mt-2">
+                                            <small class="text-muted">@plan.Description</small>
+                                        </div>
+                                    }
+                                    <!-- 优先级调整按钮 -->
+                                    <div class="mt-2 btn-group btn-group-sm" @onclick:stopPropagation="true">
+                                        <button class="btn btn-outline-primary btn-sm" @onclick="() => ChangePriority(plan, -1)" title="提高优先级">
+                                            <span class="oi oi-arrow-top"></span>
+                                        </button>
+                                        <button class="btn btn-outline-primary btn-sm" @onclick="() => ChangePriority(plan, 1)" title="降低优先级">
+                                            <span class="oi oi-arrow-bottom"></span>
+                                        </button>
+                                    </div>
                                 </div>
                             }
                         </div>
@@ -124,47 +184,65 @@ else
     </div>
 }
 
-<!-- 添加/编辑测试计划模态框 (已大幅修改) -->
+<!-- 添加/编辑测试计划模态框 -->
 @if (showPlanModal)
 {
     <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">@(editingPlan.Id == 0 ? "添加测试计划" : "编辑测试计划")</h5>
+                    <h5 class="modal-title">
+                        @(editingPlan.Id == 0 ? "添加测试计划" : "编辑测试计划")
+                    </h5>
                     <button type="button" class="btn-close" @onclick="ClosePlanModal"></button>
                 </div>
                 <EditForm Model="@editingPlan" OnValidSubmit="SavePlan">
                     <DataAnnotationsValidator />
                     <div class="modal-body">
-                        <div class="alert alert-info small"><span class="oi oi-info me-2"></span>请直接在左侧的日历上点击选择/取消需要占用的日期。</div>
                         <div class="row mb-3">
-                            <div class="col-md-6">
+                            <div class="col-md-12">
                                 <label class="form-label">项目名称 <span class="text-danger">*</span></label>
-                                <InputText class="form-control" @bind-Value="editingPlan.ProjectName" />
+                                <InputText class="form-control" @bind-Value="editingPlan.ProjectName" placeholder="请输入项目名称" />
                                 <ValidationMessage For="@(() => editingPlan.ProjectName)" />
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">负责人 <span class="text-danger">*</span></label>
-                                <InputText class="form-control" @bind-Value="editingPlan.AssignedTo" />
-                                <ValidationMessage For="@(() => editingPlan.AssignedTo)" />
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">已选日期</label>
-                            <div class="p-2 bg-light rounded" style="min-height: 50px;">
-                                @if (!selectedDatesForEditing.Any())
-                                {
-                                    <span class="text-muted">尚未选择日期</span>
-                                }
-                                else
-                                {
-                                    @foreach (var date in selectedDatesForEditing.OrderBy(d => d))
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">负责人 <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="editingPlan.AssignedTo" placeholder="请输入负责人" />
+                                <ValidationMessage For="@(() => editingPlan.AssignedTo)" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">优先级</label>
+                                <InputSelect class="form-select" @bind-Value="editingPlan.Priority">
+                                    @foreach (var priority in Enum.GetValues<PriorityLevel>())
                                     {
-                                        <span class="badge bg-primary me-1 mb-1">@date.ToString("yyyy-MM-dd")</span>
+                                        <option value="@priority">@priority.ToString()</option>
                                     }
-                                }
+                                </InputSelect>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">开始日期 <span class="text-danger">*</span></label>
+                                <InputDate class="form-control" @bind-Value="startDate" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">开始时间</label>
+                                <InputText type="time" class="form-control" @bind-Value="startTime" />
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">结束日期 <span class="text-danger">*</span></label>
+                                <InputDate class="form-control" @bind-Value="endDate" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">结束时间</label>
+                                <InputText type="time" class="form-control" @bind-Value="endTime" />
                             </div>
                         </div>
 
@@ -179,26 +257,33 @@ else
                                 </InputSelect>
                             </div>
                         </div>
+
                         <div class="row mb-3">
                             <div class="col-md-12">
                                 <label class="form-label">备注说明</label>
-                                <InputTextArea class="form-control" @bind-Value="editingPlan.Description" rows="3" />
+                                <InputTextArea class="form-control" @bind-Value="editingPlan.Description" rows="4"
+                                               placeholder="请输入测试相关的备注信息" />
                             </div>
                         </div>
 
                         @if (!string.IsNullOrEmpty(validationError))
                         {
-                            <div class="alert alert-danger"><span class="oi oi-warning me-2"></span>@validationError</div>
+                            <div class="alert alert-danger">
+                                <span class="oi oi-warning me-2"></span>@validationError
+                            </div>
                         }
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" @onclick="ClosePlanModal">取消</button>
-                        <button type="submit" class="btn btn-primary"><span class="oi oi-check me-1"></span>保存</button>
+                        <button type="submit" class="btn btn-primary">
+                            <span class="oi oi-check me-1"></span>保存
+                        </button>
                     </div>
                 </EditForm>
             </div>
         </div>
     </div>
+    <div class="modal-backdrop fade show"></div>
 }
 
 <!-- 删除确认对话框 -->
@@ -225,6 +310,8 @@ else
     <div class="modal-backdrop fade show"></div>
 }
 
+@inject AssignmentService AssignmentSvc
+
 @code {
     [Parameter]
     public int BenchId { get; set; }
@@ -232,47 +319,115 @@ else
     private Bench? currentBench;
     private string benchName = "加载中...";
     private List<TestPlan>? testPlans;
+    private CalendarViewType currentView = CalendarViewType.Month;
     private DateTime currentDate = DateTime.Today;
+    private BenchStatus currentBenchStatus = BenchStatus.空闲;
     private List<Assignment>? pendingAssignments;
 
+    // 删除确认
     private bool showDeleteConfirm = false;
     private TestPlan? planToDelete = null;
 
-    // --- 编辑计划的状态 ---
+    // 添加/编辑计划
     private bool showPlanModal = false;
     private TestPlan editingPlan = new();
-    private List<DateTime> selectedDatesForEditing = new(); // 关键：存储当前编辑的计划所选的日期
+    private DateTime startDate = DateTime.Today;
+    private DateTime endDate = DateTime.Today.AddDays(1);
+    private string startTime = "09:00";
+    private string endTime = "18:00";
     private string validationError = "";
 
-    protected override async Task OnInitializedAsync() => await LoadData();
-    protected override async Task OnParametersSetAsync() => await LoadData();
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadData();
+    }
 
     private async Task LoadData()
     {
         currentBench = await BenchSvc.GetByIdAsync(BenchId);
         benchName = currentBench?.Name ?? "未知设备";
+        currentBenchStatus = await BenchSvc.GetBenchStatusAsync(BenchId);
+
+        // 加载此测试台的所有测试计划
         var allPlans = await PlanSvc.GetAllPlansAsync();
         testPlans = allPlans.Where(p => p.BenchId == BenchId).ToList();
+
+        // 新增：加载所有已分配到此测试台但尚未创建计划的申请
         var allAssignments = await AssignmentSvc.GetAllAsync();
         pendingAssignments = allAssignments
-            .Where(a => a.BenchId == BenchId && a.Status == AssignmentStatus.未开始 && a.TestPlanId == null)
+            .Where(a => a.BenchId == BenchId &&
+                        a.Status == AssignmentStatus.未开始 &&
+                        a.TestPlanId == null) // 确保还没有关联的计划
             .ToList();
-        StateHasChanged();
+
+        StateHasChanged(); // 确保UI更新
     }
 
-    // --- 计划管理 ---
+    // ==================== 计划管理 ====================
     private void AddNewPlan()
     {
-        editingPlan = new TestPlan { BenchId = BenchId, Status = TestPlanStatus.待开始 };
-        selectedDatesForEditing.Clear();
+        editingPlan = new TestPlan
+            {
+                BenchId = BenchId,
+                Priority = PriorityLevel.中,
+                Status = TestPlanStatus.待开始
+            };
+        startDate = DateTime.Today;
+        endDate = DateTime.Today.AddDays(1);
+        startTime = "09:00";
+        endTime = "18:00";
+        validationError = "";
+        showPlanModal = true;
+    }
+
+    private void AddPlanAtTime(DateTime time)
+    {
+        editingPlan = new TestPlan
+            {
+                BenchId = BenchId,
+                Priority = PriorityLevel.中,
+                Status = TestPlanStatus.待开始
+            };
+        startDate = time.Date;
+        endDate = time.Date;
+        startTime = time.ToString("HH:mm");
+        endTime = time.AddHours(2).ToString("HH:mm");
         validationError = "";
         showPlanModal = true;
     }
 
     private void EditPlan(TestPlan plan)
     {
-        editingPlan = plan; // 直接引用
-        selectedDatesForEditing = plan.GetScheduledDates(); // 从字符串加载日期列表
+        editingPlan = new TestPlan
+        {
+            Id = plan.Id,
+            BenchId = plan.BenchId,
+            ProjectName = plan.ProjectName,
+            AssignedTo = plan.AssignedTo,
+            Priority = plan.Priority,
+            Status = plan.Status,
+            Description = plan.Description,
+            PlannedStartTime = plan.PlannedStartTime,
+            PlannedEndTime = plan.PlannedEndTime
+        };
+
+        if (plan.PlannedStartTime.HasValue)
+        {
+            startDate = plan.PlannedStartTime.Value.Date;
+            startTime = plan.PlannedStartTime.Value.ToString("HH:mm");
+        }
+
+        if (plan.PlannedEndTime.HasValue)
+        {
+            endDate = plan.PlannedEndTime.Value.Date;
+            endTime = plan.PlannedEndTime.Value.ToString("HH:mm");
+        }
+
         validationError = "";
         showPlanModal = true;
     }
@@ -282,59 +437,86 @@ else
         editingPlan = new TestPlan
         {
             BenchId = BenchId,
-            AssignmentId = assignment.Id,
+            AssignmentId = assignment.Id, // 关键：关联Assignment ID
             ProjectName = assignment.ProjectName,
-            Description = assignment.TestContent,
+            Description = assignment.TestContent, // 使用测试内容作为描述
+            AssignedTo = "", // 留空让用户填写
+            RequestedBy = assignment.ApplicantName,
+            SampleNumber = assignment.SampleBatchNo,
+            SampleQuantity = assignment.SampleQuantity,
+            Priority = assignment.IsUrgent ? PriorityLevel.紧急 : PriorityLevel.中,
             Status = TestPlanStatus.待开始
         };
-        // 期望完成时间可作为一个默认选择的日期
-        selectedDatesForEditing = new List<DateTime> { assignment.DesiredCompletionTime.Date };
+
+        // 使用申请中期望的时间作为默认值
+        startDate = assignment.EstimatedSampleTime.Date;
+        startTime = "09:00"; // 或者使用一个默认时间
+        endDate = assignment.DesiredCompletionTime.Date;
+        endTime = "18:00";
+
         validationError = "";
         showPlanModal = true;
     }
 
     private async Task SavePlan()
     {
-        validationError = "";
-
-        // 验证是否选择了日期
-        if (!selectedDatesForEditing.Any())
+        // 验证时间
+        if (!TimeSpan.TryParse(startTime, out var startTimeSpan))
         {
-            validationError = "请至少选择一个测试日期";
+            validationError = "开始时间格式不正确";
             return;
         }
 
-        // 检查日期冲突
-        foreach (var date in selectedDatesForEditing)
+        if (!TimeSpan.TryParse(endTime, out var endTimeSpan))
         {
-            var conflictingPlan = testPlans?.FirstOrDefault(p =>
-                p.Id != editingPlan.Id && p.GetScheduledDates().Contains(date.Date));
-            if (conflictingPlan != null)
-            {
-                validationError = $"日期 {date:yyyy-MM-dd} 与现有计划 '{conflictingPlan.ProjectName}' 冲突";
-                return;
-            }
+            validationError = "结束时间格式不正确";
+            return;
         }
 
-        editingPlan.SetScheduledDates(selectedDatesForEditing); // 将日期列表保存回字符串
+        // 组合日期和时间
+        editingPlan.PlannedStartTime = startDate.Date.Add(startTimeSpan);
+        editingPlan.PlannedEndTime = endDate.Date.Add(endTimeSpan);
+
+        // 验证结束时间必须晚于开始时间
+        if (editingPlan.PlannedEndTime <= editingPlan.PlannedStartTime)
+        {
+            validationError = "结束时间必须晚于开始时间";
+            return;
+        }
+
+        // 检查时间冲突
+        var conflictingPlan = testPlans?.FirstOrDefault(p =>
+            p.Id != editingPlan.Id &&
+            p.PlannedStartTime < editingPlan.PlannedEndTime &&
+            p.PlannedEndTime > editingPlan.PlannedStartTime);
+
+        if (conflictingPlan != null)
+        {
+            validationError = $"时间与现有计划 '{conflictingPlan.ProjectName}' 冲突";
+            return;
+        }
 
         try
         {
-            if (editingPlan.Id == 0) await PlanSvc.AddAsync(editingPlan);
-            else await PlanSvc.UpdateAsync(editingPlan);
-
-            // 更新关联的申请（如果存在）
+            if (editingPlan.Id == 0)
+            {
+                await PlanSvc.AddAsync(editingPlan);
+            }
+            else
+            {
+                await PlanSvc.UpdateAsync(editingPlan);
+            }
+            // 如果此计划是从一个申请创建的，则更新该申请
             if (editingPlan.AssignmentId.HasValue)
             {
                 var relatedAssignment = await AssignmentSvc.GetByIdAsync(editingPlan.AssignmentId.Value);
                 if (relatedAssignment != null)
                 {
-                    relatedAssignment.TestPlanId = editingPlan.Id;
-                    relatedAssignment.Status = AssignmentStatus.进行中;
+                    relatedAssignment.TestPlanId = editingPlan.Id; // 相互关联
+                    relatedAssignment.Status = AssignmentStatus.进行中; // 更新状态为进行中
                     await AssignmentSvc.UpdateAsync(relatedAssignment);
                 }
             }
-
             showPlanModal = false;
             await LoadData();
         }
@@ -344,11 +526,25 @@ else
         }
     }
 
-    private void ClosePlanModal() => showPlanModal = false;
+    private void ClosePlanModal()
+    {
+        showPlanModal = false;
+        validationError = "";
+    }
 
-    // --- 删除管理 (保持不变) ---
-    private void ConfirmDeletePlan(TestPlan plan) { planToDelete = plan; showDeleteConfirm = true; }
-    private void CancelDelete() { showDeleteConfirm = false; planToDelete = null; }
+    // ==================== 删除管理 ====================
+    private void ConfirmDeletePlan(TestPlan plan)
+    {
+        planToDelete = plan;
+        showDeleteConfirm = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+        planToDelete = null;
+    }
+
     private async Task ExecuteDelete()
     {
         if (planToDelete != null)
@@ -360,46 +556,96 @@ else
         }
     }
 
-    // --- 日历导航与交互 ---
-    private void HandleDayClick(DateTime date)
+    private async Task ChangePriority(TestPlan plan, int delta)
     {
-        // 核心逻辑：如果模态框是打开的，则点击日历是用于选择日期
-        if (showPlanModal)
+        var newPriority = (int)plan.Priority + delta;
+        if (newPriority >= 1 && newPriority <= 4)
         {
-            ToggleDateSelection(date);
-        }
-        // 否则，可以添加其他交互，例如高亮显示当天的计划列表（暂不实现）
-    }
-
-    private void ToggleDateSelection(DateTime date)
-    {
-        // 忽略非本月的日期
-        if (date.Month != currentDate.Month) return;
-
-        // 检查日期是否已被其他计划占用
-        var isBookedByOther = testPlans?.Any(p => p.Id != editingPlan.Id && p.GetScheduledDates().Contains(date.Date)) ?? false;
-        if (isBookedByOther)
-        {
-            // 可以添加一个短暂的提示，但现在只在UI上禁止即可
-            return;
-        }
-
-        if (selectedDatesForEditing.Contains(date.Date))
-        {
-            selectedDatesForEditing.Remove(date.Date);
-        }
-        else
-        {
-            selectedDatesForEditing.Add(date.Date);
+            await PlanSvc.UpdatePriorityAsync(plan.Id, (PriorityLevel)newPriority);
+            await LoadData();
         }
     }
 
-    private void Previous() => currentDate = currentDate.AddMonths(-1);
-    private void Next() => currentDate = currentDate.AddMonths(1);
-    private void GoToToday() => currentDate = DateTime.Today;
+    // ==================== 视图导航 ====================
+    private string GetCurrentPeriodTitle() => currentView switch
+    {
+        CalendarViewType.Day => currentDate.ToString("yyyy年MM月dd日 dddd", new System.Globalization.CultureInfo("zh-CN")),
+        CalendarViewType.Month => currentDate.ToString("yyyy年MM月"),
+        CalendarViewType.Year => currentDate.ToString("yyyy年"),
+        _ => ""
+    };
 
-    // --- 样式辅助方法 (简化) ---
-    private string GetPlanListClass(TestPlan plan) => plan.Status == TestPlanStatus.进行中 ? "border-start border-primary border-4" : "";
+    private void HandleViewChange(CalendarViewType newView)
+    {
+        currentView = newView;
+    }
+
+    private void Previous()
+    {
+        currentDate = currentView switch
+        {
+            CalendarViewType.Day => currentDate.AddDays(-1),
+            CalendarViewType.Month => currentDate.AddMonths(-1),
+            CalendarViewType.Year => currentDate.AddYears(-1),
+            _ => currentDate
+        };
+    }
+
+    private void Next()
+    {
+        currentDate = currentView switch
+        {
+            CalendarViewType.Day => currentDate.AddDays(1),
+            CalendarViewType.Month => currentDate.AddMonths(1),
+            CalendarViewType.Year => currentDate.AddYears(1),
+            _ => currentDate
+        };
+    }
+
+    private void GoToToday()
+    {
+        currentDate = DateTime.Today;
+    }
+
+    private void OnDayClick(DateTime date)
+    {
+        currentDate = date;
+        currentView = CalendarViewType.Day;
+    }
+
+    private void OnMonthClick(DateTime monthDate)
+    {
+        currentDate = monthDate;
+        currentView = CalendarViewType.Month;
+    }
+
+    private void GoBack() => NavigationManager.NavigateTo("/");
+    // ==================== 样式辅助方法 ====================
+    private string GetPlanListClass(TestPlan plan) => plan.Status switch
+    {
+        TestPlanStatus.进行中 => "border-start border-warning border-4",
+        TestPlanStatus.已完成 => "bg-light",
+        _ => ""
+    };
+
+    private string GetStatusBadgeClass(BenchStatus status) => status switch
+    {
+        BenchStatus.空闲 => "bg-success",
+        BenchStatus.使用中 => "bg-warning text-dark",
+        BenchStatus.维护中 => "bg-danger",
+        BenchStatus.已预定 => "bg-info text-dark",
+        _ => "bg-secondary"
+    };
+
+    private string GetPriorityBadge(PriorityLevel priority) => priority switch
+    {
+        PriorityLevel.紧急 => "bg-danger",
+        PriorityLevel.高 => "bg-warning text-dark",
+        PriorityLevel.中 => "bg-info text-dark",
+        PriorityLevel.低 => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
     private string GetStatusBadge(TestPlanStatus status) => status switch
     {
         TestPlanStatus.待开始 => "bg-secondary",
