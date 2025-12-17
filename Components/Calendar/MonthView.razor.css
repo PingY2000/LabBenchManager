@@ -102,3 +102,43 @@
         font-size: 0.65rem;
     }
 }
+/* --- Compact Calendar Styles --- */
+
+.month-view-table .month-day-cell {
+    height: 90px; /* 减小单元格高度 */
+    padding: 4px; /* 减小内边距 */
+    vertical-align: top;
+    position: relative;
+    font-size: 0.8rem; /* 减小基础字体大小 */
+}
+
+.month-view-table .day-number-badge {
+    font-size: 0.75rem; /* 减小日期数字大小 */
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    display: inline-block;
+    border-radius: 50%;
+}
+
+.month-view-table .plan-block {
+    font-size: 0.7rem; /* 减小计划块字体大小 */
+    padding: 1px 3px;
+    margin-bottom: 1px;
+}
+
+/* 其他日历相关样式保持不变 */
+.month-day-cell.selected-for-plan {
+    background-color: #d1e7dd !important; /* Bootstrap success-light */
+    border: 2px solid #0f5132; /* Bootstrap success-dark */
+}
+
+.month-day-cell.booked-day {
+    background-color: #f8f9fa; /* Bootstrap gray-100 */
+    color: #adb5bd; /* Bootstrap gray-500 */
+}
+
+    .month-day-cell.booked-day:hover {
+        cursor: not-allowed;
+    }

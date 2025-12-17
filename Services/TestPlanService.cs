@@ -101,16 +101,27 @@ namespace LabBenchManager.Services
         // 删除测试计划
         public async Task DeleteAsync(int id)
         {
-            var plan = await _db.TestPlans.FindAsync(id);
-            if (plan != null)
+            var planToDelete = await _db.TestPlans.FindAsync(id);
+            if (planToDelete != null)
             {
-                _db.TestPlans.Remove(plan);
-                await _db.SaveChangesAsync();
+                if (planToDelete.AssignmentId.HasValue)
+                {
+                    var relatedAssignment = await _db.Assignments.FindAsync(planToDelete.AssignmentId.Value);
+                    if (relatedAssignment != null)
+                    {
+                        relatedAssignment.TestPlanId = null;
+                        if (relatedAssignment.Status == AssignmentStatus.进行中)
+                        {
+                            relatedAssignment.Status = AssignmentStatus.未开始;
+                        }
+                        _db.Assignments.Update(relatedAssignment);
+                    }
+                }
+
+                _db.TestPlans.Remove(planToDelete);
+                await _db.SaveChangesAsync(); // 原子操作，同时更新Assignment和删除TestPlan
             }
         }
 
-        // --- 以下方法已被移除或不再需要 ---
-        // public async Task UpdatePriorityAsync(...) { ... }
-        // public async Task ReorderPlansAsync(...) { ... }
     }
 }
