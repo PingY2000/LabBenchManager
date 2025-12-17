@@ -186,7 +186,7 @@
                                             }
 
                                             <!-- 删除按钮 -->
-                                            @if (assignment.Status != AssignmentStatus.进行中 && assignment.Status != AssignmentStatus.已完成)
+                                            @if (assignment.Status != AssignmentStatus.已确定 && assignment.Status != AssignmentStatus.已完成)
                                             {
                                                 <button class="btn btn-outline-danger" @onclick="() => ConfirmDelete(assignment)" title="删除申请">
                                                     <span class="oi oi-trash"></span>
@@ -388,15 +388,19 @@
                (assignment.Status == AssignmentStatus.未开始 && !assignment.TestPlanId.HasValue);
     }
 
+
+
     // 此方法保留在父组件中，因为主列表需要它
+    // 新的、正确的代码
     private string GetStatusBadgeClass(AssignmentStatus status) => status switch
     {
         AssignmentStatus.待审批 => "bg-warning text-dark",
         AssignmentStatus.待分配 => "bg-info text-white",
         AssignmentStatus.已拒绝 => "bg-danger",
         AssignmentStatus.未开始 => "bg-light text-dark",
-        AssignmentStatus.进行中 => "bg-primary",
-        AssignmentStatus.已完成 => "bg-secondary",
+        AssignmentStatus.已规划 => "bg-secondary",
+        AssignmentStatus.已确定 => "bg-primary",
+        AssignmentStatus.已完成 => "bg-success",
         _ => "bg-dark"
     };
 }

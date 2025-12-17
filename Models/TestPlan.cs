@@ -8,11 +8,14 @@ namespace LabBenchManager.Models
 {
     public enum TestPlanStatus
     {
-        待开始,     // Pending
-        进行中,     // In Progress
-        已完成,     // Completed
-        已暂停,     // On Hold
-        已取消      // Cancelled
+        [Display(Name = "初步规划")]
+        初步规划, // Draft / Preliminary
+
+        [Display(Name = "确定计划")]
+        确定计划, // Confirmed / Scheduled
+
+        [Display(Name = "已完成")]
+        已完成      // Completed
     }
 
     // PriorityLevel 枚举已不再需要，可以删除
@@ -39,7 +42,7 @@ namespace LabBenchManager.Models
         [StringLength(500)]
         public string? Description { get; set; }
 
-        public TestPlanStatus Status { get; set; } = TestPlanStatus.待开始;
+        public TestPlanStatus Status { get; set; } = TestPlanStatus.初步规划;
 
         // 新增：用于存储以逗号分隔的日期字符串，例如 "2023-10-26,2023-10-28"
         public string ScheduledDates { get; set; } = string.Empty;

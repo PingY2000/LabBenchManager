@@ -202,8 +202,9 @@
         AssignmentStatus.待分配 => "bg-info text-white",
         AssignmentStatus.已拒绝 => "bg-danger",
         AssignmentStatus.未开始 => "bg-light text-dark",
-        AssignmentStatus.进行中 => "bg-primary",
-        AssignmentStatus.已完成 => "bg-secondary",
+        AssignmentStatus.已规划 => "bg-secondary",
+        AssignmentStatus.已确定 => "bg-primary",   // “已确定”可以沿用之前“进行中”的醒目颜色
+        AssignmentStatus.已完成 => "bg-success",
         _ => "bg-dark"
     };
 

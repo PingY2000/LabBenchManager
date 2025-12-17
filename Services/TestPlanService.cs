@@ -110,7 +110,7 @@ namespace LabBenchManager.Services
                     if (relatedAssignment != null)
                     {
                         relatedAssignment.TestPlanId = null;
-                        if (relatedAssignment.Status == AssignmentStatus.进行中)
+                        if (relatedAssignment.Status == AssignmentStatus.已规划)
                         {
                             relatedAssignment.Status = AssignmentStatus.未开始;
                         }

@@ -1,0 +1,87 @@
+﻿@* Components/PlanColumn.razor *@
+
+@using LabBenchManager.Models
+
+@if (plansForThisStatus.Any())
+{
+    <div class="card shadow-sm">
+        <div class="card-header" @onclick="ToggleCollapse" style="cursor: pointer;">
+            <h6 class="mb-0 d-flex justify-content-between align-items-center">
+                <span>@Title (@plansForThisStatus.Count)</span>
+                <span class="oi @(isCollapsed ? "oi-chevron-bottom" : "oi-chevron-top")"></span>
+            </h6>
+        </div>
+
+        @if (!isCollapsed)
+        {
+            <div class="list-group list-group-flush">
+                @foreach (var plan in plansForThisStatus)
+                {
+                    <div class="list-group-item list-group-item-action" @onclick="() => OnEdit.InvokeAsync(plan)" style="cursor: pointer;">
+                        <div class="d-flex w-100 justify-content-between align-items-start mb-1">
+                            <div class="fw-bold">@plan.ProjectName</div>
+                            <div class="btn-group btn-group-sm" @onclick:stopPropagation="true">
+                                <button class="btn btn-outline-secondary btn-sm" @onclick="() => OnEdit.InvokeAsync(plan)" title="编辑"><span class="oi oi-pencil"></span></button>
+                                <button class="btn btn-outline-danger btn-sm" @onclick="() => OnDelete.InvokeAsync(plan)" title="删除"><span class="oi oi-trash"></span></button>
+                            </div>
+                        </div>
+                        <small class="text-muted">
+                            <span class="oi oi-calendar me-1"></span>
+                            @if (plan.ScheduledDateList.Any())
+                            {
+                                @string.Join(", ", plan.ScheduledDateList.Select(d => d.ToString("MM-dd")))
+                            }
+                            else
+                            {
+                                <span>(未排期)</span>
+                            }
+                        </small>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<TestPlan> plansForThisStatus = new();
+    private bool isCollapsed;
+
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public TestPlanStatus Status { get; set; }
+
+    [Parameter]
+    public List<TestPlan>? Plans { get; set; }
+
+    [Parameter]
+    public bool IsInitiallyCollapsed { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<TestPlan> OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<TestPlan> OnDelete { get; set; }
+
+    protected override void OnInitialized()
+    {
+        isCollapsed = IsInitiallyCollapsed;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Plans != null)
+        {
+            plansForThisStatus = Plans.Where(p => p.Status == Status)
+                                      .OrderBy(p => p.ScheduledDateList.FirstOrDefault())
+                                      .ToList();
+        }
+    }
+
+    private void ToggleCollapse()
+    {
+        isCollapsed = !isCollapsed;
+    }
+}

@@ -87,9 +87,6 @@ namespace LabBenchManager.Services
                 // 如果今天有计划，则根据计划的状态决定设备状态
                 return activePlanToday.Status switch
                 {
-                    TestPlanStatus.进行中 => BenchStatus.使用中,
-                    TestPlanStatus.已暂停 => BenchStatus.维护中,
-                    TestPlanStatus.待开始 => BenchStatus.已预定, // 计划在今天，但还未开始
                     _ => BenchStatus.空闲 // 已完成或已取消的计划意味着设备今天空闲
                 };
             }
@@ -128,9 +125,6 @@ namespace LabBenchManager.Services
                 {
                     status = activePlanToday.Status switch
                     {
-                        TestPlanStatus.进行中 => BenchStatus.使用中,
-                        TestPlanStatus.已暂停 => BenchStatus.维护中,
-                        TestPlanStatus.待开始 => BenchStatus.已预定,
                         _ => BenchStatus.空闲
                     };
                 }
@@ -161,7 +155,7 @@ namespace LabBenchManager.Services
 
             // 查找今天状态为“进行中”的计划
             var plans = await _db.TestPlans
-                                 .Where(p => p.BenchId == benchId && p.Status == TestPlanStatus.进行中)
+                                 .Where(p => p.BenchId == benchId && p.Status == TestPlanStatus.确定计划)
                                  .ToListAsync();
 
             var currentPlan = plans.FirstOrDefault(p => p.GetScheduledDates().Contains(today));

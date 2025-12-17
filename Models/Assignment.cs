@@ -4,7 +4,16 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LabBenchManager.Models
 {
-    public enum AssignmentStatus { 待审批, 待分配, 已拒绝, 进行中, 已完成 ,未开始}
+    public enum AssignmentStatus
+    {
+        待审批,   // Submitted, waiting for approval
+        待分配,   // Approved, waiting for bench allocation
+        已拒绝,   // Rejected
+        未开始,   // Bench allocated, but no Test Plan created yet
+        已规划,   // A draft Test Plan (初步规划) has been created
+        已确定,   // The Test Plan is confirmed (确定计划)
+        已完成    // The test is completed
+    }
 
     public enum TestStage { 第一轮, 第二轮, 第三轮, 第四轮, 其他轮次 }
 
