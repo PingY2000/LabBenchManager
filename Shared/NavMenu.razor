@@ -3,6 +3,11 @@
 @using LabBenchManager.Models
 @inject BenchService BenchSvc
 
+@* 1. 注入 NavigationManager *@
+@inject NavigationManager NavManager
+@* 2. 实现 IDisposable 以便清理事件订阅 *@
+@implements IDisposable
+
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">测试台管理平台</a>
@@ -20,7 +25,6 @@
             </NavLink>
         </div>
 
-        @* 排产日历 - 可展开菜单 *@
         <div class="nav-item px-3">
             <div class="nav-link expandable" @onclick="ToggleScheduleMenu" @onclick:stopPropagation="true">
                 <span class="oi oi-calendar" aria-hidden="true"></span> 使用规划
@@ -48,7 +52,6 @@
                         @foreach (var bench in benches)
                         {
                             <NavLink class="nav-link submenu-item" href="@($"schedule/{bench.Id}")" Match="NavLinkMatch.All">
-								@*<span class="oi oi-wrench me-2"></span>*@
                                 <span class="bench-name">@bench.Name</span>
                                 @if (!string.IsNullOrEmpty(bench.EquipmentNo))
                                 {
@@ -67,7 +70,6 @@
             </NavLink>
         </div>
 
-        @* 申请管理: 只有 TestEngineer, Admin 能看到 *@
         <AuthorizeView Roles="TestEngineer, Admin">
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="assignments" Match="NavLinkMatch.All">
@@ -76,7 +78,6 @@
             </div>
         </AuthorizeView>
 
-        @* 设备管理: 只有 TestEngineer, Admin 能看到 *@
         <AuthorizeView Roles="TestEngineer, Admin">
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="benches" Match="NavLinkMatch.All">
@@ -96,7 +97,6 @@
 </div>
 
 
-
 @code {
     private bool collapseNavMenu = true;
     private bool scheduleMenuExpanded = false;
@@ -114,7 +114,6 @@
     {
         scheduleMenuExpanded = !scheduleMenuExpanded;
 
-        // 延迟加载：只在第一次展开时加载数据
         if (scheduleMenuExpanded && benches == null && !isLoading)
         {
             await LoadBenches();
@@ -127,7 +126,6 @@
         try
         {
             benches = await BenchSvc.GetAllAsync();
-            StateHasChanged();
         }
         catch (Exception ex)
         {
@@ -139,6 +137,42 @@
             isLoading = false;
         }
     }
+
+    // 3. 在组件初始化时，订阅导航事件并检查当前URL
+    protected override void OnInitialized()
+    {
+        NavManager.LocationChanged += HandleLocationChanged;
+        CheckUrlAndExpandMenu(NavManager.Uri);
+    }
+
+    // 4. 当URL变化时触发此方法
+    private async void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        CheckUrlAndExpandMenu(e.Location);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // 5. 检查URL并决定是否展开菜单的逻辑
+    private async void CheckUrlAndExpandMenu(string url)
+    {
+        var relativePath = NavManager.ToBaseRelativePath(url);
+
+        if (relativePath.StartsWith("schedule/"))
+        {
+            if (!scheduleMenuExpanded)
+            {
+                scheduleMenuExpanded = true;
+                if (benches == null)
+                {
+                    await LoadBenches();
+                }
+            }
+        }
+    }
+
+    // 6. 实现Dispose方法，在组件销毁时取消事件订阅，防止内存泄漏
+    public void Dispose()
+    {
+        NavManager.LocationChanged -= HandleLocationChanged;
+    }
 }
-
-
