@@ -23,3 +23,40 @@
     padding: 0.65rem 1rem;
     font-size: 1rem;
 }
+
+/* 筛选区域美化 */
+.form-check {
+    padding-left: 0;
+}
+
+.form-check-input {
+    margin-top: 0.4rem;
+    cursor: pointer;
+}
+
+.form-check-label {
+    cursor: pointer;
+    user-select: none;
+}
+
+.form-check-input:checked + .form-check-label .badge {
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+}
+
+/* 徽章样式 */
+.badge-mdl {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .d-flex.flex-wrap.gap-3 {
+        gap: 0.5rem !important;
+    }
+
+    .form-check {
+        flex: 0 0 auto;
+    }
+}
