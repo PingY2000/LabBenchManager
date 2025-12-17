@@ -5,7 +5,6 @@
 @using LabBenchManager.Components 
 
 @inject AssignmentService AssignmentSvc
-@inject BenchService BenchSvc
 
 <PageTitle>申请管理</PageTitle>
 
@@ -248,7 +247,6 @@
 
             // 串行加载数据以避免潜在的并发问题
             allAssignments = await AssignmentSvc.GetAllAsync();
-            benches = await BenchSvc.GetAllAsync();
 
             ApplyFilters();
         }

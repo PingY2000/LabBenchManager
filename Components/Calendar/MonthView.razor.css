@@ -102,3 +102,46 @@
         font-size: 0.65rem;
     }
 }
+
+.month-day-cell.selected-for-plan {
+    background-color: #d1e7dd !important; /* Bootstrap success-light */
+    border: 2px solid #0f5132; /* Bootstrap success-dark */
+}
+
+.month-day-cell.booked-day {
+    background-color: #f8f9fa; /* Bootstrap gray-100 */
+    color: #adb5bd; /* Bootstrap gray-500 */
+}
+
+    .month-day-cell.booked-day:hover {
+        cursor: not-allowed;
+    }
+
+.month-day-cell.other-month {
+    color: #ced4da; /* Bootstrap gray-400 */
+}
+
+.month-day-cell .plan-block {
+    font-size: 0.75rem;
+    padding: 2px 4px;
+    margin-bottom: 2px;
+    border-radius: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background-color: #e9ecef; /* Default background */
+    color: #212529;
+}
+
+.plan-block-进行中 {
+    background-color: #cfe2ff;
+}
+/* primary-light */
+.plan-block-已完成 {
+    background-color: #e2e3e5;
+}
+/* secondary-light */
+.plan-block-待开始 {
+    background-color: #f8d7da;
+}
+/* danger-light */
