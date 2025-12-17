@@ -1,0 +1,96 @@
+﻿/* Components/PlanColumn.razor.css */
+
+/* 卡片头部样式 */
+.card-header {
+    padding: 0.75rem 1rem;
+}
+
+    .card-header h6 {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+.collapse-icon {
+    font-size: 0.8rem;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+    .collapse-icon:hover {
+        opacity: 1;
+    }
+
+/* 列表项样式 */
+.plan-item {
+    padding: 0.875rem 1rem;
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+    .plan-item:hover {
+        background-color: #f8f9fa;
+        border-left-color: #0d6efd;
+    }
+
+    /* 按钮组样式 */
+    .plan-item .btn-group {
+        opacity: 0.7;
+        transition: opacity 0.2s;
+    }
+
+    .plan-item:hover .btn-group {
+        opacity: 1;
+    }
+
+    .plan-item .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+        .plan-item .btn-sm .oi {
+            font-size: 0.75rem;
+        }
+
+    /* 信息文本样式 */
+    .plan-item .fw-bold {
+        color: #212529;
+        font-size: 0.95rem;
+    }
+
+    .plan-item .text-muted {
+        color: #6c757d !important;
+        font-size: 0.85rem;
+    }
+
+        .plan-item .text-muted .oi {
+            font-size: 0.75rem;
+            vertical-align: middle;
+        }
+
+/* 不同状态的边框颜色 */
+.bg-secondary + .list-group .plan-item:hover {
+    border-left-color: #6c757d;
+}
+
+.bg-primary + .list-group .plan-item:hover {
+    border-left-color: #0d6efd;
+}
+
+.bg-success + .list-group .plan-item:hover {
+    border-left-color: #198754;
+}
+
+/* 响应式调整 */
+@media (max-width: 576px) {
+    .plan-item .btn-group {
+        opacity: 1;
+    }
+
+    .plan-item {
+        padding: 0.75rem;
+    }
+
+    .card-header {
+        padding: 0.625rem 0.75rem;
+    }
+}

@@ -55,88 +55,83 @@ else
             </div>
         </div>
 
-        <!-- 右侧：动态面板 (计划列表 或 编辑表单) -->
+        <!-- 右侧：动态面板 -->
         <div class="col-12 col-lg-5">
             <div class="sticky-top" style="top: 1rem;">
-                
+
                 @if (isInEditMode)
                 {
-                    <!-- ==================== 编辑/添加表单 ==================== -->
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">
-                                @(editingPlan.Id == 0 ? "添加新计划" : $"编辑计划: {editingPlan.ProjectName}")
-                            </h5>
-                        </div>
-                        <div class="card-body" style="max-height: calc(100vh - 150px); overflow-y: auto;">
-                            <!-- 编辑表单内容保持不变 -->
-                            <EditForm Model="@editingPlan" OnValidSubmit="SavePlan">
-                                <DataAnnotationsValidator />
+                    <!-- ============================================== -->
+                    <!-- ===  编辑/添加表单 (已重构为紧凑风格和正确表单) === -->
+                    <!-- ============================================== -->
+                    <EditForm Model="@editingPlan" OnValidSubmit="SavePlan">
+                        <DataAnnotationsValidator />
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">
+                                    @(editingPlan.Id == 0 ? "添加新计划" : $"编辑: {editingPlan.ProjectName}")
+                                </h5>
+                            </div>
+                            <div class="card-body py-3 px-3" style="max-height: calc(100vh - 150px); overflow-y: auto;">
+
                                 <div class="alert alert-info small p-2 mb-3"><span class="oi oi-info me-2"></span>请在左侧日历上点选日期。</div>
-                                
+
                                 <div class="mb-3">
-                                    <label class="form-label">项目名称 <span class="text-danger">*</span></label>
-                                    <InputText class="form-control" @bind-Value="editingPlan.ProjectName" />
+                                    <label class="form-label small mb-1">项目名称 <span class="text-danger">*</span></label>
+                                    <InputText class="form-control form-control-sm" @bind-Value="editingPlan.ProjectName" />
                                     <ValidationMessage For="@(() => editingPlan.ProjectName)" />
                                 </div>
-                                
-                                <!-- 状态下拉框现在使用新的枚举 -->
+
+                                <div class="row gx-2 mb-3">
+                                    <div class="col">
+                                        <label class="form-label small mb-1">负责人</label>
+                                        <InputText class="form-control form-control-sm" @bind-Value="editingPlan.AssignedTo" />
+                                    </div>
+                                    <div class="col">
+                                        <label class="form-label small mb-1">状态</label>
+                                        <InputSelect class="form-select form-select-sm" @bind-Value="editingPlan.Status">
+                                            @foreach (var status in Enum.GetValues<TestPlanStatus>())
+                                            {
+                                                <option value="@status">@status.ToString()</option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                </div>
+
                                 <div class="mb-3">
-                                    <label class="form-label">状态</label>
-                                    <InputSelect class="form-select" @bind-Value="editingPlan.Status">
-                                        @foreach (var status in Enum.GetValues<TestPlanStatus>())
+                                    <label class="form-label small mb-1 fw-bold">已选日期 (@selectedDatesForEditing.Count)</label>
+                                    <div class="p-2 bg-light rounded border" style="min-height: 34px;">
+                                        @if (!selectedDatesForEditing.Any())
                                         {
-                                            <option value="@status">@status.ToString()</option>
+                                            <span class="text-muted small">尚未选择</span>
                                         }
-                                    </InputSelect>
-                                </div>
-                            <div class="mb-3">
-                                <label class="form-label">负责人</label>
-                                <InputText class="form-control" @bind-Value="editingPlan.AssignedTo" />
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">已选日期 (@selectedDatesForEditing.Count)</label>
-                                <div class="p-2 bg-light rounded" style="min-height: 40px;">
-                                    @if (!selectedDatesForEditing.Any())
-                                    {
-                                        <span class="text-muted small">尚未选择</span>
-                                    }
-                                    else
-                                    {
-                                        @foreach (var date in selectedDatesForEditing.OrderBy(d => d))
+                                        else
                                         {
-                                            <span class="badge bg-success me-1 mb-1">@date.ToString("MM-dd")</span>
+                                            @foreach (var date in selectedDatesForEditing.OrderBy(d => d))
+                                            {
+                                                <span class="badge bg-success me-1 mb-1">@date.ToString("MM-dd")</span>
+                                            }
                                         }
-                                    }
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div class="mb-3">
-                                <label class="form-label">状态</label>
-                                <InputSelect class="form-select" @bind-Value="editingPlan.Status">
-                                    @foreach (var status in Enum.GetValues<TestPlanStatus>())
-                                    {
-                                        <option value="@status">@status.ToString()</option>
-                                    }
-                                </InputSelect>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">备注说明</label>
-                                <InputTextArea class="form-control" @bind-Value="editingPlan.Description" rows="2" />
-                            </div>
+                                <div class="mb-2">
+                                    <label class="form-label small mb-1">备注说明</label>
+                                    <InputTextArea class="form-control form-control-sm" @bind-Value="editingPlan.Description" rows="2" />
+                                </div>
 
-                            @if (!string.IsNullOrEmpty(validationError))
-                            {
-                                <div class="alert alert-danger small p-2"><span class="oi oi-warning me-2"></span>@validationError</div>
-                            }
-                        </EditForm>
-                    </div>
-                        <div class="card-footer text-end">
-                            <button type="button" class="btn btn-secondary" @onclick="CancelEdit">取消</button>
-                            <button type="button" class="btn btn-primary" @onclick="SavePlan"><span class="oi oi-check me-1"></span>保存</button>
+                                @if (!string.IsNullOrEmpty(validationError))
+                                {
+                                    <div class="alert alert-danger small p-2 mt-3"><span class="oi oi-warning me-2"></span>@validationError</div>
+                                }
+                            </div>
+                            <div class="card-footer text-end">
+                                <button type="button" class="btn btn-sm btn-secondary" @onclick="CancelEdit">取消</button>
+                                <!--  重要：按钮类型为 "submit"，并且在 EditForm 内部 -->
+                                <button type="submit" class="btn btn-sm btn-primary"><span class="oi oi-check me-1"></span>保存</button>
+                            </div>
                         </div>
-                    </div>
+                    </EditForm>
                 }
                 else
                 {
@@ -194,7 +189,6 @@ else
         </div>
     </div>
 }
-
 @code {
     [Parameter]
     public int BenchId { get; set; }
@@ -236,7 +230,6 @@ else
 
     private void AddNewPlan()
     {
-        // 默认状态为“初步规划”
         editingPlan = new TestPlan { BenchId = BenchId, Status = TestPlanStatus.初步规划 };
         selectedDatesForEditing.Clear();
         EnterEditMode();
@@ -244,7 +237,7 @@ else
 
     private void EditPlan(TestPlan plan)
     {
-        editingPlan = new TestPlan // 创建副本以支持“取消”
+        editingPlan = new TestPlan // 创建副本
         {
             Id = plan.Id,
             BenchId = plan.BenchId,
@@ -266,7 +259,7 @@ else
             AssignmentId = assignment.Id,
             ProjectName = assignment.ProjectName,
             Description = assignment.TestContent,
-            Status = TestPlanStatus.初步规划, // **默认状态为“初步规划”**
+            Status = TestPlanStatus.初步规划,
             RequestedBy = assignment.ApplicantName,
             SampleQuantity = assignment.SampleQuantity
         };
@@ -276,7 +269,6 @@ else
         EnterEditMode();
     }
 
-
     // --- 退出编辑模式 ---
     private void CancelEdit()
     {
@@ -285,35 +277,55 @@ else
         selectedDatesForEditing.Clear();
     }
 
-    // --- 保存逻辑 (已修正) ---
+    // --- 保存逻辑 (此方法现在由 OnValidSubmit 触发) ---
     private async Task SavePlan()
     {
         validationError = "";
-        // ... 其他验证逻辑保持不变 ...
+        if (!selectedDatesForEditing.Any())
+        {
+            validationError = "请至少选择一个测试日期";
+            return;
+        }
+        foreach (var date in selectedDatesForEditing)
+        {
+            var conflictingPlan = testPlans?.FirstOrDefault(p => p.Id != editingPlan.Id && p.GetScheduledDates().Contains(date.Date));
+            if (conflictingPlan != null)
+            {
+                validationError = $"日期 {date:yyyy-MM-dd} 与计划 '{conflictingPlan.ProjectName}' 冲突";
+                return;
+            }
+        }
+
+        // ★★★ 关键：在提交服务前，手动将选中的日期列表同步到模型中
+        editingPlan.SetScheduledDates(selectedDatesForEditing);
 
         try
         {
             TestPlan savedPlan;
-            if (editingPlan.Id == 0) { await PlanSvc.AddAsync(editingPlan); savedPlan = editingPlan; }
-            else { await PlanSvc.UpdateAsync(editingPlan); savedPlan = editingPlan; }
+            if (editingPlan.Id == 0)
+            {
+                await PlanSvc.AddAsync(editingPlan);
+                savedPlan = editingPlan;
+            }
+            else
+            {
+                await PlanSvc.UpdateAsync(editingPlan);
+                savedPlan = editingPlan;
+            }
 
-            // === 核心修正：根据计划状态更新申请状态 ===
             if (savedPlan.AssignmentId.HasValue)
             {
                 var relatedAssignment = await AssignmentSvc.GetByIdAsync(savedPlan.AssignmentId.Value);
                 if (relatedAssignment != null)
                 {
                     relatedAssignment.TestPlanId = savedPlan.Id;
-
-                    // 根据 TestPlan 的状态，映射到 Assignment 的状态
                     relatedAssignment.Status = savedPlan.Status switch
                     {
                         TestPlanStatus.初步规划 => AssignmentStatus.已规划,
                         TestPlanStatus.确定计划 => AssignmentStatus.已确定,
                         TestPlanStatus.已完成 => AssignmentStatus.已完成,
-                        _ => relatedAssignment.Status // 保持不变
+                        _ => relatedAssignment.Status
                     };
-
                     await AssignmentSvc.UpdateAsync(relatedAssignment);
                 }
             }
@@ -321,7 +333,10 @@ else
             CancelEdit();
             await LoadData();
         }
-        catch (Exception ex) { validationError = $"保存失败: {ex.Message}"; }
+        catch (Exception ex)
+        {
+            validationError = $"保存失败: {ex.Message}";
+        }
     }
 
     // --- 日历交互 (保持不变) ---
