@@ -15,7 +15,6 @@ namespace LabBenchManager.Models
         已完成    // The test is completed
     }
 
-    public enum TestStage { 第一轮, 第二轮, 第三轮, 第四轮, 其他轮次 }
 
     public class Assignment
     {
@@ -100,8 +99,6 @@ namespace LabBenchManager.Models
         [Display(Name = "测试参数/条件")]
         public string? TestParameters { get; set; }
 
-        [Display(Name = "测试阶段")]
-        public TestStage Stage { get; set; } = TestStage.第一轮;
 
         [StringLength(100)]
         [Display(Name = "其他阶段说明")]

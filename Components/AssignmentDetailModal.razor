@@ -62,16 +62,6 @@
                                     <label class="form-label fw-bold">样品数量</label>
                                     <div class="form-control-plaintext">@Assignment.SampleQuantity 个</div>
                                 </div>
-                                <div class="col-6">
-                                    <label class="form-label fw-bold">测试阶段</label>
-                                    <div>
-                                        <span class="badge @GetStageBadgeClass(Assignment.Stage)">@Assignment.Stage</span>
-                                        @if (!string.IsNullOrEmpty(Assignment.StageDescription))
-                                        {
-                                            <div class="small text-muted mt-1">@Assignment.StageDescription</div>
-                                        }
-                                    </div>
-                                </div>
                             </div>
                             @if (!string.IsNullOrEmpty(Assignment.SampleSpecification))
                             {
@@ -208,11 +198,4 @@
         _ => "bg-dark"
     };
 
-    private string GetStageBadgeClass(TestStage stage) => stage switch
-    {
-        TestStage.第一轮 => "bg-info",
-        TestStage.第二轮 => "bg-primary",
-        TestStage.第三轮 => "bg-success",
-        _ => "bg-secondary"
-    };
 }

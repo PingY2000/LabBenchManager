@@ -1,0 +1,25 @@
+﻿/* 在 CSS 文件中定义多种大小 */
+.badge-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.badge-md {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.85rem;
+}
+
+.badge-mdl {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.9rem;
+}
+
+.badge-lg {
+    padding: 0.5rem 0.85rem;
+    font-size: 0.95rem;
+}
+
+.badge-xl {
+    padding: 0.65rem 1rem;
+    font-size: 1rem;
+}

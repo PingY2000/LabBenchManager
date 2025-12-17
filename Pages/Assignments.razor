@@ -128,7 +128,7 @@
                         <tbody>
                             @foreach (var assignment in filteredAssignments)
                             {
-                                <tr class="@(assignment.TestPlanId.HasValue ? "table-success" : "")">
+                                <tr class="align-middle @(assignment.TestPlanId.HasValue ? "table-success" : "")">
                                     <td>
                                         <strong>@assignment.Id</strong>
                                         @if (assignment.IsUrgent)
@@ -138,7 +138,6 @@
                                     </td>
                                     <td>
                                         <div class="fw-semibold">@assignment.ProjectName</div>
-                                        <small class="text-muted">@assignment.Stage</small>
                                     </td>
                                     <td>
                                         <div>@assignment.ApplicantName</div>
@@ -146,19 +145,17 @@
                                     </td>
                                     <td>
                                         <span class="fw-bold">@(assignment.Bench?.Name ?? "---")</span>
-                                        @if (assignment.TestPlanId.HasValue)
-                                        {
-                                            <span class="badge bg-success ms-1" title="已创建测试计划">
-                                                <span class="oi oi-check"></span> 已排程
-                                            </span>
-                                        }
                                     </td>
                                     <td><span class="badge bg-light text-dark">@assignment.SampleQuantity 个</span></td>
                                     <td>
                                         <div>@assignment.RequestTime.ToString("yyyy-MM-dd")</div>
                                         <small class="text-muted">@assignment.RequestTime.ToString("HH:mm")</small>
                                     </td>
-                                    <td><span class="badge @GetStatusBadgeClass(assignment.Status)">@assignment.Status</span></td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(assignment.Status) badge-mdl">
+                                            @assignment.Status
+                                        </span>
+                                    </td>
                                     <td>
                                         <div class="btn-group btn-group-sm" role="group">
                                             <!-- 查看详情按钮 -->

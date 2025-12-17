@@ -148,34 +148,7 @@
                                 <ValidationMessage For="(() => newAssignment.DesiredCompletionTime)" class="text-danger small" />
                             </div>
                         </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">
-                                    <span class="text-danger">*</span>测试阶段
-                                </label>
-                                <InputSelect class="form-select" @bind-Value="newAssignment.Stage">
-                                    @foreach (var stage in Enum.GetValues<TestStage>())
-                                    {
-                                        <option value="@stage">@stage</option>
-                                    }
-                                </InputSelect>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                @if (newAssignment.Stage == TestStage.其他轮次)
-                                {
-                                    <label class="form-label">
-                                        阶段说明
-                                    </label>
-                                    <InputText class="form-control" @bind-Value="newAssignment.StageDescription"
-                                               placeholder="请说明具体阶段..." />
-                                }
-                                else
-                                {
-                                    <div class="mt-4 pt-2">当前阶段：@newAssignment.Stage</div>
-                                }
-                            </div>
-                        </div>
+                        
                     </div>
                 </div>
                 <!-- 样品信息 -->
@@ -348,8 +321,6 @@
         newAssignment.EstimatedSampleTime = DateTime.Today.AddDays(1);
         newAssignment.DesiredCompletionTime = DateTime.Today.AddDays(5);
 
-        // 设置默认测试阶段
-        newAssignment.Stage = TestStage.第一轮;
     }
 
     private void ResetForm()
@@ -369,7 +340,6 @@
             EstimatedSampleTime = DateTime.Today.AddDays(1),
             DesiredCompletionTime = DateTime.Today.AddDays(5),
             SampleQuantity = 1,
-            Stage = TestStage.第一轮
         };
 
         showSuccessMessage = false;
@@ -390,7 +360,7 @@
             }
 
             // 设置提交时的默认值
-            newAssignment.RequestTime = DateTime.UtcNow;
+            newAssignment.RequestTime = DateTime.UtcNow.AddHours(8);
             newAssignment.Status = AssignmentStatus.待审批;
 
             // 如果选择加急但未填写原因，提供默认原因
@@ -421,7 +391,6 @@
                 EstimatedSampleTime = DateTime.Today.AddDays(1),
                 DesiredCompletionTime = DateTime.Today.AddDays(5),
                 SampleQuantity = 1,
-                Stage = TestStage.第一轮
             };
         }
         catch (Exception ex)
