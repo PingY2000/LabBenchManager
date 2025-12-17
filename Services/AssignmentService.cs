@@ -39,5 +39,21 @@ namespace LabBenchManager.Services
         {
             return await _db.Assignments.FindAsync(id);
         }
+        public async Task DeleteAsync(int id)
+        {
+            var assignment = await _db.Assignments.FindAsync(id);
+            if (assignment != null)
+            {
+                // 如果有关联的 TestPlan，需要考虑如何处理
+                // 方案1：不允许删除 (可以抛出异常或返回一个结果对象)
+                if (assignment.TestPlanId.HasValue)
+                {
+                    throw new InvalidOperationException("无法删除已创建测试计划的申请。请先删除关联的测试计划。");
+                }
+
+                _db.Assignments.Remove(assignment);
+                await _db.SaveChangesAsync();
+            }
+        }
     }
 }

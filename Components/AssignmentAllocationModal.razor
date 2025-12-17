@@ -6,15 +6,45 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">分配测试台 - 申请 #@AssignmentToAllocate.Id</h5>
+                    <h5 class="modal-title">
+                        @if (AssignmentToAllocate.BenchId.HasValue)
+                        {
+                            <span class="oi oi-loop-circular me-2"></span>
+                            <span>重新分配测试台 - 申请 #@AssignmentToAllocate.Id</span>
+                        }
+                        else
+                        {
+                            <span class="oi oi-fork me-2"></span>
+                            <span>分配测试台 - 申请 #@AssignmentToAllocate.Id</span>
+                        }
+                    </h5>
                     <button type="button" class="btn-close" @onclick="() => OnClose.InvokeAsync()"></button>
                 </div>
                 <div class="modal-body">
                     <p>正在为项目 <strong>@AssignmentToAllocate.ProjectName</strong> 分配测试台。</p>
 
+                    @if (AssignmentToAllocate.BenchId.HasValue && Benches != null)
+                    {
+                        var currentBench = Benches.FirstOrDefault(b => b.Id == AssignmentToAllocate.BenchId);
+                        <div class="alert alert-info small">
+                            当前已分配至：<strong>@(currentBench?.Name ?? "未知设备")</strong> (@(currentBench?.Location ?? "未知位置"))
+                        </div>
+                    }
+
                     @if (Benches == null)
                     {
-                        <p>正在加载测试台列表...</p>
+                        <div class="text-center">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                            <span class="ms-2">正在加载测试台列表...</span>
+                        </div>
+                    }
+                    else if (!Benches.Any())
+                    {
+                        <div class="alert alert-warning">
+                            暂无可用的测试台。
+                        </div>
                     }
                     else
                     {
@@ -31,8 +61,8 @@
                     }
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="() => OnClose.InvokeAsync()">取消</button>
-                    <button class="btn btn-primary" @onclick="ConfirmAllocation" disabled="@(selectedBenchId == 0)">
+                    <button type="button" class="btn btn-secondary" @onclick="() => OnClose.InvokeAsync()">取消</button>
+                    <button type="button" class="btn btn-primary" @onclick="ConfirmAllocation" disabled="@(selectedBenchId == 0 || Benches == null || !Benches.Any())">
                         <span class="oi oi-check me-1"></span>确认分配
                     </button>
                 </div>
@@ -58,10 +88,11 @@
 
     protected override void OnParametersSet()
     {
-        // 当模态框被显示时（即AssignmentToAllocate被设置时），重置下拉框的选择
+        // 当模态框被显示时（即AssignmentToAllocate被设置时）
         if (AssignmentToAllocate != null)
         {
-            selectedBenchId = 0;
+            // 如果是重新分配，默认选中已分配的设备；如果是新分配，则为0
+            selectedBenchId = AssignmentToAllocate.BenchId ?? 0;
         }
     }
 
