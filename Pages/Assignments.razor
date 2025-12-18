@@ -26,11 +26,25 @@
     <!-- 筛选和搜索 -->
     <div class="card shadow-sm mb-4">
         <div class="card-body">
-            <div class="row g-3">
-                <!-- 项目阶段多选筛选 -->
-                <div class="col-md-8">
-                    <label class="form-label fw-bold">项目阶段筛选</label>
-                    <div class="d-flex flex-wrap gap-3">
+            <div class="filter-section">
+                <!-- 标题和统计信息 -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <label class="form-label fw-bold mb-0">
+                        <span class="oi oi-filter me-2"></span>项目阶段筛选
+                    </label>
+                    <small class="text-muted">
+                        已选择 <span class="badge bg-primary">@selectedStatuses.Count</span> 个阶段
+                        @if (filteredAssignments != null)
+                        {
+                            <span>，共 <span class="badge bg-info">@filteredAssignments.Count</span> 条记录</span>
+                        }
+                    </small>
+                </div>
+
+                <!-- 筛选项和操作按钮同一行 -->
+                <div class="filter-row">
+                    <!-- 左侧：筛选选项 -->
+                    <div class="status-filters">
                         @foreach (var status in Enum.GetValues<AssignmentStatus>())
                         {
                             <div class="form-check">
@@ -47,35 +61,15 @@
                             </div>
                         }
                     </div>
-                    <div class="mt-2">
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="SelectAllStatuses">
+
+                    <!-- 右侧：操作按钮 -->
+                    <div class="filter-actions">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="SelectAllStatuses">
                             <span class="oi oi-check me-1"></span>全选
                         </button>
-                        <button class="btn btn-sm btn-outline-secondary ms-1" @onclick="ClearAllStatuses">
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ClearAllStatuses">
                             <span class="oi oi-x me-1"></span>清空
                         </button>
-                    </div>
-                </div>
-
-                <!-- 申请时间 -->
-                <div class="col-md-4">
-                    <label class="form-label fw-bold">申请时间</label>
-                    <select class="form-select" @bind="timeRange" @bind:after="ApplyFilters">
-                        <option value="7">最近7天</option>
-                        <option value="30">最近30天</option>
-                        <option value="90">最近90天</option>
-                        <option value="0">全部时间</option>
-                    </select>
-
-                    <!-- 筛选信息显示 -->
-                    <div class="mt-2">
-                        <small class="text-muted">
-                            已选择 @selectedStatuses.Count 个阶段
-                            @if (filteredAssignments != null)
-                            {
-                                <span>，共 @filteredAssignments.Count 条记录</span>
-                            }
-                        </small>
                     </div>
                 </div>
             </div>
@@ -83,14 +77,14 @@
     </div>
 
     <!-- 统计信息 -->
-    @if (filteredAssignments != null)
+    @if (allAssignments != null)
     {
         <div class="row mb-4">
             <div class="col-md-3">
                 <div class="card bg-primary text-white">
                     <div class="card-body">
                         <h5 class="card-title">总申请数</h5>
-                        <h2 class="fw-bold">@filteredAssignments.Count</h2>
+                        <h2 class="fw-bold">@allAssignments.Count</h2>
                     </div>
                 </div>
             </div>
@@ -98,7 +92,7 @@
                 <div class="card bg-warning text-dark">
                     <div class="card-body">
                         <h5 class="card-title">待审批</h5>
-                        <h2 class="fw-bold">@filteredAssignments.Count(a => a.Status == AssignmentStatus.待审批)</h2>
+                        <h2 class="fw-bold">@allAssignments.Count(a => a.Status == AssignmentStatus.待审批)</h2>
                     </div>
                 </div>
             </div>
@@ -106,7 +100,7 @@
                 <div class="card bg-info text-white">
                     <div class="card-body">
                         <h5 class="card-title">待分配</h5>
-                        <h2 class="fw-bold">@filteredAssignments.Count(a => a.Status == AssignmentStatus.待分配)</h2>
+                        <h2 class="fw-bold">@allAssignments.Count(a => a.Status == AssignmentStatus.待分配)</h2>
                     </div>
                 </div>
             </div>
@@ -114,7 +108,7 @@
                 <div class="card bg-danger text-white">
                     <div class="card-body">
                         <h5 class="card-title">加急申请</h5>
-                        <h2 class="fw-bold">@filteredAssignments.Count(a => a.IsUrgent)</h2>
+                        <h2 class="fw-bold">@allAssignments.Count(a => a.IsUrgent)</h2>
                     </div>
                 </div>
             </div>

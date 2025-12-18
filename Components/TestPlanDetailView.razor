@@ -1,0 +1,111 @@
+﻿@* Components/TestPlanDetailView.razor *@
+
+@using LabBenchManager.Models
+
+@if (Plan != null)
+{
+    <div class="card shadow-sm">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">计划详情</h5>
+        </div>
+        <div class="card-body py-3 px-3" style="max-height: calc(100vh - 150px); overflow-y: auto;">
+
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">项目名称</label>
+                <div class="form-control-plaintext">@Plan.ProjectName</div>
+            </div>
+
+            <div class="row gx-2 mb-3">
+                <div class="col-6">
+                    <label class="form-label small fw-bold text-muted">状态</label>
+                    <div>
+                        <span class="badge @GetStatusBadge(Plan.Status)">@Plan.Status</span>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label small fw-bold text-muted">负责人</label>
+                    <div class="form-control-plaintext">@(Plan.AssignedTo ?? "未分配")</div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">排程日期</label>
+                <div class="p-2 bg-light rounded border">
+                    @if (Plan.ScheduledDateList.Any())
+                    {
+                        @foreach (var date in Plan.ScheduledDateList.OrderBy(d => d))
+                        {
+                            <span class="badge bg-success me-1 mb-1">@date.ToString("MM-dd")</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="text-muted small">(未排期)</span>
+                    }
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Plan.Description))
+            {
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">备注说明</label>
+                    <pre class="form-control-plaintext bg-light p-2 rounded small">@Plan.Description</pre>
+                </div>
+            }
+
+            @if (Plan.AssignmentId.HasValue)
+            {
+                <div class="alert alert-info small p-2">
+                    <span class="oi oi-link-intact me-2"></span>
+                    此计划关联了测试申请 #@Plan.AssignmentId
+                </div>
+            }
+        </div>
+        <div class="card-footer">
+            <div class="d-flex justify-content-between">
+                <div>
+                    @if (Plan.AssignmentId.HasValue)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-info" @onclick="() => OnViewAssignment.InvokeAsync(Plan.AssignmentId.Value)">
+                            <span class="oi oi-document me-1"></span>查看申请
+                        </button>
+                    }
+                </div>
+                <div>
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick="() => OnClose.InvokeAsync()">返回</button>
+                    <button type="button" class="btn btn-sm btn-danger" @onclick="() => OnDelete.InvokeAsync(Plan)">
+                        <span class="oi oi-trash me-1"></span>删除
+                    </button>
+                    <button type="button" class="btn btn-sm btn-primary" @onclick="() => OnEdit.InvokeAsync(Plan)">
+                        <span class="oi oi-pencil me-1"></span>编辑
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public TestPlan? Plan { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<TestPlan> OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<TestPlan> OnDelete { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnViewAssignment { get; set; }
+
+    private string GetStatusBadge(TestPlanStatus status) => status switch
+    {
+        TestPlanStatus.初步规划 => "bg-secondary",
+        TestPlanStatus.确定计划 => "bg-primary",
+        TestPlanStatus.已完成 => "bg-success",
+        _ => "bg-dark"
+    };
+}

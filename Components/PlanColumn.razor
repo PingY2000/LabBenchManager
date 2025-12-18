@@ -5,13 +5,13 @@
 @if (plansForThisStatus.Any())
 {
     <div class="card shadow-sm">
-        <!-- 卡片头部 (类似申请栏风格) -->
-        <div class="card-header @GetHeaderClass() @(IsCollapsible ? "" : "")">
+        <!-- 卡片头部 -->
+        <div class="card-header @GetHeaderClass()">
             <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">@Title (@plansForThisStatus.Count)</h6>
+                <h6 class="mb-0 small">@Title (@plansForThisStatus.Count)</h6>
                 @if (IsCollapsible)
                 {
-                    <span class="oi @(isCollapsed ? "oi-chevron-bottom" : "oi-chevron-top") collapse-icon"
+                    <span class="oi @(isCollapsed ? "oi-chevron-bottom" : "oi-chevron-top")"
                           @onclick="ToggleCollapse"
                           style="cursor: pointer;"></span>
                 }
@@ -23,37 +23,21 @@
             <div class="list-group list-group-flush">
                 @foreach (var plan in plansForThisStatus)
                 {
-                    <div class="list-group-item plan-item">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <!-- 左侧信息区 -->
-                            <div class="flex-grow-1" @onclick="() => OnEdit.InvokeAsync(plan)" style="cursor: pointer;">
-                                <div class="fw-bold mb-1">@plan.ProjectName</div>
-                                <div class="small text-muted">
-                                    <span class="oi oi-calendar me-1"></span>
-                                    @DateUtils.FormatDateListWithRanges(plan.ScheduledDateList)
-                                </div>
-                                @if (!string.IsNullOrEmpty(plan.AssignedTo))
-                                {
-                                    <div class="small text-muted mt-1">
-                                        <span class="oi oi-person me-1"></span>@plan.AssignedTo
-                                    </div>
-                                }
-                            </div>
-
-                            <!-- 右侧按钮组 -->
-                            <div class="btn-group btn-group-sm ms-2" @onclick:stopPropagation="true">
-                                <button class="btn btn-outline-primary btn-sm"
-                                        @onclick="() => OnEdit.InvokeAsync(plan)"
-                                        title="编辑">
-                                    <span class="oi oi-pencil"></span>
-                                </button>
-                                <button class="btn btn-outline-danger btn-sm"
-                                        @onclick="() => OnDelete.InvokeAsync(plan)"
-                                        title="删除">
-                                    <span class="oi oi-trash"></span>
-                                </button>
-                            </div>
+                    <!-- 整个列表项都可以点击，用于查看详情 -->
+                    <div class="list-group-item plan-item py-2 px-3"
+                         @onclick="() => OnPlanClick.InvokeAsync(plan)"
+                         style="cursor: pointer;">
+                        <div class="fw-bold small mb-1">@plan.ProjectName</div>
+                        <div class="small text-muted">
+                            <span class="oi oi-calendar me-1"></span>
+                            @DateUtils.FormatDateListWithRanges(plan.ScheduledDateList)
                         </div>
+                        @if (!string.IsNullOrEmpty(plan.AssignedTo))
+                        {
+                            <div class="small text-muted mt-1">
+                                <span class="oi oi-person me-1"></span>@plan.AssignedTo
+                            </div>
+                        }
                     </div>
                 }
             </div>
@@ -80,11 +64,9 @@
     [Parameter]
     public bool IsCollapsible { get; set; } = true;
 
+    // ★★★ 核心改动：改用 OnPlanClick 事件，点击后显示详情预览 ★★★
     [Parameter]
-    public EventCallback<TestPlan> OnEdit { get; set; }
-
-    [Parameter]
-    public EventCallback<TestPlan> OnDelete { get; set; }
+    public EventCallback<TestPlan> OnPlanClick { get; set; }
 
     protected override void OnInitialized()
     {

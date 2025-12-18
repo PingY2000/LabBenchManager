@@ -12,7 +12,7 @@
 @inject TestPlanService PlanSvc
 @inject AssignmentService AssignmentSvc
 @inject NavigationManager NavigationManager
-@inject IJSRuntime JSRuntime // 用于删除确认
+@inject IJSRuntime JSRuntime
 
 <PageTitle>@benchName - 使用规划</PageTitle>
 
@@ -25,8 +25,7 @@
             <p class="text-muted mb-0"><span class="oi oi-map-marker me-1"></span>@currentBench.Location</p>
         }
     </div>
-    <!-- "添加"按钮现在会切换右侧面板的视图 -->
-    <button class="btn btn-success" @onclick="AddNewPlan" disabled="@isInEditMode">
+    <button class="btn btn-success" @onclick="AddNewPlan" disabled="@(currentViewMode != ViewMode.List)">
         <span class="oi oi-plus me-1"></span>添加测试计划
     </button>
 </div>
@@ -38,7 +37,7 @@
 else
 {
     <div class="row">
-        <!-- 左侧：日历视图  -->
+        <!-- 左侧：日历视图 -->
         <div class="col-12 col-lg-7 mb-3">
             <div class="card shadow-sm">
                 <CalendarHeader Title="@currentDate.ToString("yyyy年MM月")"
@@ -50,7 +49,7 @@ else
                                Plans="@testPlans"
                                SelectedDatesForPlan="@selectedDatesForEditing"
                                OnDayClick="HandleDayClick"
-                               OnPlanClick="EditPlan" />
+                               OnPlanClick="ShowPlanDetail" />
                 </div>
             </div>
         </div>
@@ -59,11 +58,9 @@ else
         <div class="col-12 col-lg-5">
             <div class="sticky-top" style="top: 1rem;">
 
-                @if (isInEditMode)
+                @if (currentViewMode == ViewMode.Edit)
                 {
-                    <!-- ============================================== -->
-                    <!-- ===  编辑/添加表单 (已重构为紧凑风格和正确表单) === -->
-                    <!-- ============================================== -->
+                    <!-- ==================== 编辑表单 ==================== -->
                     <EditForm Model="@editingPlan" OnValidSubmit="SavePlan">
                         <DataAnnotationsValidator />
                         <div class="card shadow-sm">
@@ -120,78 +117,116 @@ else
                                     <InputTextArea class="form-control form-control-sm" @bind-Value="editingPlan.Description" rows="2" />
                                 </div>
 
+                                @if (editingPlan.AssignmentId.HasValue)
+                                {
+                                    <div class="alert alert-info small p-2 mb-2">
+                                        <span class="oi oi-link-intact me-2"></span>
+                                        此计划关联了测试申请 #@editingPlan.AssignmentId
+                                    </div>
+                                }
+
                                 @if (!string.IsNullOrEmpty(validationError))
                                 {
-                                    <div class="alert alert-danger small p-2 mt-3"><span class="oi oi-warning me-2"></span>@validationError</div>
+                                    <div class="alert alert-danger small p-2"><span class="oi oi-warning me-2"></span>@validationError</div>
                                 }
                             </div>
-                            <div class="card-footer text-end">
-                                <button type="button" class="btn btn-sm btn-secondary" @onclick="CancelEdit">取消</button>
-                                <!--  重要：按钮类型为 "submit"，并且在 EditForm 内部 -->
-                                <button type="submit" class="btn btn-sm btn-primary"><span class="oi oi-check me-1"></span>保存</button>
+                            <div class="card-footer">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        @if (editingPlan.AssignmentId.HasValue)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-info" @onclick="() => ShowAssignmentDetail(editingPlan.AssignmentId.Value)">
+                                                <span class="oi oi-document me-1"></span>查看申请
+                                            </button>
+                                        }
+                                    </div>
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-secondary" @onclick="CancelEdit">取消</button>
+                                        <button type="submit" class="btn btn-sm btn-primary"><span class="oi oi-check me-1"></span>保存</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </EditForm>
+                }
+                else if (currentViewMode == ViewMode.Detail)
+                {
+                    <!-- ==================== 计划详情预览 ==================== -->
+                    <TestPlanDetailView Plan="viewingPlan"
+                                        OnClose="CloseDetail"
+                                        OnEdit="EditPlanFromDetail"
+                                        OnDelete="ConfirmDeletePlan"
+                                        OnViewAssignment="ShowAssignmentDetail" />
                 }
                 else
                 {
                     <!-- ==================== 计划看板 ==================== -->
                     <div class="d-flex flex-column gap-3">
 
-                        <!-- 1. 待创建计划的申请 -->
+                        <!-- 待创建计划的申请 -->
                         @if (pendingAssignments != null && pendingAssignments.Any())
                         {
                             <div class="card shadow-sm">
-                                <div class="card-header bg-info text-white">
-                                    <h6 class="mb-0">⌛ 待创建计划的申请 (@pendingAssignments.Count)</h6>
+                                <div class="card-header bg-info text-white py-2 px-3">
+                                    <h6 class="mb-0 small">⌛ 待创建计划的申请 (@pendingAssignments.Count)</h6>
                                 </div>
                                 <div class="list-group list-group-flush">
                                     @foreach (var assignment in pendingAssignments)
                                     {
-                                        <div class="list-group-item">
+                                        <div class="list-group-item py-2 px-3">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <div>
-                                                    <div class="fw-bold">@assignment.ProjectName</div>
+                                                    <div class="fw-bold small">@assignment.ProjectName</div>
                                                     <small class="text-muted"><span class="oi oi-person me-1"></span>@assignment.ApplicantName</small>
                                                 </div>
-                                                <button class="btn btn-sm btn-primary" @onclick="() => CreatePlanFromAssignment(assignment)"><span class="oi oi-plus me-1"></span>创建</button>
+                                                <button class="btn btn-sm btn-primary" @onclick="() => CreatePlanFromAssignment(assignment)">
+                                                    <span class="oi oi-plus me-1"></span>创建
+                                                </button>
                                             </div>
                                         </div>
                                     }
                                 </div>
                             </div>
                         }
-                        
-                        <!-- 2. 初步规划 -->
+
+                        <!-- 初步规划 -->
                         <PlanColumn Title="📝 初步规划"
                                     Status="TestPlanStatus.初步规划"
                                     Plans="testPlans"
-                                    OnEdit="EditPlan"
-                                    OnDelete="ConfirmDeletePlan" />
-                                    
-                        <!-- 3. 确定计划 -->
+                                    OnPlanClick="ShowPlanDetail" />
+
+                        <!-- 确定计划 -->
                         <PlanColumn Title="📅 确定计划"
                                     Status="TestPlanStatus.确定计划"
                                     Plans="testPlans"
-                                    OnEdit="EditPlan"
-                                    OnDelete="ConfirmDeletePlan" />
+                                    OnPlanClick="ShowPlanDetail" />
 
-                        <!-- 4. 已完成 -->
+                        <!-- 已完成 -->
                         <PlanColumn Title="✅ 已完成"
                                     Status="TestPlanStatus.已完成"
                                     Plans="testPlans"
-                                    IsInitiallyCollapsed="true"
-                                    OnEdit="EditPlan"
-                                    OnDelete="ConfirmDeletePlan" />
+                                    OnPlanClick="ShowPlanDetail" />
                     </div>
                 }
             </div>
         </div>
     </div>
 }
+
+<!-- 申请详情模态框 -->
+<AssignmentDetailModal Assignment="viewingAssignment"
+                       OnClose="CloseAssignmentDetail"
+                       OnApprove="@(async (a) => {})"
+                       OnReject="@(async (a) => {})"
+                       OnGoToAllocate="@(async (a) => {})" />
+
 @code {
     [Parameter]
     public int BenchId { get; set; }
+
+    // 视图模式枚举
+    private enum ViewMode { List, Detail, Edit }
+    private ViewMode currentViewMode = ViewMode.List;
 
     private Bench? currentBench;
     private string benchName = "加载中...";
@@ -199,10 +234,16 @@ else
     private DateTime currentDate = DateTime.Today;
     private List<Assignment>? pendingAssignments;
 
-    private bool isInEditMode = false;
+    // 状态：编辑
     private TestPlan editingPlan = new();
     private List<DateTime> selectedDatesForEditing = new();
     private string validationError = "";
+
+    // 状态：预览
+    private TestPlan? viewingPlan;
+
+    // 状态：查看申请
+    private Assignment? viewingAssignment;
 
     protected override async Task OnInitializedAsync() => await LoadData();
     protected override async Task OnParametersSetAsync() => await LoadData();
@@ -221,23 +262,37 @@ else
         StateHasChanged();
     }
 
-    // --- 切换到编辑模式 ---
-    private void EnterEditMode()
+    // ==================== 视图切换逻辑 ====================
+
+    private void ShowPlanDetail(TestPlan plan)
     {
-        isInEditMode = true;
-        validationError = "";
+        viewingPlan = plan;
+        currentViewMode = ViewMode.Detail;
+    }
+
+    private void CloseDetail()
+    {
+        currentViewMode = ViewMode.List;
+        viewingPlan = null;
+    }
+
+    private void EditPlanFromDetail(TestPlan plan)
+    {
+        currentViewMode = ViewMode.Edit;
+        EditPlan(plan);
     }
 
     private void AddNewPlan()
     {
         editingPlan = new TestPlan { BenchId = BenchId, Status = TestPlanStatus.初步规划 };
         selectedDatesForEditing.Clear();
-        EnterEditMode();
+        currentViewMode = ViewMode.Edit;
+        validationError = "";
     }
 
     private void EditPlan(TestPlan plan)
     {
-        editingPlan = new TestPlan // 创建副本
+        editingPlan = new TestPlan
         {
             Id = plan.Id,
             BenchId = plan.BenchId,
@@ -248,7 +303,8 @@ else
             AssignedTo = plan.AssignedTo
         };
         selectedDatesForEditing = plan.GetScheduledDates();
-        EnterEditMode();
+        currentViewMode = ViewMode.Edit;
+        validationError = "";
     }
 
     private void CreatePlanFromAssignment(Assignment assignment)
@@ -266,18 +322,19 @@ else
         selectedDatesForEditing = assignment.DesiredCompletionTime > DateTime.MinValue
                                   ? new List<DateTime> { assignment.DesiredCompletionTime.Date }
                                   : new List<DateTime>();
-        EnterEditMode();
+        currentViewMode = ViewMode.Edit;
+        validationError = "";
     }
 
-    // --- 退出编辑模式 ---
     private void CancelEdit()
     {
-        isInEditMode = false;
+        currentViewMode = ViewMode.List;
         editingPlan = new();
         selectedDatesForEditing.Clear();
     }
 
-    // --- 保存逻辑 (此方法现在由 OnValidSubmit 触发) ---
+    // ==================== 保存逻辑 ====================
+
     private async Task SavePlan()
     {
         validationError = "";
@@ -296,7 +353,6 @@ else
             }
         }
 
-        // ★★★ 关键：在提交服务前，手动将选中的日期列表同步到模型中
         editingPlan.SetScheduledDates(selectedDatesForEditing);
 
         try
@@ -339,10 +395,37 @@ else
         }
     }
 
-    // --- 日历交互 (保持不变) ---
+    // ==================== 删除逻辑 ====================
+
+    private async Task ConfirmDeletePlan(TestPlan plan)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"确定要删除计划 '{plan.ProjectName}' 吗？");
+        if (confirmed)
+        {
+            await PlanSvc.DeleteAsync(plan.Id);
+            currentViewMode = ViewMode.List;
+            viewingPlan = null;
+            await LoadData();
+        }
+    }
+
+    // ==================== 申请详情模态框 ====================
+
+    private async Task ShowAssignmentDetail(int assignmentId)
+    {
+        viewingAssignment = await AssignmentSvc.GetByIdAsync(assignmentId);
+    }
+
+    private void CloseAssignmentDetail()
+    {
+        viewingAssignment = null;
+    }
+
+    // ==================== 日历交互 ====================
+
     private void HandleDayClick(DateTime date)
     {
-        if (isInEditMode)
+        if (currentViewMode == ViewMode.Edit)
         {
             ToggleDateSelection(date);
         }
@@ -364,27 +447,9 @@ else
         }
     }
 
-    // --- 删除逻辑 (保持不变) ---
-    private async Task ConfirmDeletePlan(TestPlan plan)
-    {
-        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"确定要删除计划 '{plan.ProjectName}' 吗？");
-        if (confirmed)
-        {
-            await PlanSvc.DeleteAsync(plan.Id);
-            await LoadData();
-        }
-    }
+    // ==================== 日历导航 ====================
 
-    // --- 导航和辅助方法 (保持不变) ---
     private void Previous() => currentDate = currentDate.AddMonths(-1);
     private void Next() => currentDate = currentDate.AddMonths(1);
     private void GoToToday() => currentDate = DateTime.Today;
-    private string GetPlanListClass(TestPlan plan) => plan.Status == TestPlanStatus.初步规划 ? "border-start border-primary border-4" : "";
-    private string GetStatusBadge(TestPlanStatus status) => status switch
-    {
-        TestPlanStatus.初步规划 => "bg-secondary",
-        TestPlanStatus.确定计划 => "bg-primary",
-        TestPlanStatus.已完成 => "bg-success",
-        _ => "bg-dark"
-    };
 }
