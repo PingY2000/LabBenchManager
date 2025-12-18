@@ -441,15 +441,17 @@ else
         if (currentViewMode == ViewMode.Edit)
         {
             ToggleDateSelection(date);
+            StateHasChanged(); // 添加这行确保UI更新
         }
     }
 
     private void ToggleDateSelection(DateTime date)
     {
         if (date.Month != currentDate.Month) return;
-        /*
-        var isBookedByOther = testPlans?.Any(p => p.Id != editingPlan.Id && p.GetScheduledDates().Contains(date.Date)) ?? false;
-        if (isBookedByOther) return;
+
+        // 移除冲突检查，允许多个计划在同一天
+        // 清除之前的错误信息
+        validationError = "";
 
         if (selectedDatesForEditing.Contains(date.Date))
         {
@@ -458,7 +460,7 @@ else
         else
         {
             selectedDatesForEditing.Add(date.Date);
-        }*/
+        }
     }
 
     // ==================== 日历导航 ====================

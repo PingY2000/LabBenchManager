@@ -29,7 +29,7 @@
                                     @day.Date.Day
                                 </span>
                             </div>
-                            @foreach (var plan in plansInDay.Take(2))
+                            @foreach (var plan in plansInDay.Take(3))
                             {
                                 <!-- 修改(3): 添加动态 CSS 类 plan-block-@plan.Status -->
                                 <div class="plan-block plan-block-@plan.Status"
@@ -39,9 +39,9 @@
                                     @plan.ProjectName
                                 </div>
                             }
-                            @if (plansInDay.Count > 2)
+                            @if (plansInDay.Count > 3)
                             {
-                                <div class="small text-muted">+@(plansInDay.Count - 2) 更多...</div>
+                                <div class="small text-muted">+@(plansInDay.Count - 3) 更多...</div>
                             }
                         </td>
                     }
@@ -119,11 +119,11 @@
             if (SelectedDatesForPlan.Contains(day.Date))
             {
                 classes.Add("selected-for-plan");
-            }/*
+            }
             else if (GetPlansForDay(day.Date).Any())
             {
-                classes.Add("booked-day");
-            }*/
+                classes.Add("has-plans"); // 确保这个类不会禁用点击
+            }
         }
         return string.Join(" ", classes);
     }

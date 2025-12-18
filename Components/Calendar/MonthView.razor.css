@@ -167,3 +167,54 @@
 .plan-block-已完成 {
     background-color: var(--bs-success); /* 绿色 */
 }
+
+.plan-block {
+    font-size: 0.7rem;
+    padding: 2px 4px;
+    margin-bottom: 1px;
+    border-radius: 2px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.plan-text {
+    font-weight: 500;
+}
+
+.plan-assignee {
+    display: block;
+    opacity: 0.8;
+    font-size: 0.6rem;
+}
+
+.plan-block:hover {
+    opacity: 0.8;
+}
+.month-day-cell {
+    cursor: pointer;
+    min-height: 120px;
+    padding: 4px;
+    position: relative;
+    vertical-align: top;
+}
+
+    .month-day-cell:hover {
+        background-color: #f8f9fa;
+    }
+
+.has-plans {
+    background-color: #f0f8ff; /* 浅蓝色背景表示有计划 */
+}
+
+.selected-for-plan {
+    background-color: #d4edda !important; /* 绿色背景表示已选中 */
+    border: 2px solid #28a745 !important;
+}
+
+/* 确保所有日期单元格都可点击 */
+.month-day-cell.has-plans {
+    pointer-events: auto;
+    cursor: pointer;
+}
