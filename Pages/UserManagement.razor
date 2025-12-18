@@ -6,7 +6,7 @@
 @inject UserService UserService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
-@using OfficeOpenXml
+@using ClosedXML.Excel;
 
 <h3>用户权限管理</h3>
 <p class="text-muted">为NT账号分配应用程序角色、姓名和部门。</p>
@@ -46,7 +46,7 @@
         <tr>
             <th>NT账号</th>
             <th>显示名称</th>
-            <th>部门</th> <!-- 新增列 -->
+            <th>部门</th>
             <th>角色</th>
             <th>操作</th>
         </tr>
@@ -66,7 +66,6 @@
                         <InputText class="form-control form-control-sm" @bind-Value="user.DisplayName" @oninput="(e) => user.DisplayName = e.Value?.ToString()" @onblur="() => UpdateUser(user)" />
                     </td>
                     <td>
-                        <!-- 新增：部门编辑框 -->
                         <InputText class="form-control form-control-sm" @bind-Value="user.Department" @oninput="(e) => user.Department = e.Value?.ToString()" @onblur="() => UpdateUser(user)" />
                     </td>
                     <td>
@@ -103,7 +102,7 @@
         <InputText class="form-control" @bind-Value="newUser.DisplayName" />
     </div>
     <div class="col-md-3">
-        <label class="form-label">部门</label> <!-- 新增 -->
+        <label class="form-label">部门</label>
         <InputText class="form-control" @bind-Value="newUser.Department" />
     </div>
     <div class="col-md-2">
@@ -147,11 +146,9 @@
         await LoadUsers();
     }
 
-    // 重命名为更通用的 UpdateUser
     private async Task UpdateUser(ApplicationUser userToUpdate)
     {
         await UserService.UpdateUserAsync(userToUpdate);
-        // 可以在这里添加一个短暂的成功提示
     }
 
     private async Task DeleteUser(int id)
@@ -160,43 +157,36 @@
         await LoadUsers();
     }
 
-    // ==================== Excel 方法占位 ====================
     private async Task ExportToExcel()
     {
         if (users == null || !users.Any()) return;
 
-        // 设置EPPlus的许可证上下文
-        ExcelPackage.LicenseContext = LicenseContext.NonCommercial; // 或 Commercial，根据您的使用情况
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Users");
 
-        using (var package = new ExcelPackage())
+        // 表头
+        worksheet.Cell(1, 1).Value = "NtAccount";
+        worksheet.Cell(1, 2).Value = "DisplayName";
+        worksheet.Cell(1, 3).Value = "Department";
+        worksheet.Cell(1, 4).Value = "Role";
+
+        // 数据
+        for (int i = 0; i < users.Count; i++)
         {
-            var worksheet = package.Workbook.Worksheets.Add("Users");
-
-            // 设置表头
-            worksheet.Cells[1, 1].Value = "NtAccount";
-            worksheet.Cells[1, 2].Value = "DisplayName";
-            worksheet.Cells[1, 3].Value = "Department";
-            worksheet.Cells[1, 4].Value = "Role";
-
-            // 填充数据
-            for (int i = 0; i < users.Count; i++)
-            {
-                worksheet.Cells[i + 2, 1].Value = users[i].NtAccount;
-                worksheet.Cells[i + 2, 2].Value = users[i].DisplayName;
-                worksheet.Cells[i + 2, 3].Value = users[i].Department;
-                worksheet.Cells[i + 2, 4].Value = users[i].Role;
-            }
-
-            // 自动调整列宽
-            worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
-
-            // 将Excel文件转换为字节数组
-            var fileBytes = await package.GetAsByteArrayAsync();
-
-            // 使用JS Interop触发浏览器下载
-            var fileName = $"Users_Export_{DateTime.Now:yyyyMMdd}.xlsx";
-            await JSRuntime.InvokeVoidAsync("saveAsFile", fileName, Convert.ToBase64String(fileBytes));
+            worksheet.Cell(i + 2, 1).Value = users[i].NtAccount;
+            worksheet.Cell(i + 2, 2).Value = users[i].DisplayName;
+            worksheet.Cell(i + 2, 3).Value = users[i].Department;
+            worksheet.Cell(i + 2, 4).Value = users[i].Role;
         }
+
+        worksheet.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        workbook.SaveAs(ms);
+        var fileBytes = ms.ToArray();
+
+        var fileName = $"Users_Export_{DateTime.Now:yyyyMMdd}.xlsx";
+        await JSRuntime.InvokeVoidAsync("saveAsFile", fileName, Convert.ToBase64String(fileBytes));
     }
 
     private async Task ImportFromExcel(InputFileChangeEventArgs e)
@@ -212,46 +202,58 @@
                 throw new Exception("未选择文件。");
             }
 
-            var usersFromExcel = new List<ApplicationUser>();
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            // 先将文件内容异步读入内存
+            using var originalStream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var memoryStream = new MemoryStream();
+            await originalStream.CopyToAsync(memoryStream); // 异步复制到内存
+            memoryStream.Position = 0; // 重置位置
 
-            // 使用流来读取文件，避免大文件占用过多内存
-            using (var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024)) // 限制最大5MB
-            using (var package = new ExcelPackage(stream))
+            // 现在用支持同步读取的 MemoryStream 创建 workbook
+            using var workbook = new XLWorkbook(memoryStream);
+
+            var worksheet = workbook.Worksheet(1);
+            if (worksheet == null)
             {
-                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-                if (worksheet == null)
-                {
-                    throw new Exception("Excel文件中找不到工作表。");
-                }
+                throw new Exception("Excel 文件中找不到工作表。");
+            }
 
-                int rowCount = worksheet.Dimension.Rows;
-                // 从第二行开始读取（第一行为表头）
-                for (int row = 2; row <= rowCount; row++)
-                {
-                    var ntAccount = worksheet.Cells[row, 1].Value?.ToString()?.Trim();
-                    if (string.IsNullOrWhiteSpace(ntAccount)) continue; // 如果NT账号为空，则跳过此行
+            var lastRow = worksheet.LastRowUsed();
+            if (lastRow == null || lastRow.RowNumber() < 2)
+            {
+                throw new Exception("Excel 文件中没有数据行（至少需要表头和一行数据）。");
+            }
 
-                    usersFromExcel.Add(new ApplicationUser
-                    {
-                        NtAccount = ntAccount,
-                        DisplayName = worksheet.Cells[row, 2].Value?.ToString()?.Trim(),
-                        Department = worksheet.Cells[row, 3].Value?.ToString()?.Trim(),
-                        Role = worksheet.Cells[row, 4].Value?.ToString()?.Trim() ?? AppRoles.Requester // 默认角色
-                    });
-                }
+            var usersFromExcel = new List<ApplicationUser>();
+
+            for (int row = 2; row <= lastRow.RowNumber(); row++)
+            {
+                var ntAccount = worksheet.Cell(row, 1).Value.ToString().Trim();
+                if (string.IsNullOrEmpty(ntAccount))
+                    continue;
+
+                var displayName = worksheet.Cell(row, 2).Value.ToString().Trim();
+                var department = worksheet.Cell(row, 3).Value.ToString().Trim();
+                var roleRaw = worksheet.Cell(row, 4).Value.ToString().Trim();
+
+                var role = string.IsNullOrEmpty(roleRaw) ? AppRoles.Requester : roleRaw;
+
+                usersFromExcel.Add(new ApplicationUser
+                {
+                    NtAccount = ntAccount,
+                    DisplayName = displayName,
+                    Department = department,
+                    Role = role
+                });
             }
 
             if (!usersFromExcel.Any())
             {
-                throw new Exception("Excel文件中没有找到有效的数据行。");
+                throw new Exception("Excel 文件中没有找到有效的用户数据（NT账号不能为空）。");
             }
 
-            // 调用Service进行批量处理
             var (added, updated) = await UserService.UpsertUsersAsync(usersFromExcel);
-
             importStatusMessage = $"处理完成！新增 {added} 个用户，更新 {updated} 个用户。";
-            await LoadUsers(); // 刷新页面列表
+            await LoadUsers();
         }
         catch (Exception ex)
         {
@@ -259,5 +261,4 @@
             importStatusMessage = $"导入失败: {ex.Message}";
         }
     }
-
 }
