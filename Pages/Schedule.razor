@@ -403,10 +403,28 @@ else
 
         try
         {
-            TestPlan? originalPlan = null;
+            // 在更新前创建原始计划的深拷贝
+            TestPlan? originalPlanSnapshot = null;
             if (editingPlan.Id > 0)
             {
-                originalPlan = testPlans?.FirstOrDefault(p => p.Id == editingPlan.Id);
+                var originalPlan = testPlans?.FirstOrDefault(p => p.Id == editingPlan.Id);
+                if (originalPlan != null)
+                {
+                    // 创建原始计划的深拷贝
+                    originalPlanSnapshot = new TestPlan
+                    {
+                        Id = originalPlan.Id,
+                        BenchId = originalPlan.BenchId,
+                        AssignmentId = originalPlan.AssignmentId,
+                        ProjectName = originalPlan.ProjectName,
+                        Description = originalPlan.Description,
+                        Status = originalPlan.Status,
+                        AssignedTo = originalPlan.AssignedTo,
+                        RequestedBy = originalPlan.RequestedBy,
+                        SampleQuantity = originalPlan.SampleQuantity
+                    };
+                    originalPlanSnapshot.SetScheduledDates(originalPlan.GetScheduledDates());
+                }
             }
 
             TestPlan savedPlan;
@@ -420,14 +438,19 @@ else
                 await PlanSvc.UpdateAsync(editingPlan);
                 savedPlan = editingPlan;
 
-                // 记录修改历史
-                if (originalPlan != null)
+                // 记录修改历史 - 使用快照
+                if (originalPlanSnapshot != null)
                 {
                     var authState = await AuthStateProvider.GetAuthenticationStateAsync();
                     var currentUser = authState.User.Identity?.Name ?? "未知用户";
 
+                    Console.WriteLine($"Recording history: Original Status = {originalPlanSnapshot.Status}, Modified Status = {savedPlan.Status}");
+                    Console.WriteLine($"User = {currentUser}, Reason = {modificationReason}");
+
                     await HistoryService.RecordPlanModificationAsync(
-                        originalPlan, savedPlan, currentUser, modificationReason);
+                        originalPlanSnapshot, savedPlan, currentUser, modificationReason);
+
+                    Console.WriteLine("History recording completed");
                 }
             }
 
@@ -454,6 +477,7 @@ else
         catch (Exception ex)
         {
             validationError = $"保存失败: {ex.Message}";
+            Console.WriteLine($"Save error: {ex.Message}");
         }
     }
     // ==================== 删除逻辑 ====================
