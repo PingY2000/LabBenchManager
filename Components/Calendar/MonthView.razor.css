@@ -142,3 +142,28 @@
     .month-day-cell.booked-day:hover {
         cursor: not-allowed;
     }
+
+/* 已有的 plan-block 基础样式 (假设存在) */
+.plan-block {
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 2px;
+    color: white;
+}
+
+/* 新增：根据计划状态设置背景颜色 */
+.plan-block-初步规划 {
+    background-color: var(--bs-secondary); /* 灰色 */
+}
+
+.plan-block-确定计划 {
+    background-color: var(--bs-primary); /* 蓝色 */
+}
+
+.plan-block-已完成 {
+    background-color: var(--bs-success); /* 绿色 */
+}

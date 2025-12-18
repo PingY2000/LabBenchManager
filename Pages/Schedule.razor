@@ -49,7 +49,7 @@ else
                                Plans="@testPlans"
                                SelectedDatesForPlan="@selectedDatesForEditing"
                                OnDayClick="HandleDayClick"
-                               OnPlanClick="ShowPlanDetail" />
+                               OnPlanClick="HandlePlanClick" />
                 </div>
             </div>
         </div>
@@ -152,15 +152,18 @@ else
                 else if (currentViewMode == ViewMode.Detail)
                 {
                     <!-- ==================== 计划详情预览 ==================== -->
-                    <TestPlanDetailView Plan="viewingPlan"
-                                        OnClose="CloseDetail"
-                                        OnEdit="EditPlanFromDetail"
-                                        OnDelete="ConfirmDeletePlan"
-                                        OnViewAssignment="ShowAssignmentDetail" />
+                    <!-- 修改(1): 添加一个包装 div，并添加 onclick 事件来关闭详情 -->
+                    <div @onclick="CloseDetail">
+                        <TestPlanDetailView Plan="viewingPlan"
+                                            OnClose="CloseDetail"
+                                            OnEdit="EditPlanFromDetail"
+                                            OnDelete="ConfirmDeletePlan"
+                                            OnViewAssignment="ShowAssignmentDetail" />
+                    </div>
                 }
                 else
                 {
-                    <!-- ==================== 计划看板 ==================== -->
+                    <!-- ==================== 计划看板 (无变化) ==================== -->
                     <div class="d-flex flex-column gap-3">
 
                         <!-- 待创建计划的申请 -->
@@ -262,6 +265,15 @@ else
         StateHasChanged();
     }
 
+    private void HandlePlanClick(TestPlan plan)
+    {
+        // 只有在非编辑模式下才显示详情
+        if (currentViewMode != ViewMode.Edit)
+        {
+            ShowPlanDetail(plan);
+        }
+    }
+
     // ==================== 视图切换逻辑 ====================
 
     private void ShowPlanDetail(TestPlan plan)
@@ -272,8 +284,11 @@ else
 
     private void CloseDetail()
     {
-        currentViewMode = ViewMode.List;
-        viewingPlan = null;
+        if (currentViewMode == ViewMode.Detail) // 增加一个判断，防止意外关闭
+        {
+            currentViewMode = ViewMode.List;
+            viewingPlan = null;
+        }
     }
 
     private void EditPlanFromDetail(TestPlan plan)
@@ -319,9 +334,7 @@ else
             RequestedBy = assignment.ApplicantName,
             SampleQuantity = assignment.SampleQuantity
         };
-        selectedDatesForEditing = assignment.DesiredCompletionTime > DateTime.MinValue
-                                  ? new List<DateTime> { assignment.DesiredCompletionTime.Date }
-                                  : new List<DateTime>();
+        selectedDatesForEditing = new List<DateTime>();
         currentViewMode = ViewMode.Edit;
         validationError = "";
     }
@@ -343,7 +356,7 @@ else
             validationError = "请至少选择一个测试日期";
             return;
         }
-        foreach (var date in selectedDatesForEditing)
+        /*foreach (var date in selectedDatesForEditing)
         {
             var conflictingPlan = testPlans?.FirstOrDefault(p => p.Id != editingPlan.Id && p.GetScheduledDates().Contains(date.Date));
             if (conflictingPlan != null)
@@ -351,7 +364,7 @@ else
                 validationError = $"日期 {date:yyyy-MM-dd} 与计划 '{conflictingPlan.ProjectName}' 冲突";
                 return;
             }
-        }
+        }*/
 
         editingPlan.SetScheduledDates(selectedDatesForEditing);
 
