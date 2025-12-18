@@ -2,6 +2,7 @@
 using LabBenchManager.Data;
 using LabBenchManager.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Internal;
 
 namespace LabBenchManager.Services
 {
@@ -23,9 +24,12 @@ namespace LabBenchManager.Services
                             .ToListAsync();
         }
 
-        // ===============================================
-        // == 新增的方法 ==
-        // ===============================================
+        // 添加别名方法供 ReportApprovals 页面使用
+        public async Task<List<Assignment>> GetAllAssignmentsAsync()
+        {
+            return await GetAllAsync();
+        }
+
         /// <summary>
         /// 根据申请人的NT账号获取其提交的所有申请
         /// </summary>
@@ -44,7 +48,6 @@ namespace LabBenchManager.Services
                              .OrderByDescending(a => a.RequestTime)
                              .ToListAsync();
         }
-        // ===============================================
 
         public async Task AddAsync(Assignment assignment)
         {

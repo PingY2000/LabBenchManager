@@ -340,6 +340,8 @@
             newAssignment.ApplicantNTAccount = currentUser.Identity.Name ?? "unknown";
             // 您可以尝试从Claims中获取更完整的名字，如果存在的话
             newAssignment.ApplicantName = currentUser.FindFirst(ClaimTypes.GivenName)?.Value ?? currentUser.Identity.Name ?? "";
+            var nameParts = newAssignment.ApplicantName.Split('\\');
+            newAssignment.ApplicantName = nameParts.Length > 1 ? nameParts[1] : newAssignment.ApplicantName;
         }
 
         // 设置默认时间

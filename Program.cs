@@ -17,6 +17,13 @@ builder.Services.AddServerSideBlazor();
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? "Server=(localdb)\\MSSQLLocalDB;Database=LabBenchDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
 
+// 注册 DbContextFactory（使用正确的方法）
+builder.Services.AddDbContextFactory<LabDbContext>(options =>
+{
+    options.UseSqlServer(connectionString);
+}, ServiceLifetime.Scoped);  // 重要：设置为 Scoped
+
+// 注册 DbContext（供不使用 Factory 的服务使用）
 builder.Services.AddDbContext<LabDbContext>(options =>
     options.UseSqlServer(connectionString));
 
@@ -25,6 +32,7 @@ builder.Services.AddScoped<BenchService>();
 builder.Services.AddScoped<AssignmentService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<TestPlanService>();
+builder.Services.AddScoped<ReportApprovalService>();
 
 // --- 身份认证与授权 ---
 builder.Services.AddAuthentication(NegotiateDefaults.AuthenticationScheme)

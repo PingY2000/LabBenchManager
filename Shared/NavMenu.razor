@@ -61,7 +61,11 @@
             }
         </div>
 
-        
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="report-approvals">
+                <span class="oi oi-document" aria-hidden="true"></span> 报告审批
+            </NavLink>
+        </div>
 
         @* 申请管理: 只有 TestEngineer, Admin 能看到 *@
         <AuthorizeView Roles="TestEngineer, Admin">
