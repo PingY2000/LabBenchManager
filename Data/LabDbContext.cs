@@ -13,6 +13,7 @@ namespace LabBenchManager.Data
         public DbSet<ApplicationUser> ApplicationUsers => Set<ApplicationUser>();
         public DbSet<TestPlan> TestPlans => Set<TestPlan>();
         public DbSet<ReportApproval> ReportApprovals => Set<ReportApproval>();  // 新增
+        public DbSet<TestPlanHistory> TestPlanHistories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -13,6 +13,8 @@
 @inject AssignmentService AssignmentSvc
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
+@inject TestPlanHistoryService HistoryService
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>@benchName - 使用规划</PageTitle>
 
@@ -122,6 +124,24 @@ else
                                     <div class="alert alert-info small p-2 mb-2">
                                         <span class="oi oi-link-intact me-2"></span>
                                         此计划关联了测试申请 #@editingPlan.AssignmentId
+                                    </div>
+                                }
+                                <!-- 添加修改原因输入框 -->
+                                @if (showReasonInput)
+                                {
+                                    <div class="mb-3">
+                                        <label class="form-label small mb-1 fw-bold text-warning">
+                                            <span class="oi oi-warning me-1"></span>修改原因 <span class="text-danger">*</span>
+                                        </label>
+                                        <InputTextArea class="form-control form-control-sm"
+                                                       @bind-Value="modificationReason"
+                                                       rows="2"
+                                                       placeholder="请说明修改确定计划的原因..." />
+                                        <small class="text-muted">修改已确定的计划需要记录原因</small>
+                                        @if (string.IsNullOrWhiteSpace(modificationReason))
+                                        {
+                                            <div class="text-danger small mt-1">请填写修改原因</div>
+                                        }
                                     </div>
                                 }
 
@@ -251,6 +271,10 @@ else
     protected override async Task OnInitializedAsync() => await LoadData();
     protected override async Task OnParametersSetAsync() => await LoadData();
 
+    private string modificationReason = "";
+    private bool showReasonInput = false;
+
+
     private async Task LoadData()
     {
         currentBench = await BenchSvc.GetByIdAsync(BenchId);
@@ -294,7 +318,7 @@ else
     private void EditPlanFromDetail(TestPlan plan)
     {
         currentViewMode = ViewMode.Edit;
-        EditPlan(plan);
+        EditPlan(plan); // 这个已经包含了显示修改原因输入框的逻辑
     }
 
     private void AddNewPlan()
@@ -320,6 +344,10 @@ else
         selectedDatesForEditing = plan.GetScheduledDates();
         currentViewMode = ViewMode.Edit;
         validationError = "";
+
+        // 如果编辑的是确定计划，立即显示修改原因输入框
+        showReasonInput = plan.Status == TestPlanStatus.确定计划;
+        modificationReason = ""; // 清空之前的修改原因
     }
 
     private void CreatePlanFromAssignment(Assignment assignment)
@@ -344,6 +372,9 @@ else
         currentViewMode = ViewMode.List;
         editingPlan = new();
         selectedDatesForEditing.Clear();
+        modificationReason = "";
+        showReasonInput = false;
+        validationError = "";
     }
 
     // ==================== 保存逻辑 ====================
@@ -356,20 +387,28 @@ else
             validationError = "请至少选择一个测试日期";
             return;
         }
-        /*foreach (var date in selectedDatesForEditing)
+
+        // 如果是修改确定计划，检查是否填写了修改原因
+        if (editingPlan.Id > 0)
         {
-            var conflictingPlan = testPlans?.FirstOrDefault(p => p.Id != editingPlan.Id && p.GetScheduledDates().Contains(date.Date));
-            if (conflictingPlan != null)
+            var originalPlan = testPlans?.FirstOrDefault(p => p.Id == editingPlan.Id);
+            if (originalPlan?.Status == TestPlanStatus.确定计划 && string.IsNullOrWhiteSpace(modificationReason))
             {
-                validationError = $"日期 {date:yyyy-MM-dd} 与计划 '{conflictingPlan.ProjectName}' 冲突";
+                validationError = "修改确定计划需要填写修改原因";
                 return;
             }
-        }*/
+        }
 
         editingPlan.SetScheduledDates(selectedDatesForEditing);
 
         try
         {
+            TestPlan? originalPlan = null;
+            if (editingPlan.Id > 0)
+            {
+                originalPlan = testPlans?.FirstOrDefault(p => p.Id == editingPlan.Id);
+            }
+
             TestPlan savedPlan;
             if (editingPlan.Id == 0)
             {
@@ -380,6 +419,16 @@ else
             {
                 await PlanSvc.UpdateAsync(editingPlan);
                 savedPlan = editingPlan;
+
+                // 记录修改历史
+                if (originalPlan != null)
+                {
+                    var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                    var currentUser = authState.User.Identity?.Name ?? "未知用户";
+
+                    await HistoryService.RecordPlanModificationAsync(
+                        originalPlan, savedPlan, currentUser, modificationReason);
+                }
             }
 
             if (savedPlan.AssignmentId.HasValue)
@@ -407,7 +456,6 @@ else
             validationError = $"保存失败: {ex.Message}";
         }
     }
-
     // ==================== 删除逻辑 ====================
 
     private async Task ConfirmDeletePlan(TestPlan plan)

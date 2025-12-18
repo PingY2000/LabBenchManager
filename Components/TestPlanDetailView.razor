@@ -83,7 +83,13 @@
                 </div>
             </div>
         </div>
+
     </div>
+}
+
+@if (Plan?.Status == TestPlanStatus.确定计划 || Plan?.Status == TestPlanStatus.已完成)
+{
+    <TestPlanHistoryView TestPlanId="Plan.Id" />
 }
 
 @code {

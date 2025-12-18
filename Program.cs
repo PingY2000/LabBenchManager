@@ -33,6 +33,7 @@ builder.Services.AddScoped<AssignmentService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<TestPlanService>();
 builder.Services.AddScoped<ReportApprovalService>();
+builder.Services.AddScoped<TestPlanHistoryService>();
 
 // --- 身份认证与授权 ---
 builder.Services.AddAuthentication(NegotiateDefaults.AuthenticationScheme)
