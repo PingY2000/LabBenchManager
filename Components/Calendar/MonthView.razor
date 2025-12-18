@@ -119,11 +119,11 @@
             if (SelectedDatesForPlan.Contains(day.Date))
             {
                 classes.Add("selected-for-plan");
-            }
+            }/*
             else if (GetPlansForDay(day.Date).Any())
             {
                 classes.Add("booked-day");
-            }
+            }*/
         }
         return string.Join(" ", classes);
     }

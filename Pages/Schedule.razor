@@ -447,6 +447,7 @@ else
     private void ToggleDateSelection(DateTime date)
     {
         if (date.Month != currentDate.Month) return;
+        /*
         var isBookedByOther = testPlans?.Any(p => p.Id != editingPlan.Id && p.GetScheduledDates().Contains(date.Date)) ?? false;
         if (isBookedByOther) return;
 
@@ -457,7 +458,7 @@ else
         else
         {
             selectedDatesForEditing.Add(date.Date);
-        }
+        }*/
     }
 
     // ==================== 日历导航 ====================

@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LabBenchManager.Migrations
 {
     [DbContext(typeof(LabDbContext))]
-    [Migration("20251211012027_UpdateBenchStructure")]
-    partial class UpdateBenchStructure
+    [Migration("20251218035252_AddDepartmentToApplicationUser")]
+    partial class AddDepartmentToApplicationUser
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -32,6 +32,10 @@ namespace LabBenchManager.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Department")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("DisplayName")
                         .HasMaxLength(100)
@@ -60,20 +64,34 @@ namespace LabBenchManager.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ApplicantNTAccount")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("ApplicantName")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<int>("BenchId")
+                    b.Property<int?>("BenchId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("EndTime")
+                    b.Property<string>("Department")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("DesiredCompletionTime")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime>("EstimatedSampleTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsUrgent")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Notes")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("ProjectName")
                         .IsRequired()
@@ -83,15 +101,57 @@ namespace LabBenchManager.Migrations
                     b.Property<DateTime>("RequestTime")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("StartTime")
-                        .HasColumnType("datetime2");
+                    b.Property<string>("SampleBatchNo")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SampleQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SampleRequirements")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("SampleSpecification")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SpecialRequirements")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("StageDescription")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<string>("TestContent")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("TestParameters")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("TestPlanId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TestStandard")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("UrgentReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("BenchId");
+
+                    b.HasIndex("TestPlanId");
 
                     b.ToTable("Assignments");
                 });
@@ -168,15 +228,12 @@ namespace LabBenchManager.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime?>("ActualEndTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ActualStartTime")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("AssignedTo")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("AssignmentId")
+                        .HasColumnType("int");
 
                     b.Property<int>("BenchId")
                         .HasColumnType("int");
@@ -189,17 +246,7 @@ namespace LabBenchManager.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<DateTime?>("PlannedEndTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("PlannedStartTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Priority")
-                        .HasColumnType("int");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ProjectName")
                         .IsRequired()
@@ -207,18 +254,17 @@ namespace LabBenchManager.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("RequestedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SampleNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("SampleQuantity")
                         .HasColumnType("int");
 
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
+                    b.Property<string>("ScheduledDates")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -227,6 +273,8 @@ namespace LabBenchManager.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AssignmentId");
 
                     b.HasIndex("BenchId");
 
@@ -237,20 +285,30 @@ namespace LabBenchManager.Migrations
                 {
                     b.HasOne("LabBenchManager.Models.Bench", "Bench")
                         .WithMany()
-                        .HasForeignKey("BenchId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("BenchId");
+
+                    b.HasOne("LabBenchManager.Models.TestPlan", "TestPlan")
+                        .WithMany()
+                        .HasForeignKey("TestPlanId");
 
                     b.Navigation("Bench");
+
+                    b.Navigation("TestPlan");
                 });
 
             modelBuilder.Entity("LabBenchManager.Models.TestPlan", b =>
                 {
+                    b.HasOne("LabBenchManager.Models.Assignment", "Assignment")
+                        .WithMany()
+                        .HasForeignKey("AssignmentId");
+
                     b.HasOne("LabBenchManager.Models.Bench", "Bench")
                         .WithMany("TestPlans")
                         .HasForeignKey("BenchId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Assignment");
 
                     b.Navigation("Bench");
                 });

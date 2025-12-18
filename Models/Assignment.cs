@@ -20,6 +20,11 @@ namespace LabBenchManager.Models
     {
         public int Id { get; set; }
 
+        // 新增字段：用于记录申请人的唯一标识（如NT账号）
+        [StringLength(50)]
+        public string? ApplicantNTAccount { get; set; } = "";
+
+
         [Required(ErrorMessage = "申请人姓名不能为空")]
         [StringLength(50)]
         [Display(Name = "申请人姓名")]
@@ -34,13 +39,6 @@ namespace LabBenchManager.Models
         [Display(Name = "部门/单位")]
         public string? Department { get; set; } = "";
 
-        [StringLength(20)]
-        [Display(Name = "联系电话")]
-        public string? ContactPhone { get; set; } = "";
-
-        [StringLength(100)]
-        [Display(Name = "电子邮箱")]
-        public string? ContactEmail { get; set; } = "";
 
         // 可选的外键关联到 Bench
         [Display(Name = "测试设备")]

@@ -51,5 +51,43 @@ namespace LabBenchManager.Services
                 await _db.SaveChangesAsync();
             }
         }
+
+        public async Task<(int Added, int Updated)> UpsertUsersAsync(List<ApplicationUser> usersFromExcel)
+        {
+            if (usersFromExcel == null || !usersFromExcel.Any())
+            {
+                return (0, 0);
+            }
+
+            var addedCount = 0;
+            var updatedCount = 0;
+
+            // 获取所有数据库中的NT账号，用于快速查找
+            var existingUsers = await _db.ApplicationUsers.ToDictionaryAsync(u => u.NtAccount, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var user in usersFromExcel)
+            {
+                if (string.IsNullOrWhiteSpace(user.NtAccount)) continue; // 跳过无效数据
+
+                if (existingUsers.TryGetValue(user.NtAccount, out var existingUser))
+                {
+                    // 更新现有用户
+                    existingUser.DisplayName = user.DisplayName;
+                    existingUser.Department = user.Department;
+                    existingUser.Role = user.Role;
+                    _db.ApplicationUsers.Update(existingUser);
+                    updatedCount++;
+                }
+                else
+                {
+                    // 添加新用户
+                    _db.ApplicationUsers.Add(user);
+                    addedCount++;
+                }
+            }
+
+            await _db.SaveChangesAsync();
+            return (addedCount, updatedCount);
+        }
     }
 }

@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LabBenchManager.Migrations
 {
     [DbContext(typeof(LabDbContext))]
-    [Migration("20251217055047_Sec2")]
-    partial class Sec2
+    [Migration("20251218033827_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -60,6 +60,10 @@ namespace LabBenchManager.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ApplicantNTAccount")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("ApplicantName")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -67,14 +71,6 @@ namespace LabBenchManager.Migrations
 
                     b.Property<int?>("BenchId")
                         .HasColumnType("int");
-
-                    b.Property<string>("ContactEmail")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("ContactPhone")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("Department")
                         .HasMaxLength(100)
@@ -119,9 +115,6 @@ namespace LabBenchManager.Migrations
                     b.Property<string>("SpecialRequirements")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
-
-                    b.Property<int>("Stage")
-                        .HasColumnType("int");
 
                     b.Property<string>("StageDescription")
                         .HasMaxLength(100)
@@ -231,12 +224,6 @@ namespace LabBenchManager.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime?>("ActualEndTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ActualStartTime")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("AssignedTo")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -255,17 +242,7 @@ namespace LabBenchManager.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<DateTime?>("PlannedEndTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("PlannedStartTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Priority")
-                        .HasColumnType("int");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ProjectName")
                         .IsRequired()
@@ -273,18 +250,17 @@ namespace LabBenchManager.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("RequestedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SampleNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("SampleQuantity")
                         .HasColumnType("int");
 
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
+                    b.Property<string>("ScheduledDates")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");

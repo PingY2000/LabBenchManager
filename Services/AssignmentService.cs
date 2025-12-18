@@ -23,6 +23,29 @@ namespace LabBenchManager.Services
                             .ToListAsync();
         }
 
+        // ===============================================
+        // == 新增的方法 ==
+        // ===============================================
+        /// <summary>
+        /// 根据申请人的NT账号获取其提交的所有申请
+        /// </summary>
+        /// <param name="ntAccount">申请人的NT账号</param>
+        /// <returns>一个包含该用户所有申请的列表</returns>
+        public async Task<List<Assignment>> GetAssignmentsByNTAccountAsync(string? ntAccount)
+        {
+            if (string.IsNullOrEmpty(ntAccount))
+            {
+                return new List<Assignment>(); // 如果账号为空，返回空列表
+            }
+
+            return await _db.Assignments
+                             .Where(a => a.ApplicantNTAccount == ntAccount)
+                             .Include(a => a.Bench) // 同样可以预加载关联数据
+                             .OrderByDescending(a => a.RequestTime)
+                             .ToListAsync();
+        }
+        // ===============================================
+
         public async Task AddAsync(Assignment assignment)
         {
             _db.Assignments.Add(assignment);
@@ -37,8 +60,13 @@ namespace LabBenchManager.Services
 
         public async Task<Assignment?> GetByIdAsync(int id)
         {
-            return await _db.Assignments.FindAsync(id);
+            // 在获取单个申请时，也预加载关联数据，以便在详情页显示
+            return await _db.Assignments
+                            .Include(a => a.Bench)
+                            .Include(a => a.TestPlan)
+                            .FirstOrDefaultAsync(a => a.Id == id);
         }
+
         public async Task DeleteAsync(int id)
         {
             var assignment = await _db.Assignments.FindAsync(id);

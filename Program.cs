@@ -5,8 +5,10 @@ using LabBenchManager.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Negotiate;
 using Microsoft.EntityFrameworkCore;
+using OfficeOpenXml;
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 // --- 核心服务 ---
 builder.Services.AddRazorPages();

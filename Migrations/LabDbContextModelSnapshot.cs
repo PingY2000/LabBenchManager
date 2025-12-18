@@ -30,6 +30,10 @@ namespace LabBenchManager.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Department")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("DisplayName")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -57,6 +61,10 @@ namespace LabBenchManager.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ApplicantNTAccount")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("ApplicantName")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -64,14 +72,6 @@ namespace LabBenchManager.Migrations
 
                     b.Property<int?>("BenchId")
                         .HasColumnType("int");
-
-                    b.Property<string>("ContactEmail")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("ContactPhone")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("Department")
                         .HasMaxLength(100)
@@ -116,9 +116,6 @@ namespace LabBenchManager.Migrations
                     b.Property<string>("SpecialRequirements")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
-
-                    b.Property<int>("Stage")
-                        .HasColumnType("int");
 
                     b.Property<string>("StageDescription")
                         .HasMaxLength(100)

@@ -1,0 +1,102 @@
+﻿@page "/my-assignments"
+@attribute [Authorize] // 确保只有登录用户才能访问
+
+@using System.Security.Claims
+@using LabBenchManager.Models
+@using LabBenchManager.Services
+@inject AssignmentService AssignmentSvc
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>我的测试申请</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary">我提交的申请</h2>
+        <a href="/request" class="btn btn-success">
+            <span class="oi oi-plus me-1"></span>发起新的申请
+        </a>
+    </div>
+
+    @if (myAssignments == null)
+    {
+        <div class="text-center">
+            <p>正在加载您的申请记录...</p>
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!myAssignments.Any())
+    {
+        <div class="alert alert-info">
+            <span class="oi oi-info me-2"></span>您还没有提交过任何测试申请。
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>申请ID</th>
+                            <th>项目名称</th>
+                            <th>申请时间</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var assignment in myAssignments.OrderByDescending(a => a.RequestTime))
+                        {
+                            <tr>
+                                <td>@assignment.Id</td>
+                                <td>@assignment.ProjectName</td>
+                                <td>@assignment.RequestTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>
+                                    <span class="badge @GetStatusBadge(assignment.Status)">
+                                        @assignment.Status.ToString()
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="@($"/assignments/{assignment.Id}")" class="btn btn-sm btn-outline-primary">
+                                        <span class="oi oi-eye me-1"></span>详情
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Assignment>? myAssignments;
+    private string? currentUserNTAccount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            currentUserNTAccount = user.Identity.Name;
+            myAssignments = await AssignmentSvc.GetAssignmentsByNTAccountAsync(currentUserNTAccount);
+        }
+    }
+
+    // 您可能需要更新 AssignmentService 来添加 GetAssignmentsByNTAccountAsync 方法
+    // (见下文)
+
+    private string GetStatusBadge(AssignmentStatus status) => status switch
+    {
+        AssignmentStatus.待审批 => "bg-warning text-dark",
+        AssignmentStatus.待分配 => "bg-info text-dark",
+        AssignmentStatus.已拒绝 => "bg-danger",
+        AssignmentStatus.已完成 => "bg-success",
+        _ => "bg-secondary"
+    };
+}

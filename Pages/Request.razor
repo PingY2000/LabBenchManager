@@ -1,40 +1,27 @@
 ﻿@page "/request"
 @using System.ComponentModel.DataAnnotations
+@using System.Security.Claims 
 @using LabBenchManager.Services
 @using LabBenchManager.Models
 @inject AssignmentService AssignmentSvc
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>申请测试</PageTitle>
 
 <div class="container-fluid py-4">
-    <!-- 成功提示 -->
-    @if (showSuccessMessage)
-    {
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <div class="d-flex align-items-center">
-                <span class="oi oi-check me-3" style="font-size: 1.5rem;"></span>
-                <div class="flex-grow-1">
-                    <h5 class="alert-heading mb-1">申请提交成功！</h5>
-                    <p class="mb-0">您的测试申请已提交，申请编号：<strong>@lastRequestId</strong>。管理员将会尽快审批。</p>
-                    <div class="mt-2">
-                        <a href="/assignments" class="btn btn-sm btn-outline-success me-2">
-                            <span class="oi oi-list me-1"></span>查看我的申请
-                        </a>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ResetForm">
-                            <span class="oi oi-plus me-1"></span>继续申请
-                        </button>
-                    </div>
-                </div>
-                <button type="button" class="btn-close" @onclick="() => showSuccessMessage = false" aria-label="Close"></button>
-            </div>
-        </div>
-    }
+    
 
-    <!-- 页面标题 -->
-    <div class="mb-4">
-        <h2 class="fw-bold text-primary">测试申请单</h2>
-        <p class="text-muted">请详细填写以下测试申请信息，所有带 <span class="text-danger">*</span> 的为必填项。</p>
+    <!-- 页面标题 (添加一个查看我的申请的按钮)-->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-primary">测试申请单</h2>
+            <p class="text-muted">请详细填写以下测试申请信息，所有带 <span class="text-danger">*</span> 的为必填项。</p>
+        </div>
+        <!-- 修改(2): 在页面右上角也添加一个"查看我的申请"按钮 -->
+        <a href="/my-assignments" class="btn btn-outline-primary">
+            <span class="oi oi-list-rich me-1"></span>我提交的申请
+        </a>
     </div>
 
     <EditForm Model="@newAssignment" OnValidSubmit="HandleValidSubmit">
@@ -281,6 +268,30 @@
         </div>
     </EditForm>
 
+    <!-- 成功提示 -->
+    @if (showSuccessMessage)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <div class="d-flex align-items-center">
+                <span class="oi oi-check me-3" style="font-size: 1.5rem;"></span>
+                <div class="flex-grow-1">
+                    <h5 class="alert-heading mb-1">申请提交成功！</h5>
+                    <p class="mb-0">您的测试申请已提交，申请编号：<strong>@lastRequestId</strong>。管理员将会尽快审批。</p>
+                    <div class="mt-2">
+                        <!-- 修改(1): "查看我的申请"按钮现在导航到新页面 -->
+                        <a href="/my-assignments" class="btn btn-sm btn-outline-success me-2">
+                            <span class="oi oi-list me-1"></span>查看我的申请
+                        </a>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ResetForm">
+                            <span class="oi oi-plus me-1"></span>继续申请
+                        </button>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" @onclick="() => showSuccessMessage = false" aria-label="Close"></button>
+            </div>
+        </div>
+    }
+
     <!-- 填写指南 -->
     <div class="card shadow-sm mt-4">
         <div class="card-body">
@@ -314,29 +325,40 @@
     private Assignment newAssignment = new();
     private bool showSuccessMessage = false;
     private int lastRequestId = 0;
+    private ClaimsPrincipal? currentUser;
 
-    protected override void OnInitialized()
+    // 修改(3): OnInitializedAsync 用于异步获取用户信息
+    protected override async Task OnInitializedAsync()
     {
+        // 获取当前用户的认证状态
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        currentUser = authState.User;
+
+        // 如果用户已登录，则自动填充信息
+        if (currentUser.Identity?.IsAuthenticated ?? false)
+        {
+            newAssignment.ApplicantNTAccount = currentUser.Identity.Name ?? "unknown";
+            // 您可以尝试从Claims中获取更完整的名字，如果存在的话
+            newAssignment.ApplicantName = currentUser.FindFirst(ClaimTypes.GivenName)?.Value ?? currentUser.Identity.Name ?? "";
+        }
+
         // 设置默认时间
         newAssignment.EstimatedSampleTime = DateTime.Today.AddDays(1);
         newAssignment.DesiredCompletionTime = DateTime.Today.AddDays(5);
-
     }
 
     private void ResetForm()
     {
         // 保存当前申请人的信息，便于再次申请
+        var savedNT = newAssignment.ApplicantNTAccount;
         var savedName = newAssignment.ApplicantName;
         var savedDept = newAssignment.Department;
-        var savedPhone = newAssignment.ContactPhone;
-        var savedEmail = newAssignment.ContactEmail;
 
         newAssignment = new Assignment
         {
+            ApplicantNTAccount = savedNT, // 保留NT账号
             ApplicantName = savedName,
             Department = savedDept,
-            ContactPhone = savedPhone,
-            ContactEmail = savedEmail,
             EstimatedSampleTime = DateTime.Today.AddDays(1),
             DesiredCompletionTime = DateTime.Today.AddDays(5),
             SampleQuantity = 1,
@@ -350,11 +372,19 @@
     {
         try
         {
+            if (currentUser?.Identity?.IsAuthenticated == false)
+            {
+                // 可以添加一个错误提示，告知用户需要登录
+                Console.WriteLine("用户未登录，无法提交申请");
+                return;
+            }
+
+            // 修改(4): 确保NT账号在提交时被设置
+            newAssignment.ApplicantNTAccount = currentUser?.Identity?.Name ?? "unknown";
+
             // 验证时间逻辑
             if (newAssignment.DesiredCompletionTime <= newAssignment.EstimatedSampleTime)
             {
-                // 这里可以添加更具体的错误提示
-                // 暂时使用控制台输出
                 Console.WriteLine("期望完成时间必须晚于预计交样时间");
                 return;
             }
@@ -376,18 +406,20 @@
             // 显示成功消息
             showSuccessMessage = true;
 
+            await AssignmentSvc.AddAsync(newAssignment);
+            lastRequestId = newAssignment.Id; // 获取新创建的申请ID
+
+            showSuccessMessage = true;
+            StateHasChanged(); // 手动触发UI刷新
+
             // 重置表单，但保留申请人信息
             var savedName = newAssignment.ApplicantName;
             var savedDept = newAssignment.Department;
-            var savedPhone = newAssignment.ContactPhone;
-            var savedEmail = newAssignment.ContactEmail;
 
             newAssignment = new Assignment
             {
                 ApplicantName = savedName,
                 Department = savedDept,
-                ContactPhone = savedPhone,
-                ContactEmail = savedEmail,
                 EstimatedSampleTime = DateTime.Today.AddDays(1),
                 DesiredCompletionTime = DateTime.Today.AddDays(5),
                 SampleQuantity = 1,

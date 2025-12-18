@@ -16,14 +16,17 @@ namespace LabBenchManager.Models
 
         [Required]
         [StringLength(100)]
-        public string NtAccount { get; set; } = string.Empty; // e.g., "DOMAIN\username"
+        public string NtAccount { get; set; } = string.Empty;
 
         [Required]
         [StringLength(50)]
-        public string Role { get; set; } = string.Empty; // 直接存储角色名，如 "Admin"
+        public string Role { get; set; } = string.Empty;
 
-        // (可选)可以添加其他用户信息，如DisplayName, Email等
         [StringLength(100)]
         public string? DisplayName { get; set; }
+
+        // 新增：部门字段
+        [StringLength(100)]
+        public string? Department { get; set; }
     }
 }
