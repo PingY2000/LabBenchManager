@@ -15,6 +15,8 @@
 
 <PageTitle>报告审批</PageTitle>
 
+
+
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="fw-bold text-primary">报告审批管理</h2>
@@ -543,6 +545,9 @@
 }
 
 @code {
+
+
+
     private string activeTab = "submitted";
     private List<ReportApproval>? allReports;
     private List<ReportApproval>? mySubmittedReports;
@@ -570,6 +575,8 @@
     private string approvalComments = string.Empty;
     private IBrowserFile? selectedFile;
 
+    private string debugInfo = "";
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -578,9 +585,15 @@
         if (user.Identity?.IsAuthenticated ?? false)
         {
             currentUserNTAccount = user.Identity.Name;
+
+            // 添加调试信息
+            debugInfo = $"当前用户: {currentUserNTAccount}";
+
             await LoadDataAsync();
         }
     }
+
+
 
     private async Task LoadDataAsync()
     {
@@ -910,9 +923,29 @@
             isSaving = false;
         }
     }
+    // 添加账号规范化辅助方法
+    private string NormalizeAccount(string? account)
+    {
+        if (string.IsNullOrEmpty(account))
+            return "";
+
+        // 统一转为小写并移除域名前缀
+        return account.ToLower()
+            .Replace("apac\\", "")
+            .Replace("apac/", "")
+            .Replace(@"apac\", "")
+            .Trim();
+    }
 
     private bool CanEdit(ReportApproval report)
     {
+
+        if (string.IsNullOrEmpty(currentUserNTAccount) || string.IsNullOrEmpty(report.SubmitterNTAccount))
+            return false;
+
+        var currentAccount = NormalizeAccount(currentUserNTAccount);
+        var submitterAccount = NormalizeAccount(report.SubmitterNTAccount);
+
         // 只有提交人可以编辑，且状态为草稿或被驳回
         return report.SubmitterNTAccount == currentUserNTAccount &&
                (report.Status == ReportApprovalStatus.草稿 ||
@@ -922,15 +955,25 @@
 
     private bool CanReview(ReportApproval report)
     {
-        // 只有审核人可以审核，且状态为待审核
-        return report.ReviewerNTAccount == currentUserNTAccount &&
+        if (string.IsNullOrEmpty(currentUserNTAccount) || string.IsNullOrEmpty(report.ReviewerNTAccount))
+            return false;
+
+        var currentAccount = NormalizeAccount(currentUserNTAccount);
+        var reviewerAccount = NormalizeAccount(report.ReviewerNTAccount);
+
+        return currentAccount == reviewerAccount &&
                report.Status == ReportApprovalStatus.待审核;
     }
 
     private bool CanApprove(ReportApproval report)
     {
-        // 只有批准人可以批准，且状态为待批准
-        return report.ApproverNTAccount == currentUserNTAccount &&
+        if (string.IsNullOrEmpty(currentUserNTAccount) || string.IsNullOrEmpty(report.ApproverNTAccount))
+            return false;
+
+        var currentAccount = NormalizeAccount(currentUserNTAccount);
+        var approverAccount = NormalizeAccount(report.ApproverNTAccount);
+
+        return currentAccount == approverAccount &&
                report.Status == ReportApprovalStatus.待批准;
     }
 
