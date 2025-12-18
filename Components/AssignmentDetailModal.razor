@@ -146,20 +146,23 @@
                     }
                 </div>
                 <div class="modal-footer">
-                    @if (Assignment.Status == AssignmentStatus.待审批)
+                    @if (ShowActions)
                     {
-                        <button class="btn btn-success" @onclick="() => OnApprove.InvokeAsync(Assignment)">
-                            <span class="oi oi-check me-1"></span>批准申请
-                        </button>
-                        <button class="btn btn-danger" @onclick="() => OnReject.InvokeAsync(Assignment)">
-                            <span class="oi oi-x me-1"></span>拒绝申请
-                        </button>
-                    }
-                    @if (Assignment.Status == AssignmentStatus.待分配)
-                    {
-                        <button class="btn btn-info" @onclick="() => OnGoToAllocate.InvokeAsync(Assignment)">
-                            <span class="oi oi-fork me-1"></span>去分配
-                        </button>
+                        @if (Assignment.Status == AssignmentStatus.待审批)
+                        {
+                            <button class="btn btn-success" @onclick="() => OnApprove.InvokeAsync(Assignment)">
+                                <span class="oi oi-check me-1"></span>批准申请
+                            </button>
+                            <button class="btn btn-danger" @onclick="() => OnReject.InvokeAsync(Assignment)">
+                                <span class="oi oi-x me-1"></span>拒绝申请
+                            </button>
+                        }
+                        @if (Assignment.Status == AssignmentStatus.待分配)
+                        {
+                            <button class="btn btn-info" @onclick="() => OnGoToAllocate.InvokeAsync(Assignment)">
+                                <span class="oi oi-fork me-1"></span>去分配
+                            </button>
+                        }
                     }
                     <button class="btn btn-secondary" @onclick="() => OnClose.InvokeAsync()">关闭</button>
                 </div>
@@ -175,6 +178,9 @@
 
     [Parameter]
     public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public bool ShowActions { get; set; } = true;
 
     [Parameter]
     public EventCallback<Assignment> OnApprove { get; set; }

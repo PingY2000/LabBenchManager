@@ -1,9 +1,10 @@
 ﻿@page "/my-assignments"
-@attribute [Authorize] // 确保只有登录用户才能访问
+@attribute [Authorize]
 
 @using System.Security.Claims
 @using LabBenchManager.Models
 @using LabBenchManager.Services
+@using LabBenchManager.Components
 @inject AssignmentService AssignmentSvc
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
@@ -50,7 +51,13 @@
                         @foreach (var assignment in myAssignments.OrderByDescending(a => a.RequestTime))
                         {
                             <tr>
-                                <td>@assignment.Id</td>
+                                <td>
+                                    @assignment.Id
+                                    @if (assignment.IsUrgent)
+                                    {
+                                        <span class="badge bg-danger ms-1">加急</span>
+                                    }
+                                </td>
                                 <td>@assignment.ProjectName</td>
                                 <td>@assignment.RequestTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
                                 <td>
@@ -59,9 +66,10 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <a href="@($"/assignments/{assignment.Id}")" class="btn btn-sm btn-outline-primary">
+                                    <button class="btn btn-sm btn-outline-primary"
+                                            @onclick="() => ShowDetail(assignment)">
                                         <span class="oi oi-eye me-1"></span>详情
-                                    </a>
+                                    </button>
                                 </td>
                             </tr>
                         }
@@ -72,9 +80,16 @@
     }
 </div>
 
+<!-- 申请详情模态框 -->
+<AssignmentDetailModal 
+    Assignment="selectedAssignment"
+    ShowActions="false"
+    OnClose="CloseModal" />
+
 @code {
     private List<Assignment>? myAssignments;
     private string? currentUserNTAccount;
+    private Assignment? selectedAssignment;
 
     protected override async Task OnInitializedAsync()
     {
@@ -84,19 +99,32 @@
         if (user.Identity?.IsAuthenticated ?? false)
         {
             currentUserNTAccount = user.Identity.Name;
-            myAssignments = await AssignmentSvc.GetAssignmentsByNTAccountAsync(currentUserNTAccount);
+            if (!string.IsNullOrEmpty(currentUserNTAccount))
+            {
+                myAssignments = await AssignmentSvc.GetAssignmentsByNTAccountAsync(currentUserNTAccount);
+            }
         }
     }
 
-    // 您可能需要更新 AssignmentService 来添加 GetAssignmentsByNTAccountAsync 方法
-    // (见下文)
+    private void ShowDetail(Assignment assignment)
+    {
+        selectedAssignment = assignment;
+    }
+
+    private void CloseModal()
+    {
+        selectedAssignment = null;
+    }
 
     private string GetStatusBadge(AssignmentStatus status) => status switch
     {
         AssignmentStatus.待审批 => "bg-warning text-dark",
-        AssignmentStatus.待分配 => "bg-info text-dark",
+        AssignmentStatus.待分配 => "bg-info text-white",
         AssignmentStatus.已拒绝 => "bg-danger",
+        AssignmentStatus.未开始 => "bg-light text-dark",
+        AssignmentStatus.已规划 => "bg-secondary",
+        AssignmentStatus.已确定 => "bg-primary",
         AssignmentStatus.已完成 => "bg-success",
-        _ => "bg-secondary"
+        _ => "bg-dark"
     };
 }
