@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿//Models/TestPlanHistory.cs
+using System.ComponentModel.DataAnnotations;
 
 namespace LabBenchManager.Models
 {

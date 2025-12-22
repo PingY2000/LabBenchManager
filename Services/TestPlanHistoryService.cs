@@ -29,22 +29,30 @@ namespace LabBenchManager.Services
         }
 
         public async Task RecordPlanModificationAsync(
-            TestPlan originalPlan,
-            TestPlan modifiedPlan,
-            string modifiedBy,
-            string? reason = null)
+    TestPlan originalPlan,
+    TestPlan modifiedPlan,
+    string modifiedBy,
+    string? reason = null)
         {
-            // 只为确定计划状态的计划记录历史
-            if (originalPlan.Status != TestPlanStatus.确定计划 &&
-                modifiedPlan.Status != TestPlanStatus.确定计划)
+            // 修改后的记录条件：
+            // 1. 如果原始状态是“确定计划”（覆盖所有对确定计划的修改）。
+            // 2. 或者，如果新状态变成了“确定计划”或“已完成”（记录关键的状态推进）。
+            bool shouldRecord = originalPlan.Status == TestPlanStatus.确定计划 ||
+                                modifiedPlan.Status == TestPlanStatus.确定计划 ||
+                                modifiedPlan.Status == TestPlanStatus.已完成;
+
+            if (!shouldRecord)
             {
+                // 如果不满足记录条件，直接返回
                 return;
             }
 
             var changes = GetChangedFields(originalPlan, modifiedPlan);
+
+            // 如果没有实际变更（例如，只是打开编辑又直接保存），则不记录
             if (!changes.Any())
             {
-                return; // 没有实际变更
+                return;
             }
 
             var history = new TestPlanHistory
@@ -55,7 +63,8 @@ namespace LabBenchManager.Services
                 PreviousSnapshot = JsonSerializer.Serialize(CreateSnapshot(originalPlan)),
                 NewSnapshot = JsonSerializer.Serialize(CreateSnapshot(modifiedPlan)),
                 ChangedFields = JsonSerializer.Serialize(changes),
-                Reason = reason
+                Reason = reason, // 如果是从“初步规划”->“确定计划”，reason会是null，这是正常的
+                ModifiedAt = DateTime.Now
             };
 
             await AddHistoryAsync(history);

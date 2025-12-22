@@ -132,17 +132,12 @@ else
                                 {
                                     <div class="mb-3">
                                         <label class="form-label small mb-1 fw-bold text-warning">
-                                            <span class="oi oi-warning me-1"></span>修改原因 <span class="text-danger">*</span>
+                                            <span class="oi oi-warning me-1"></span>修改原因 <span class="text-danger"></span>
                                         </label>
                                         <InputTextArea class="form-control form-control-sm"
                                                        @bind-Value="modificationReason"
                                                        rows="2"
                                                        placeholder="请说明修改确定计划的原因..." />
-                                        <small class="text-muted">修改已确定的计划需要记录原因</small>
-                                        @if (string.IsNullOrWhiteSpace(modificationReason))
-                                        {
-                                            <div class="text-danger small mt-1">请填写修改原因</div>
-                                        }
                                     </div>
                                 }
 
@@ -421,7 +416,18 @@ else
             return;
         }
 
-        // 如果是修改确定计划，检查是否填写了修改原因
+        // 检查是否为修改操作，如果是，则弹出确认框
+        if (editingPlan.Id > 0)
+        {
+            var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "您确定要保存对该计划的修改吗？");
+            if (!confirmed)
+            {
+                return; // 用户点击“取消”，则中止保存
+            }
+        }
+
+        // 如果是修改确定计划，检查是否填写了修改原因 (这段逻辑保持不变)
+        /*
         if (editingPlan.Id > 0)
         {
             var originalPlan = testPlans?.FirstOrDefault(p => p.Id == editingPlan.Id);
@@ -430,7 +436,8 @@ else
                 validationError = "修改确定计划需要填写修改原因";
                 return;
             }
-        }
+        }*/
+        
 
         editingPlan.SetScheduledDates(selectedDatesForEditing);
 
