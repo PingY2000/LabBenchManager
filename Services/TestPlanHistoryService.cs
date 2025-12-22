@@ -123,5 +123,83 @@ namespace LabBenchManager.Services
                 plan.RequestedBy
             };
         }
+        // 获取测试计划转换为"已完成"状态的时间
+        public async Task<DateTime?> GetCompletedTimeAsync(int testPlanId)
+        {
+            // 查找转换为"已完成"的历史记录
+            var completedHistory = await _context.TestPlanHistories
+                .Where(h => h.TestPlanId == testPlanId)
+                .Where(h => h.ChangeDescription.Contains("已完成") ||
+                            (h.NewSnapshot != null && h.NewSnapshot.Contains("已完成")))
+                .OrderBy(h => h.ModifiedAt)
+                .FirstOrDefaultAsync();
+
+            if (completedHistory != null)
+            {
+                return completedHistory.ModifiedAt;
+            }
+
+            // 如果没有历史记录，检查当前状态
+            var plan = await _context.TestPlans.FindAsync(testPlanId);
+            if (plan != null && plan.Status == TestPlanStatus.已完成)
+            {
+                return plan.UpdatedAt ?? plan.CreatedAt;
+            }
+
+            return null;
+        }
+
+        // 批量获取多个测试计划的完成时间（优化性能）
+        public async Task<Dictionary<int, DateTime?>> GetCompletedTimesAsync(IEnumerable<int> testPlanIds)
+        {
+            var result = new Dictionary<int, DateTime?>();
+            var planIdList = testPlanIds.ToList();
+
+            if (!planIdList.Any())
+                return result;
+
+            // 批量查询历史记录
+            var histories = await _context.TestPlanHistories
+                .Where(h => planIdList.Contains(h.TestPlanId))
+                .Where(h => h.ChangeDescription.Contains("已完成") ||
+                            (h.NewSnapshot != null && h.NewSnapshot.Contains("已完成")))
+                .GroupBy(h => h.TestPlanId)
+                .Select(g => new
+                {
+                    TestPlanId = g.Key,
+                    CompletedTime = g.OrderBy(h => h.ModifiedAt).First().ModifiedAt
+                })
+                .ToListAsync();
+
+            // 将历史记录结果添加到字典
+            foreach (var history in histories)
+            {
+                result[history.TestPlanId] = history.CompletedTime;
+            }
+
+            // 对于没有历史记录的计划，检查当前状态
+            var plansWithoutHistory = planIdList.Except(result.Keys).ToList();
+            if (plansWithoutHistory.Any())
+            {
+                var plans = await _context.TestPlans
+                    .Where(p => plansWithoutHistory.Contains(p.Id) &&
+                               p.Status == TestPlanStatus.已完成)
+                    .Select(p => new { p.Id, CompletedTime = (DateTime?)(p.UpdatedAt ?? p.CreatedAt) })
+                    .ToListAsync();
+
+                foreach (var plan in plans)
+                {
+                    result[plan.Id] = plan.CompletedTime;
+                }
+            }
+
+            // 确保所有请求的ID都在结果中
+            foreach (var id in planIdList.Where(id => !result.ContainsKey(id)))
+            {
+                result[id] = null;
+            }
+
+            return result;
+        }
     }
 }

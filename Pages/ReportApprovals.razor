@@ -13,6 +13,7 @@
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
+@inject TestPlanHistoryService HistoryService
 
 <PageTitle>报告审批</PageTitle>
 
@@ -219,20 +220,52 @@
                                 <InputText class="form-control" @bind-Value="currentReport.ReportNumber" />
                                 <ValidationMessage For="() => currentReport.ReportNumber" />
                             </div>
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-12 mb-3">
                                 <label class="form-label">关联申请</label>
-                                <InputSelect class="form-select" @bind-Value="currentReport.AssignmentId">
-                                    <option value="">-- 无关联 --</option>
-                                    @if (availableAssignmentsForReport != null)
-                                    {
-                                        @foreach (var assignment in availableAssignmentsForReport)
-                                        {
-                                            <option value="@assignment.Id">
-                                                #@assignment.Id - @assignment.ProjectName
-                                            </option>
-                                        }
-                                    }
-                                </InputSelect>
+
+                                <div class="row">
+                                    <!-- 快捷筛选器 -->
+                                    <div class="col-md-4">
+                                        <label class="form-label small text-muted">按完成时间筛选</label>
+                                        <select class="form-select form-select-sm" @bind="dateFilterOption">
+                                            <option value="none">无筛选</option>
+                                            <option value="week">最近7天</option>
+                                            <option value="month">最近1个月</option>
+                                            <option value="year">最近1年</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- 申请选择下拉框 -->
+                                    <div class="col-md-8">
+                                        <label class="form-label small text-muted">选择申请</label>
+                                        <InputSelect class="form-select form-select-sm" @bind-Value="currentReport.AssignmentId">
+                                            <option value="">-- 无关联 --</option>
+                                            @if (filteredAssignments != null && filteredAssignments.Any())
+                                            {
+                                                @foreach (var assignment in filteredAssignments)
+                                                {
+                                                    var completedTime = assignment.TestPlan != null ? GetTestPlanCompletedTime(assignment.TestPlan) : null;
+                                                    <option value="@assignment.Id">
+                                                        #@assignment.Id - @assignment.ProjectName
+                                                        @if (completedTime.HasValue)
+                                                        {
+                                                            @:(@completedTime.Value.ToString("yyyy-MM-dd"))
+                                                        }
+                                                    </option>
+                                                }
+                                            }
+                                            else if (dateFilterOption != "none")
+                                            {
+                                                <option disabled>-- 该时间范围内无已完成的申请 --</option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                </div>
+
+                                @if (filteredAssignments != null)
+                                {
+                                    <small class="text-muted d-block mt-1">共 @filteredAssignments.Count 个可选申请</small>
+                                }
                             </div>
                         </div>
 
@@ -296,7 +329,7 @@
                                 }
                             </div>
 
-                            <div class="mb-2">s
+                            <div class="mb-2">
                                 <label class="form-label">报告文件夹地址</label>
                                 <InputText class="form-control" @bind-Value="currentReport.ReportFolderUrl" placeholder="\\bosch.com\.." />
                             </div>
@@ -511,6 +544,7 @@
 
         try
         {
+            testPlanCompletedTimeCache.Clear();
             if (!string.IsNullOrEmpty(currentUserNTAccount))
             {
                 users = await UserService.GetAllUsersAsync();
@@ -521,6 +555,18 @@
                     availableAssignmentsForReport = assignments
                         .Where(a => a.TestPlan != null && a.TestPlan.Status == TestPlanStatus.已完成)
                         .ToList();
+
+                    // 批量加载完成时间到缓存
+                    var testPlanIds = availableAssignmentsForReport
+                        .Where(a => a.TestPlanId.HasValue)
+                        .Select(a => a.TestPlanId!.Value)
+                        .Distinct()
+                        .ToList();
+
+                    if (testPlanIds.Any())
+                    {
+                        testPlanCompletedTimeCache = await HistoryService.GetCompletedTimesAsync(testPlanIds);
+                    }
                 }
 
                 allReports = await ReportService.GetAllReportsAsync();
@@ -595,6 +641,7 @@
         showCreateEditModal = false;
         currentReport = new();
         selectedFile = null;
+        ClearDateFilter();
     }
 
     private async Task HandleFileUpload(InputFileChangeEventArgs e)
@@ -769,4 +816,76 @@
         ReportApprovalStatus.批准驳回 => "bg-danger",
         _ => "bg-dark"
     };
+
+    private List<Assignment>? filteredAssignments => GetFilteredAssignments();
+
+    private List<Assignment>? GetFilteredAssignments()
+    {
+        if (availableAssignmentsForReport == null)
+            return null;
+
+        var result = availableAssignmentsForReport.AsEnumerable();
+
+        // 获取日期范围
+        var (startDate, endDate) = GetDateRange();
+
+        // 如果设置了日期筛选
+        if (startDate.HasValue || endDate.HasValue)
+        {
+            result = result.Where(a =>
+            {
+                if (!a.TestPlanId.HasValue || a.TestPlan == null)
+                    return false;
+
+                var completedTime = GetTestPlanCompletedTime(a.TestPlan);
+                if (!completedTime.HasValue)
+                    return false;
+
+                if (startDate.HasValue && completedTime.Value.Date < startDate.Value.Date)
+                    return false;
+
+                if (endDate.HasValue && completedTime.Value.Date > endDate.Value.Date)
+                    return false;
+
+                return true;
+            });
+        }
+
+        return result.ToList();
+    }
+
+    // 修改清除筛选方法
+    private void ClearDateFilter()
+    {
+        dateFilterOption = "none";
+    }
+
+    private Dictionary<int, DateTime?> testPlanCompletedTimeCache = new();
+    private DateTime? GetTestPlanCompletedTime(TestPlan testPlan)
+    {
+        if (testPlanCompletedTimeCache.TryGetValue(testPlan.Id, out var cachedTime))
+            return cachedTime;
+
+        return null;
+    }
+
+
+    // 将原来的日期变量替换为筛选选项
+    private string dateFilterOption = "none";
+
+    // 根据筛选选项计算日期范围
+    private (DateTime? StartDate, DateTime? EndDate) GetDateRange()
+    {
+        var today = DateTime.Today;
+
+        return dateFilterOption switch
+        {
+            "week" => (today.AddDays(-7), today),
+            "month" => (today.AddMonths(-1), today),
+            "year" => (today.AddYears(-1), today),
+            _ => (null, null) // "none" 或其他情况
+        };
+    }
+
+    
 }
