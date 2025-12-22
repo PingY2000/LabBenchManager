@@ -76,7 +76,7 @@
                         </InputSelect>
                     </td>
                     <td>
-                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteUser(user.Id)">
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteUser(user)">
                             <span class="oi oi-trash"></span>
                         </button>
                     </td>
@@ -151,10 +151,17 @@
         await UserService.UpdateUserAsync(userToUpdate);
     }
 
-    private async Task DeleteUser(int id)
+    private async Task DeleteUser(ApplicationUser User)
     {
-        await UserService.DeleteUserAsync(id);
-        await LoadUsers();
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"确定要删除用户 '{User.NtAccount}' 吗？");
+
+        // 2. 检查用户的选择
+        if (confirmed)
+        {
+            await UserService.DeleteUserAsync(User.Id);
+            await LoadUsers();
+        }
+        
     }
 
     private async Task ExportToExcel()

@@ -72,11 +72,11 @@
                 </div>
                 <div>
                     <button type="button" class="btn btn-sm btn-secondary" @onclick="() => OnClose.InvokeAsync()">返回</button>
-                    <button type="button" class="btn btn-sm btn-danger" @onclick="() => OnDelete.InvokeAsync(Plan)">
-                        <span class="oi oi-trash me-1"></span>删除
-                    </button>
                     <button type="button" class="btn btn-sm btn-primary" @onclick="() => OnEdit.InvokeAsync(Plan)">
                         <span class="oi oi-pencil me-1"></span>编辑
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger" @onclick="() => OnDelete.InvokeAsync(Plan)">
+                        <span class="oi oi-trash me-1"></span>删除
                     </button>
                 </div>
             </div>

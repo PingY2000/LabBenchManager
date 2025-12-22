@@ -20,6 +20,7 @@ namespace LabBenchManager.Services
             // 使用 .Include() 来预加载关联的 Bench 信息，这样就能在前端显示设备名称
             return await _db.Assignments
                             .Include(a => a.Bench)
+                            .Include(a => a.TestPlan)
                             .OrderByDescending(a => a.RequestTime)
                             .ToListAsync();
         }
