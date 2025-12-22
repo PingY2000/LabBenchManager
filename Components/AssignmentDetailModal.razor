@@ -130,8 +130,6 @@
                                 </button>
                             </h6>
                             <div class="row">
-                               
-                                
                                 <div class="col-4">
                                     <label class="form-label fw-bold">负责人</label>
                                     <div class="form-control-plaintext">
@@ -147,15 +145,15 @@
                                     </div>
                                 </div>
                             </div>
-                            <div>
+                            <div class="mt-2">
                                 <label class="form-label fw-bold">已安排日期</label>
                                 <div class="p-2 bg-light rounded border">
-                                    @if (Assignment.TestPlan.GetScheduledDates().Any())
+                                    @if (Assignment.TestPlan.ScheduledDateList?.Any() == true)
                                     {
-                                        foreach (var date in Assignment.TestPlan.GetScheduledDates().OrderBy(d => d))
-                                        {
-                                            <span class="badge bg-success me-1 mb-1 fs-6">@date.ToString("MM-dd")</span>
-                                        }
+                                        <span class="text-muted small">
+                                            <span class="oi oi-calendar me-1"></span>
+                                            @DateUtils.FormatDateListWithRanges(Assignment.TestPlan.ScheduledDateList)
+                                        </span>
                                     }
                                     else
                                     {

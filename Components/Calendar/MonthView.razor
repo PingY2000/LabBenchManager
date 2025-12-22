@@ -29,19 +29,55 @@
                                     @day.Date.Day
                                 </span>
                             </div>
-                            @foreach (var plan in plansInDay.Take(2))
-                            {
-                                <div class="plan-block plan-block-@plan.Status @(plan.Id == HighlightedPlanId ? "plan-highlighted" : "")"
-                                     @onclick:stopPropagation="true"
-                                     @onclick="() => OnPlanClick.InvokeAsync(plan)"
-                                     title="@plan.ProjectName">
-                                    @plan.ProjectName
-                                </div>
-                            }
-                            @if (plansInDay.Count > 2)
-                            {
-                                <div class="small text-muted">+@(plansInDay.Count - 2) 更多...</div>
-                            }
+
+                            <div class="plans-container plans-count-@Math.Min(plansInDay.Count, 3)">
+                                @if (plansInDay.Count == 0)
+                                {
+                                    <!-- No plans -->
+                                }
+                                else if (plansInDay.Count == 1)
+                                {
+                                    <!-- 1个计划：占满整个空间 -->
+                                    <div class="plan-block plan-block-full plan-block-@plansInDay[0].Status @(plansInDay[0].Id == HighlightedPlanId ? "plan-highlighted" : "")"
+                                         @onclick:stopPropagation="true"
+                                         @onclick="() => OnPlanClick.InvokeAsync(plansInDay[0])"
+                                         title="@plansInDay[0].ProjectName">
+                                        <span class="plan-text">@plansInDay[0].ProjectName</span>
+                                    </div>
+                                }
+                                else if (plansInDay.Count == 2)
+                                {
+                                    <!-- 2个计划：上下平分 -->
+                                    <div class="plan-block plan-block-half plan-block-@plansInDay[0].Status @(plansInDay[0].Id == HighlightedPlanId ? "plan-highlighted" : "")"
+                                         @onclick:stopPropagation="true"
+                                         @onclick="() => OnPlanClick.InvokeAsync(plansInDay[0])"
+                                         title="@plansInDay[0].ProjectName">
+                                        <span class="plan-text">@plansInDay[0].ProjectName</span>
+                                    </div>
+                                    <div class="plan-block plan-block-half plan-block-@plansInDay[1].Status @(plansInDay[1].Id == HighlightedPlanId ? "plan-highlighted" : "")"
+                                         @onclick:stopPropagation="true"
+                                         @onclick="() => OnPlanClick.InvokeAsync(plansInDay[1])"
+                                         title="@plansInDay[1].ProjectName">
+                                        <span class="plan-text">@plansInDay[1].ProjectName</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <!-- 3个或更多：显示第1个 + 更多按钮（上下平分） -->
+                                    <div class="plan-block plan-block-half plan-block-@plansInDay[0].Status @(plansInDay[0].Id == HighlightedPlanId ? "plan-highlighted" : "")"
+                                         @onclick:stopPropagation="true"
+                                         @onclick="() => OnPlanClick.InvokeAsync(plansInDay[0])"
+                                         title="@plansInDay[0].ProjectName">
+                                        <span class="plan-text">@plansInDay[0].ProjectName</span>
+                                    </div>
+                                    <div class="plan-block plan-block-half plan-more"
+                                         @onclick:stopPropagation="true"
+                                         @onclick="() => OnDayClick.InvokeAsync(day.Date)"
+                                         title="点击查看全部 @plansInDay.Count 个计划">
+                                        <span class="plan-text">+@(plansInDay.Count - 1) 更多...</span>
+                                    </div>
+                                }
+                            </div>
                         </td>
                     }
                 </tr>
@@ -121,7 +157,7 @@
             }
             else if (GetPlansForDay(day.Date).Any())
             {
-                classes.Add("has-plans"); // 确保这个类不会禁用点击
+                classes.Add("has-plans");
             }
         }
         return string.Join(" ", classes);

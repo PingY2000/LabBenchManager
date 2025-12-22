@@ -1,23 +1,28 @@
 ﻿/* --- Calendar General Styles --- */
 .month-view-table {
-    table-layout: fixed; /* Ensures columns are of equal width */
+    table-layout: fixed;
 }
 
 .month-day-cell {
-    height: 120px;
+    height: 90px;
     width: 14.28%;
     vertical-align: top;
     padding: 4px;
-    position: relative; /* Necessary for z-index on child elements */
+    position: relative;
     cursor: pointer;
     transition: background-color 0.2s ease;
 }
 
     .month-day-cell:hover {
-        background-color: #e7f3ff; /* A light blue hover effect */
+        background-color: #e7f3ff;
     }
 
 /* --- Day Number and States --- */
+.month-day-number {
+    margin-bottom: 4px;
+    height: 28px; /* 固定日期数字区域高度 */
+}
+
 .month-day-number .day-number-badge {
     display: inline-block;
     width: 24px;
@@ -39,59 +44,115 @@
 }
 
 .selected-for-plan {
-    background-color: #d4edda !important; /* Green for selection mode */
+    background-color: #d4edda !important;
     border: 2px solid #198754 !important;
 }
 
 .has-plans {
-    /* Optional: A subtle indicator for days that have plans */
-    /* background-color: #f0f8ff; */
+    /* Optional subtle indicator */
 }
 
+/* --- Plans Container --- */
+.plans-container {
+    display: flex;
+    flex-direction: column; /* 垂直方向排列 */
+    gap: 2px; /* 上下间距 */
+    height: calc(100% - 30px); /* 总高度减去日期数字区域 */
+}
 
-/* --- Base Plan Block Style (Definitive) --- */
+/* --- Base Plan Block Style --- */
 .plan-block {
-    position: relative; /* Crucial for z-index and transformations */
-    display: block;
-    padding: 2px 5px;
-    margin-bottom: 3px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 6px;
     border-radius: 3px;
     font-size: 0.75rem;
     font-weight: 500;
     color: white;
     cursor: pointer;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     transition: all 0.2s ease-in-out;
 }
 
     .plan-block:hover {
-        transform: scale(1.03);
+        transform: scale(1.02);
         z-index: 5;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     }
 
+/* --- Plan Text (支持两行显示) --- */
+.plan-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* 最多显示两行 */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+    text-align: center;
+    word-break: break-word;
+}
+
+/* --- Plan Block Height Variations --- */
+.plan-block-full {
+    flex: 1; /* 占满整个可用空间 */
+    min-height: 0;
+}
+
+.plan-block-half {
+    flex: 1; /* 上下平分剩余空间 */
+    min-height: 0;
+}
+
 /* --- Plan Block Status Colors --- */
 .plan-block-初步规划 {
-    background-color: #6c757d; /* Bootstrap Secondary */
+    background-color: #6c757d;
 }
 
 .plan-block-确定计划 {
-    background-color: #0d6efd; /* Bootstrap Primary */
+    background-color: #0d6efd;
 }
 
 .plan-block-已完成 {
-    background-color: #198754; /* Bootstrap Success */
+    background-color: #198754;
 }
 
+/* --- "More" Block Style --- */
+.plan-more {
+    background-color: #6c757d;
+    opacity: 0.85;
+    font-style: italic;
+}
 
-/* --- THE HIGHLIGHT STYLE (Definitive) --- */
+    .plan-more:hover {
+        opacity: 1;
+        background-color: #5a6268;
+    }
+
+/* --- Highlight Style --- */
 .plan-block.plan-highlighted {
-    background-color: #ffc107; /* Bootstrap Warning Yellow */
-    color: #333; /* Change text to dark for readability */
+    background-color: #ffc107 !important;
+    color: #333 !important;
     border: 2px solid #e0a800;
     box-shadow: 0 0 12px rgba(255, 193, 7, 0.9);
-    transform: scale(1.1); /* Make it pop more */
-    z-index: 10; /* Ensure it's on top of everything */
+    transform: scale(1.03);
+    z-index: 10;
+    font-weight: 600;
+}
+
+    .plan-block.plan-highlighted:hover {
+        transform: scale(1.05);
+    }
+
+/* --- 针对不同计划数量的优化 --- */
+.plans-count-1 .plan-block-full {
+    /* 1个计划时，可以有更大的padding */
+    padding: 8px 6px;
+}
+
+.plans-count-2 .plan-block-half,
+.plans-count-3 .plan-block-half {
+    /* 2个或3+个计划时，紧凑显示 */
+    padding: 4px 6px;
 }
