@@ -50,6 +50,7 @@ else
                     <MonthView CurrentDate="@currentDate"
                                Plans="@testPlans"
                                SelectedDatesForPlan="@selectedDatesForEditing"
+                               HighlightedPlanId="@viewingPlan?.Id"
                                OnDayClick="HandleDayClick"
                                OnPlanClick="HandlePlanClick" />
                 </div>
@@ -247,6 +248,12 @@ else
     [Parameter]
     public int BenchId { get; set; }
 
+    [SupplyParameterFromQuery]
+    private DateTime? initialDate { get; set; }
+
+    [SupplyParameterFromQuery]
+    private int? highlightPlanId { get; set; }
+
     // 视图模式枚举
     private enum ViewMode { List, Detail, Edit }
     private ViewMode currentViewMode = ViewMode.List;
@@ -269,7 +276,33 @@ else
     private Assignment? viewingAssignment;
 
     protected override async Task OnInitializedAsync() => await LoadData();
-    protected override async Task OnParametersSetAsync() => await LoadData();
+    protected override async Task OnParametersSetAsync()
+    {
+        // 1. 如果有 initialDate 参数，则用它来设置当前月份
+        if (initialDate.HasValue)
+        {
+            currentDate = initialDate.Value;
+        }
+
+        // 2. 加载页面数据（Bench, Plans, Assignments）
+        await LoadData();
+
+        // 3. 如果有 highlightPlanId 参数，则找到对应的计划并设置为详情视图
+        if (highlightPlanId.HasValue && testPlans != null)
+        {
+            var planToHighlight = testPlans.FirstOrDefault(p => p.Id == highlightPlanId.Value);
+            if (planToHighlight != null)
+            {
+                // 设置为详情模式并显示计划
+                viewingPlan = planToHighlight;
+                currentViewMode = ViewMode.Detail;
+            }
+        }
+
+        // 确保 UI 刷新
+        StateHasChanged();
+    }
+
 
     private string modificationReason = "";
     private bool showReasonInput = false;
@@ -513,7 +546,7 @@ else
         if (currentViewMode == ViewMode.Edit)
         {
             ToggleDateSelection(date);
-            StateHasChanged(); // 添加这行确保UI更新
+            StateHasChanged(); 
         }
     }
 
@@ -521,8 +554,6 @@ else
     {
         if (date.Month != currentDate.Month) return;
 
-        // 移除冲突检查，允许多个计划在同一天
-        // 清除之前的错误信息
         validationError = "";
 
         if (selectedDatesForEditing.Contains(date.Date))

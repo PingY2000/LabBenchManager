@@ -45,6 +45,7 @@ namespace LabBenchManager.Services
             return await _db.Assignments
                              .Where(a => a.ApplicantNTAccount == ntAccount)
                              .Include(a => a.Bench) // 同样可以预加载关联数据
+                             .Include(a => a.TestPlan)
                              .OrderByDescending(a => a.RequestTime)
                              .ToListAsync();
         }

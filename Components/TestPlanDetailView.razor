@@ -4,13 +4,11 @@
 
 @if (Plan != null)
 {
-    <!-- 修改(2): 添加 @onclick:stopPropagation="true" 来阻止事件冒泡 -->
     <div class="card shadow-sm" @onclick:stopPropagation="true">
         <div class="card-header bg-secondary text-white">
             <h5 class="mb-0">计划详情</h5>
         </div>
         <div class="card-body py-3 px-3" style="max-height: calc(100vh - 150px); overflow-y: auto;">
-            <!-- ... 内部内容无变化 ... -->
             <div class="mb-3">
                 <label class="form-label small fw-bold text-muted">项目名称</label>
                 <div class="form-control-plaintext">@Plan.ProjectName</div>

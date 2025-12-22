@@ -29,19 +29,18 @@
                                     @day.Date.Day
                                 </span>
                             </div>
-                            @foreach (var plan in plansInDay.Take(3))
+                            @foreach (var plan in plansInDay.Take(2))
                             {
-                                <!-- 修改(3): 添加动态 CSS 类 plan-block-@plan.Status -->
-                                <div class="plan-block plan-block-@plan.Status"
+                                <div class="plan-block plan-block-@plan.Status @(plan.Id == HighlightedPlanId ? "plan-highlighted" : "")"
                                      @onclick:stopPropagation="true"
                                      @onclick="() => OnPlanClick.InvokeAsync(plan)"
                                      title="@plan.ProjectName">
                                     @plan.ProjectName
                                 </div>
                             }
-                            @if (plansInDay.Count > 3)
+                            @if (plansInDay.Count > 2)
                             {
-                                <div class="small text-muted">+@(plansInDay.Count - 3) 更多...</div>
+                                <div class="small text-muted">+@(plansInDay.Count - 2) 更多...</div>
                             }
                         </td>
                     }
@@ -52,12 +51,12 @@
 </div>
 
 @code {
-    // ... @code 部分无变化 ...
     [Parameter] public DateTime CurrentDate { get; set; }
     [Parameter] public List<TestPlan>? Plans { get; set; }
     [Parameter] public EventCallback<DateTime> OnDayClick { get; set; }
     [Parameter] public EventCallback<TestPlan> OnPlanClick { get; set; }
     [Parameter] public List<DateTime> SelectedDatesForPlan { get; set; } = new();
+    [Parameter] public int? HighlightedPlanId { get; set; }
 
     private class DayInfo
     {

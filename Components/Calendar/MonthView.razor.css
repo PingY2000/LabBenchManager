@@ -1,220 +1,97 @@
-﻿/* 月视图表格 */
+﻿/* --- Calendar General Styles --- */
 .month-view-table {
-    font-size: 0.85rem;
+    table-layout: fixed; /* Ensures columns are of equal width */
 }
 
-/* 月视图日期格子 */
 .month-day-cell {
     height: 120px;
     width: 14.28%;
-    cursor: pointer;
     vertical-align: top;
     padding: 4px;
-    border: 1px solid #dee2e6;
-    transition: background-color 0.2s;
+    position: relative; /* Necessary for z-index on child elements */
+    cursor: pointer;
+    transition: background-color 0.2s ease;
 }
 
     .month-day-cell:hover {
-        background-color: rgba(0, 123, 255, 0.05);
+        background-color: #e7f3ff; /* A light blue hover effect */
     }
 
-/* 日期数字 */
-.month-day-number {
-    font-weight: bold;
-    margin-bottom: 4px;
-}
-
-/* 非当前月 */
-.other-month {
-    background-color: #f8f9fa;
-    color: #adb5bd;
-}
-
-/* 今天 */
-.today-cell {
-    background-color: #e7f3ff !important;
-}
-
-/* 日期徽章 */
-.day-number-badge {
+/* --- Day Number and States --- */
+.month-day-number .day-number-badge {
     display: inline-block;
     width: 24px;
     height: 24px;
     line-height: 24px;
     text-align: center;
     border-radius: 50%;
+    font-weight: bold;
 }
 
-.today-badge {
+.other-month {
+    background-color: #f8f9fa;
+    color: #adb5bd;
+}
+
+.today-cell .day-number-badge {
     background-color: #0d6efd;
     color: white;
 }
 
-/* 计划块 */
+.selected-for-plan {
+    background-color: #d4edda !important; /* Green for selection mode */
+    border: 2px solid #198754 !important;
+}
+
+.has-plans {
+    /* Optional: A subtle indicator for days that have plans */
+    /* background-color: #f0f8ff; */
+}
+
+
+/* --- Base Plan Block Style (Definitive) --- */
 .plan-block {
-    border-left: 4px solid;
-    padding: 2px 4px;
-    margin-bottom: 2px;
+    position: relative; /* Crucial for z-index and transformations */
+    display: block;
+    padding: 2px 5px;
+    margin-bottom: 3px;
     border-radius: 3px;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: white;
     cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: all 0.2s ease-in-out;
 }
 
     .plan-block:hover {
-        transform: translateX(2px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        z-index: 10;
-        white-space: normal;
+        transform: scale(1.03);
+        z-index: 5;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     }
 
-/* 计划状态颜色 */
-.plan-block-待开始 {
-    background-color: #e9ecef;
-    border-left-color: #6c757d;
-}
-
-.plan-block-进行中 {
-    background-color: #fff3cd;
-    border-left-color: #ffc107;
-}
-
-.plan-block-已完成 {
-    background-color: #d1e7dd;
-    border-left-color: #198754;
-}
-
-.plan-block-已暂停 {
-    background-color: #f8d7da;
-    border-left-color: #dc3545;
-}
-
-/* 响应式 */
-@media (max-width: 768px) {
-    .month-day-cell {
-        height: 80px;
-    }
-
-    .plan-block {
-        font-size: 0.65rem;
-    }
-}
-/* --- Compact Calendar Styles --- */
-
-.month-view-table .month-day-cell {
-    height: 90px; /* 减小单元格高度 */
-    padding: 4px; /* 减小内边距 */
-    vertical-align: top;
-    position: relative;
-    font-size: 0.8rem; /* 减小基础字体大小 */
-}
-
-.month-view-table .day-number-badge {
-    font-size: 0.75rem; /* 减小日期数字大小 */
-    width: 20px;
-    height: 20px;
-    line-height: 20px;
-    text-align: center;
-    display: inline-block;
-    border-radius: 50%;
-}
-
-.month-view-table .plan-block {
-    font-size: 0.7rem; /* 减小计划块字体大小 */
-    padding: 1px 3px;
-    margin-bottom: 1px;
-}
-
-/* 其他日历相关样式保持不变 */
-.month-day-cell.selected-for-plan {
-    background-color: #d1e7dd !important; /* Bootstrap success-light */
-    border: 2px solid #0f5132; /* Bootstrap success-dark */
-}
-
-.month-day-cell.booked-day {
-    background-color: #f8f9fa; /* Bootstrap gray-100 */
-    color: #adb5bd; /* Bootstrap gray-500 */
-}
-
-    .month-day-cell.booked-day:hover {
-        cursor: not-allowed;
-    }
-
-/* 已有的 plan-block 基础样式 (假设存在) */
-.plan-block {
-    padding: 2px 5px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    margin-bottom: 2px;
-    color: white;
-}
-
-/* 新增：根据计划状态设置背景颜色 */
+/* --- Plan Block Status Colors --- */
 .plan-block-初步规划 {
-    background-color: var(--bs-secondary); /* 灰色 */
+    background-color: #6c757d; /* Bootstrap Secondary */
 }
 
 .plan-block-确定计划 {
-    background-color: var(--bs-primary); /* 蓝色 */
+    background-color: #0d6efd; /* Bootstrap Primary */
 }
 
 .plan-block-已完成 {
-    background-color: var(--bs-success); /* 绿色 */
+    background-color: #198754; /* Bootstrap Success */
 }
 
-.plan-block {
-    font-size: 0.7rem;
-    padding: 2px 4px;
-    margin-bottom: 1px;
-    border-radius: 2px;
-    cursor: pointer;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
 
-.plan-text {
-    font-weight: 500;
-}
-
-.plan-assignee {
-    display: block;
-    opacity: 0.8;
-    font-size: 0.6rem;
-}
-
-.plan-block:hover {
-    opacity: 0.8;
-}
-.month-day-cell {
-    cursor: pointer;
-    min-height: 120px;
-    padding: 4px;
-    position: relative;
-    vertical-align: top;
-}
-
-    .month-day-cell:hover {
-        background-color: #f8f9fa;
-    }
-
-.has-plans {
-    background-color: #f0f8ff; /* 浅蓝色背景表示有计划 */
-}
-
-.selected-for-plan {
-    background-color: #d4edda !important; /* 绿色背景表示已选中 */
-    border: 2px solid #28a745 !important;
-}
-
-/* 确保所有日期单元格都可点击 */
-.month-day-cell.has-plans {
-    pointer-events: auto;
-    cursor: pointer;
+/* --- THE HIGHLIGHT STYLE (Definitive) --- */
+.plan-block.plan-highlighted {
+    background-color: #ffc107; /* Bootstrap Warning Yellow */
+    color: #333; /* Change text to dark for readability */
+    border: 2px solid #e0a800;
+    box-shadow: 0 0 12px rgba(255, 193, 7, 0.9);
+    transform: scale(1.1); /* Make it pop more */
+    z-index: 10; /* Ensure it's on top of everything */
 }

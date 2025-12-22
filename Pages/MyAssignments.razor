@@ -7,6 +7,7 @@
 @using LabBenchManager.Components
 @inject AssignmentService AssignmentSvc
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavManager
 
 <PageTitle>我的测试申请</PageTitle>
 
@@ -66,10 +67,22 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm btn-outline-primary"
-                                            @onclick="() => ShowDetail(assignment)">
-                                        <span class="oi oi-eye me-1"></span>详情
-                                    </button>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        
+                                        <button class="btn btn-sm btn-outline-primary"
+                                                @onclick="() => ShowDetail(assignment)">
+                                            <span class="oi oi-eye me-1"></span>详情
+                                        </button>
+                                        @if (assignment.TestPlanId.HasValue && assignment.BenchId.HasValue)
+                                        {
+                                            <button class="btn btn-sm btn-outline-info"
+                                                    @onclick="() => GoToSchedule(assignment)" title="查看排产">
+                                                <span class="oi oi-calendar"></span>
+                                            </button>
+                                        }                                        
+                                        
+                                    </div>
+                                    
                                 </td>
                             </tr>
                         }
@@ -102,8 +115,28 @@
             if (!string.IsNullOrEmpty(currentUserNTAccount))
             {
                 myAssignments = await AssignmentSvc.GetAssignmentsByNTAccountAsync(currentUserNTAccount);
+
             }
         }
+    }
+    private void GoToSchedule(Assignment assignment)
+    {
+        if (assignment.TestPlan == null || !assignment.BenchId.HasValue)
+        {
+            // 如果没有加载关联数据，则不执行任何操作
+            return;
+        }
+
+        // 获取计划的第一个日期
+        var firstDate = assignment.TestPlan.GetScheduledDates().OrderBy(d => d).FirstOrDefault();
+
+        // 如果没有日期，则默认跳转到今天所在的月份
+        var targetDate = firstDate == default ? DateTime.Today : firstDate;
+
+        // 构建带查询参数的 URL
+        var url = $"/schedule/{assignment.BenchId.Value}?initialDate={targetDate:yyyy-MM-dd}&highlightPlanId={assignment.TestPlanId}";
+
+        NavManager.NavigateTo(url);
     }
 
     private void ShowDetail(Assignment assignment)
