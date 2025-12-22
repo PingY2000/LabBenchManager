@@ -128,32 +128,53 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-primary"
-                                                @onclick="() => ShowDetailModal(report)">
-                                            <span class="oi oi-eye"></span>
-                                        </button>
-                                        @if (CanEdit(report))
+                                        @* 详情按钮 - 非草稿状态才显示 *@
+                                        @if (report.Status != ReportApprovalStatus.草稿 && (activeTab != "approval" && activeTab != "review"))
+                                        {
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                    @onclick="() => ShowDetailModal(report)">
+                                                <span class="oi oi-eye"></span>
+                                            </button>
+                                        }
+
+                                        @* 编辑按钮 - 只在"我提交的"标签页显示 *@
+                                        @if (activeTab == "submitted" && CanEdit(report))
                                         {
                                             <button class="btn btn-sm btn-outline-warning ms-1"
                                                     @onclick="() => ShowEditModal(report)">
                                                 <span class="oi oi-pencil"></span>
                                             </button>
                                         }
-                                        @if (CanWithdraw(report))
+
+                                        @* 撤回按钮 - 只在"我提交的"标签页显示 *@
+                                        @if (activeTab == "submitted" && CanWithdraw(report))
                                         {
                                             <button class="btn btn-sm btn-outline-secondary ms-1"
                                                     @onclick="() => HandleWithdraw(report)">
                                                 撤回
                                             </button>
                                         }
-                                        @if (CanReview(report))
+
+                                        @* 删除按钮 - 只在"我提交的"标签页显示 *@
+                                        @if (activeTab == "submitted" && CanDelete(report))
+                                        {
+                                            <button class="btn btn-sm btn-outline-danger ms-1"
+                                                    @onclick="() => HandleDelete(report)">
+                                                <span class="oi oi-trash"></span>
+                                            </button>
+                                        }
+
+                                        @* 审核按钮 - 只在"待我审核"标签页显示 *@
+                                        @if (activeTab == "review" && CanReview(report))
                                         {
                                             <button class="btn btn-sm btn-outline-success ms-1"
                                                     @onclick="() => ShowReviewModal(report)">
                                                 审核
                                             </button>
                                         }
-                                        @if (CanApprove(report))
+
+                                        @* 批准按钮 - 只在"待我批准"标签页显示 *@
+                                        @if (activeTab == "approval" && CanApprove(report))
                                         {
                                             <button class="btn btn-sm btn-outline-info ms-1"
                                                     @onclick="() => ShowApproveModal(report)">
@@ -275,9 +296,9 @@
                                 }
                             </div>
 
-                            <div class="mb-2">
-                                <label class="form-label">报告文件夹链接</label>
-                                <InputText class="form-control" @bind-Value="currentReport.ReportFolderUrl" placeholder="https://..." />
+                            <div class="mb-2">s
+                                <label class="form-label">报告文件夹地址</label>
+                                <InputText class="form-control" @bind-Value="currentReport.ReportFolderUrl" placeholder="\\bosch.com\.." />
                             </div>
                         </div>
 
@@ -707,6 +728,34 @@
         if (string.IsNullOrEmpty(currentUserNTAccount)) return false;
         return NormalizeAccount(report.ApproverNTAccount) == NormalizeAccount(currentUserNTAccount) &&
                report.Status == ReportApprovalStatus.待批准;
+    }
+
+    private bool CanDelete(ReportApproval report)
+    {
+        if (string.IsNullOrEmpty(currentUserNTAccount)) return false;
+        return NormalizeAccount(report.SubmitterNTAccount) == NormalizeAccount(currentUserNTAccount) &&
+               report.Status == ReportApprovalStatus.草稿;
+    }
+
+    private async Task HandleDelete(ReportApproval report)
+    {
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var confirmed = await JS.InvokeAsync<bool>("confirm", $"您确定要删除草稿 '{report.ReportTitle}' 吗？\n删除后无法恢复。");
+            if (confirmed)
+            {
+                await ReportService.DeleteReportAsync(report.Id);
+                successMessage = "草稿已成功删除。";
+                await LoadDataAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"删除失败: {ex.Message}";
+        }
     }
 
     private string GetStatusBadgeClass(ReportApprovalStatus status) => status switch

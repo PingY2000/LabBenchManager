@@ -113,9 +113,9 @@
                     @if (!string.IsNullOrEmpty(Report.ReportFolderUrl))
                     {
                         <div class="mb-3">
-                            <label class="form-label fw-bold">报告链接</label>
+                            <label class="form-label fw-bold">报告位置</label>
                             <div>
-                                <a href="@Report.ReportFolderUrl" target="_blank">@Report.ReportFolderUrl</a>
+                                <pre class="form-control-plaintext bg-light p-2 rounded">@Report.ReportFolderUrl</pre>
                             </div>
                         </div>
                     }
