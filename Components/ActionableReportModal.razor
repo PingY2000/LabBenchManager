@@ -1,0 +1,208 @@
+﻿@* Components/ActionableReportModal.razor *@
+@using LabBenchManager.Models
+@using Microsoft.AspNetCore.Components.Forms
+
+@if (Report != null)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        @GetModalTitle()
+                        <span class="badge @GetStatusBadgeClass(Report.Status) ms-2">@Report.Status</span>
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="() => OnClose.InvokeAsync()"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">报告编号</label>
+                            <div class="form-control-plaintext">@Report.ReportNumber</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">关联申请</label>
+                            <div class="form-control-plaintext">
+                                @if (Report.AssignmentId.HasValue)
+                                {
+                                    <span>#@Report.AssignmentId - @Report.Assignment?.ProjectName</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">无关联</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">报告标题</label>
+                        <div class="form-control-plaintext">@Report.ReportTitle</div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Report.Summary))
+                    {
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">报告摘要</label>
+                            <pre class="form-control-plaintext bg-light p-2 rounded">@Report.Summary</pre>
+                        </div>
+                    }
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">提交人</label>
+                            <div class="form-control-plaintext">@(Report.SubmitterName ?? Report.SubmitterNTAccount)</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">审核人</label>
+                            <div class="form-control-plaintext">@(Report.ReviewerName ?? Report.ReviewerNTAccount)</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">批准人</label>
+                            <div class="form-control-plaintext">@(Report.ApproverName ?? Report.ApproverNTAccount)</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">提交时间</label>
+                            <div class="form-control-plaintext">@Report.SubmitTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">审核时间</label>
+                            <div class="form-control-plaintext">
+                                @(Report.ReviewTime?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "N/A")
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">批准时间</label>
+                            <div class="form-control-plaintext">
+                                @(Report.ApprovalTime?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "N/A")
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Report.ReviewComments))
+                    {
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">审核意见</label>
+                            <pre class="form-control-plaintext bg-light p-2 rounded">@Report.ReviewComments</pre>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Report.ApprovalComments))
+                    {
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">批准意见</label>
+                            <pre class="form-control-plaintext bg-light p-2 rounded">@Report.ApprovalComments</pre>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Report.ReportFilePath))
+                    {
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">报告文件</label>
+                            <div>
+                                <a href="@Report.ReportFilePath" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <span class="oi oi-data-transfer-download"></span> 下载报告
+                                </a>
+                            </div>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Report.ReportFolderUrl))
+                    {
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">报告链接</label>
+                            <div>
+                                <a href="@Report.ReportFolderUrl" target="_blank">@Report.ReportFolderUrl</a>
+                            </div>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Report.Notes))
+                    {
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">备注</label>
+                            <pre class="form-control-plaintext bg-light p-2 rounded">@Report.Notes</pre>
+                        </div>
+                    }
+
+                    @if (Mode == ModalMode.Review || Mode == ModalMode.Approve)
+                    {
+                        <hr />
+                        <h5 class="fw-bold">@GetActionSectionTitle()</h5>
+                        <div class="mb-3">
+                            <label class="form-label">@(Mode == ModalMode.Review ? "审核" : "批准")意见 <span class="text-danger">*</span></label>
+                            <InputTextArea @bind-Value="comments" class="form-control" rows="4" placeholder="请填写意见..." />
+                        </div>
+                    }
+
+                </div>
+                <div class="modal-footer">
+                    @switch (Mode)
+                    {
+                        case ModalMode.Review:
+                            <button type="button" class="btn btn-success" @onclick="() => OnReviewSubmit.InvokeAsync(comments)" disabled="@string.IsNullOrWhiteSpace(comments)">审核通过</button>
+                            <button type="button" class="btn btn-danger" @onclick="() => OnReviewReject.InvokeAsync(comments)" disabled="@string.IsNullOrWhiteSpace(comments)">审核驳回</button>
+                            <button type="button" class="btn btn-outline-secondary" @onclick="() => OnClose.InvokeAsync()">取消</button>
+                            break;
+                        case ModalMode.Approve:
+                            <button type="button" class="btn btn-success" @onclick="() => OnApproveSubmit.InvokeAsync(comments)" disabled="@string.IsNullOrWhiteSpace(comments)">批准通过</button>
+                            <button type="button" class="btn btn-danger" @onclick="() => OnApproveReject.InvokeAsync(comments)" disabled="@string.IsNullOrWhiteSpace(comments)">批准驳回</button>
+                            <button type="button" class="btn btn-outline-secondary" @onclick="() => OnClose.InvokeAsync()">取消</button>
+                            break;
+                        default: // ModalMode.View
+                                 <button type="button" class="btn btn-secondary" @onclick="() => OnClose.InvokeAsync()">关闭</button>
+                            break;
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    public enum ModalMode { View, Review, Approve }
+
+    [Parameter] public ReportApproval? Report { get; set; }
+    [Parameter] public ModalMode Mode { get; set; } = ModalMode.View;
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<string> OnReviewSubmit { get; set; }
+    [Parameter] public EventCallback<string> OnReviewReject { get; set; }
+    [Parameter] public EventCallback<string> OnApproveSubmit { get; set; }
+    [Parameter] public EventCallback<string> OnApproveReject { get; set; }
+
+    private string comments = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        comments = string.Empty;
+    }
+
+    private string GetModalTitle() => Mode switch
+    {
+        ModalMode.Review => "审核报告",
+        ModalMode.Approve => "批准报告",
+        _ => "报告详情"
+    };
+
+    private string GetActionSectionTitle() => Mode switch
+    {
+        ModalMode.Review => "审核操作",
+        ModalMode.Approve => "批准操作",
+        _ => ""
+    };
+
+    private string GetStatusBadgeClass(ReportApprovalStatus status) => status switch
+    {
+        ReportApprovalStatus.草稿 => "bg-secondary",
+        ReportApprovalStatus.待审核 => "bg-warning text-dark",
+        ReportApprovalStatus.审核通过 => "bg-info",
+        ReportApprovalStatus.审核驳回 => "bg-danger",
+        ReportApprovalStatus.待批准 => "bg-primary",
+        ReportApprovalStatus.批准通过 => "bg-success",
+        ReportApprovalStatus.批准驳回 => "bg-danger",
+        _ => "bg-dark"
+    };
+}

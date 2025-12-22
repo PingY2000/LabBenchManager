@@ -34,6 +34,10 @@ namespace LabBenchManager.Models
         [StringLength(500)]
         public string? ReportFilePath { get; set; }
 
+        // 报告文件夹URL (可选)
+        [StringLength(500)]
+        public string? ReportFolderUrl { get; set; }
+
         // 提交人信息
         [Required]
         [StringLength(100)]

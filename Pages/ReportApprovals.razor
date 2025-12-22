@@ -6,6 +6,7 @@
 @using LabBenchManager.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
+@using LabBenchManager.Components
 @inject ReportApprovalService ReportService
 @inject UserService UserService
 @inject AssignmentService AssignmentService
@@ -14,8 +15,6 @@
 @inject IJSRuntime JS
 
 <PageTitle>报告审批</PageTitle>
-
-
 
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -129,27 +128,34 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-primary" 
+                                        <button class="btn btn-sm btn-outline-primary"
                                                 @onclick="() => ShowDetailModal(report)">
                                             <span class="oi oi-eye"></span>
                                         </button>
                                         @if (CanEdit(report))
                                         {
-                                            <button class="btn btn-sm btn-outline-warning ms-1" 
+                                            <button class="btn btn-sm btn-outline-warning ms-1"
                                                     @onclick="() => ShowEditModal(report)">
                                                 <span class="oi oi-pencil"></span>
                                             </button>
                                         }
+                                        @if (CanWithdraw(report))
+                                        {
+                                            <button class="btn btn-sm btn-outline-secondary ms-1"
+                                                    @onclick="() => HandleWithdraw(report)">
+                                                撤回
+                                            </button>
+                                        }
                                         @if (CanReview(report))
                                         {
-                                            <button class="btn btn-sm btn-outline-success ms-1" 
+                                            <button class="btn btn-sm btn-outline-success ms-1"
                                                     @onclick="() => ShowReviewModal(report)">
                                                 审核
                                             </button>
                                         }
                                         @if (CanApprove(report))
                                         {
-                                            <button class="btn btn-sm btn-outline-info ms-1" 
+                                            <button class="btn btn-sm btn-outline-info ms-1"
                                                     @onclick="() => ShowApproveModal(report)">
                                                 批准
                                             </button>
@@ -196,9 +202,9 @@
                                 <label class="form-label">关联申请</label>
                                 <InputSelect class="form-select" @bind-Value="currentReport.AssignmentId">
                                     <option value="">-- 无关联 --</option>
-                                    @if (assignments != null)
+                                    @if (availableAssignmentsForReport != null)
                                     {
-                                        @foreach (var assignment in assignments)
+                                        @foreach (var assignment in availableAssignmentsForReport)
                                         {
                                             <option value="@assignment.Id">
                                                 #@assignment.Id - @assignment.ProjectName
@@ -255,15 +261,24 @@
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">上传报告文件 (PDF, Word, Excel等)</label>
-                            <InputFile class="form-control" OnChange="HandleFileUpload" accept=".pdf,.doc,.docx,.xls,.xlsx" />
-                            @if (!string.IsNullOrEmpty(currentReport.ReportFilePath))
-                            {
-                                <small class="text-success">
-                                    <span class="oi oi-check"></span> 已上传文件
-                                </small>
-                            }
+
+                        <div class="mb-3 p-3 border rounded bg-light">
+                            <p class="small text-muted mb-2">请提供报告文件或文件夹链接：</p>
+                            <div class="mb-3">
+                                <label class="form-label">上传报告文件 (PDF, Word, 等)</label>
+                                <InputFile class="form-control" OnChange="HandleFileUpload" accept=".pdf,.doc,.docx,.xls,.xlsx" />
+                                @if (!string.IsNullOrEmpty(currentReport.ReportFilePath))
+                                {
+                                    <small class="text-success d-block mt-1">
+                                        <span class="oi oi-check"></span> 当前文件: @Path.GetFileName(currentReport.ReportFilePath)
+                                    </small>
+                                }
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label">报告文件夹链接</label>
+                                <InputText class="form-control" @bind-Value="currentReport.ReportFolderUrl" placeholder="https://..." />
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -305,249 +320,18 @@
     </div>
 }
 
-<!-- 详情模态框 -->
-@if (showDetailModal && selectedReport != null)
+@if (isModalVisible && selectedReport != null)
 {
-    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        报告详情 - @selectedReport.ReportNumber
-                        <span class="badge @GetStatusBadgeClass(selectedReport.Status) ms-2">
-                            @selectedReport.Status
-                        </span>
-                    </h5>
-                    <button type="button" class="btn-close" @onclick="CloseDetailModal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">报告编号</label>
-                            <div class="form-control-plaintext">@selectedReport.ReportNumber</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">关联申请</label>
-                            <div class="form-control-plaintext">
-                                @if (selectedReport.AssignmentId.HasValue)
-                                {
-                                    <span>#@selectedReport.AssignmentId - @selectedReport.Assignment?.ProjectName</span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">无关联</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">报告标题</label>
-                        <div class="form-control-plaintext">@selectedReport.ReportTitle</div>
-                    </div>
-
-                    @if (!string.IsNullOrEmpty(selectedReport.Summary))
-                    {
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">报告摘要</label>
-                            <pre class="form-control-plaintext bg-light p-2 rounded">@selectedReport.Summary</pre>
-                        </div>
-                    }
-
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">提交人</label>
-                                                        <div class="form-control-plaintext">@(selectedReport.SubmitterName ?? selectedReport.SubmitterNTAccount)</div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">审核人</label>
-                            <div class="form-control-plaintext">@(selectedReport.ReviewerName ?? selectedReport.ReviewerNTAccount)</div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">批准人</label>
-                            <div class="form-control-plaintext">@(selectedReport.ApproverName ?? selectedReport.ApproverNTAccount)</div>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">提交时间</label>
-                            <div class="form-control-plaintext">@selectedReport.SubmitTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">审核时间</label>
-                            <div class="form-control-plaintext">
-                                @(selectedReport.ReviewTime?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "未审核")
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">批准时间</label>
-                            <div class="form-control-plaintext">
-                                @(selectedReport.ApprovalTime?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "未批准")
-                            </div>
-                        </div>
-                    </div>
-
-                    @if (!string.IsNullOrEmpty(selectedReport.ReviewComments))
-                    {
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">审核意见</label>
-                            <pre class="form-control-plaintext bg-light p-2 rounded">@selectedReport.ReviewComments</pre>
-                        </div>
-                    }
-
-                    @if (!string.IsNullOrEmpty(selectedReport.ApprovalComments))
-                    {
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">批准意见</label>
-                            <pre class="form-control-plaintext bg-light p-2 rounded">@selectedReport.ApprovalComments</pre>
-                        </div>
-                    }
-
-                    @if (!string.IsNullOrEmpty(selectedReport.ReportFilePath))
-                    {
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">报告文件</label>
-                            <div>
-                                <a href="@selectedReport.ReportFilePath" target="_blank" class="btn btn-sm btn-outline-primary">
-                                    <span class="oi oi-data-transfer-download"></span> 下载报告
-                                </a>
-                            </div>
-                        </div>
-                    }
-
-                    @if (!string.IsNullOrEmpty(selectedReport.Notes))
-                    {
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">备注</label>
-                            <pre class="form-control-plaintext bg-light p-2 rounded">@selectedReport.Notes</pre>
-                        </div>
-                    }
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseDetailModal">关闭</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
-<!-- 审核模态框 -->
-@if (showReviewModal && selectedReport != null)
-{
-    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">审核报告 - @selectedReport.ReportNumber</h5>
-                    <button type="button" class="btn-close" @onclick="CloseReviewModal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">报告标题</label>
-                        <div class="form-control-plaintext">@selectedReport.ReportTitle</div>
-                    </div>
-
-                    @if (!string.IsNullOrEmpty(selectedReport.ReportFilePath))
-                    {
-                        <div class="mb-3">
-                            <a href="@selectedReport.ReportFilePath" target="_blank" class="btn btn-sm btn-outline-primary">
-                                <span class="oi oi-data-transfer-download"></span> 查看报告文件
-                            </a>
-                        </div>
-                    }
-
-                    <div class="mb-3">
-                        <label class="form-label">审核意见 <span class="text-danger">*</span></label>
-                        <textarea class="form-control" rows="4" @bind="reviewComments" placeholder="请填写审核意见..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-success" @onclick="() => HandleReview(true)" disabled="@isSaving">
-                        @if (isSaving)
-                        {
-                            <span class="spinner-border spinner-border-sm me-1"></span>
-                        }
-                        <span class="oi oi-check"></span> 审核通过
-                    </button>
-                    <button type="button" class="btn btn-danger" @onclick="() => HandleReview(false)" disabled="@isSaving">
-                        @if (isSaving)
-                        {
-                            <span class="spinner-border spinner-border-sm me-1"></span>
-                        }
-                        <span class="oi oi-x"></span> 审核驳回
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary" @onclick="CloseReviewModal">取消</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
-<!-- 批准模态框 -->
-@if (showApproveModal && selectedReport != null)
-{
-    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">批准报告 - @selectedReport.ReportNumber</h5>
-                    <button type="button" class="btn-close" @onclick="CloseApproveModal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">报告标题</label>
-                        <div class="form-control-plaintext">@selectedReport.ReportTitle</div>
-                    </div>
-
-                    @if (!string.IsNullOrEmpty(selectedReport.ReviewComments))
-                    {
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">审核意见</label>
-                            <pre class="form-control-plaintext bg-light p-2 rounded">@selectedReport.ReviewComments</pre>
-                        </div>
-                    }
-
-                    @if (!string.IsNullOrEmpty(selectedReport.ReportFilePath))
-                    {
-                        <div class="mb-3">
-                            <a href="@selectedReport.ReportFilePath" target="_blank" class="btn btn-sm btn-outline-primary">
-                                <span class="oi oi-data-transfer-download"></span> 查看报告文件
-                            </a>
-                        </div>
-                    }
-
-                    <div class="mb-3">
-                        <label class="form-label">批准意见 <span class="text-danger">*</span></label>
-                        <textarea class="form-control" rows="4" @bind="approvalComments" placeholder="请填写批准意见..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-success" @onclick="() => HandleApproval(true)" disabled="@isSaving">
-                        @if (isSaving)
-                        {
-                            <span class="spinner-border spinner-border-sm me-1"></span>
-                        }
-                        <span class="oi oi-check"></span> 批准通过
-                    </button>
-                    <button type="button" class="btn btn-danger" @onclick="() => HandleApproval(false)" disabled="@isSaving">
-                        @if (isSaving)
-                        {
-                            <span class="spinner-border spinner-border-sm me-1"></span>
-                        }
-                        <span class="oi oi-x"></span> 批准驳回
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary" @onclick="CloseApproveModal">取消</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <ActionableReportModal Report="selectedReport"
+                           Mode="currentModalMode"
+                           OnClose="CloseModal"
+                           OnReviewSubmit="HandleReviewSubmit"
+                           OnReviewReject="HandleReviewReject"
+                           OnApproveSubmit="HandleApproveSubmit"
+                           OnApproveReject="HandleApproveReject" />
 }
 
 @code {
-
-
-
     private string activeTab = "submitted";
     private List<ReportApproval>? allReports;
     private List<ReportApproval>? mySubmittedReports;
@@ -556,6 +340,7 @@
     private List<ReportApproval>? currentReportList;
     private List<ApplicationUser>? users;
     private List<Assignment>? assignments;
+    private List<Assignment>? availableAssignmentsForReport;
 
     private ReportApproval currentReport = new();
     private ReportApproval? selectedReport;
@@ -565,17 +350,32 @@
     private bool isLoading = false;
     private bool isSaving = false;
     private bool isEditMode = false;
-
     private bool showCreateEditModal = false;
-    private bool showDetailModal = false;
-    private bool showReviewModal = false;
-    private bool showApproveModal = false;
-
-    private string reviewComments = string.Empty;
-    private string approvalComments = string.Empty;
     private IBrowserFile? selectedFile;
 
-    private string debugInfo = "";
+    private bool isModalVisible = false;
+    private ActionableReportModal.ModalMode currentModalMode;
+
+    private void ShowDetailModal(ReportApproval report)
+    {
+        selectedReport = report;
+        currentModalMode = ActionableReportModal.ModalMode.View;
+        isModalVisible = true;
+    }
+
+    private void ShowReviewModal(ReportApproval report)
+    {
+        selectedReport = report;
+        currentModalMode = ActionableReportModal.ModalMode.Review;
+        isModalVisible = true;
+    }
+
+    private void ShowApproveModal(ReportApproval report)
+    {
+        selectedReport = report;
+        currentModalMode = ActionableReportModal.ModalMode.Approve;
+        isModalVisible = true;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -585,15 +385,103 @@
         if (user.Identity?.IsAuthenticated ?? false)
         {
             currentUserNTAccount = user.Identity.Name;
-
-            // 添加调试信息
-            debugInfo = $"当前用户: {currentUserNTAccount}";
-
             await LoadDataAsync();
         }
     }
 
+    private bool CanWithdraw(ReportApproval report)
+    {
+        if (string.IsNullOrEmpty(currentUserNTAccount)) return false;
+        bool isSubmitter = NormalizeAccount(report.SubmitterNTAccount) == NormalizeAccount(currentUserNTAccount);
+        bool isWithdrawableStatus = report.Status != ReportApprovalStatus.草稿 &&
+                                    report.Status != ReportApprovalStatus.批准通过;
+        return isSubmitter && isWithdrawableStatus;
+    }
 
+    private async Task HandleWithdraw(ReportApproval report)
+    {
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var confirmed = await JS.InvokeAsync<bool>("confirm", $"您确定要撤回报告 “{report.ReportTitle}” 吗？\n撤回后报告将返回草稿状态，需要重新提交。");
+            if (confirmed && !string.IsNullOrEmpty(currentUserNTAccount))
+            {
+                await ReportService.WithdrawReportAsync(report.Id, currentUserNTAccount);
+                successMessage = "报告已成功撤回至草稿状态。";
+                await LoadDataAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"撤回失败: {ex.Message}";
+        }
+    }
+
+    private void CloseModal()
+    {
+        isModalVisible = false;
+        selectedReport = null;
+    }
+
+    private async Task HandleReviewSubmit(string comments)
+    {
+        await HandleAction(async () =>
+        {
+            await ReportService.ApproveReviewAsync(selectedReport!.Id, comments);
+            successMessage = "审核通过，已转至批准环节";
+        }, "审核");
+    }
+
+    private async Task HandleReviewReject(string comments)
+    {
+        await HandleAction(async () =>
+        {
+            await ReportService.RejectReviewAsync(selectedReport!.Id, comments);
+            successMessage = "已驳回报告";
+        }, "审核");
+    }
+
+    private async Task HandleApproveSubmit(string comments)
+    {
+        await HandleAction(async () =>
+        {
+            await ReportService.ApproveApprovalAsync(selectedReport!.Id, comments);
+            successMessage = "报告已批准通过";
+        }, "批准");
+    }
+
+    private async Task HandleApproveReject(string comments)
+    {
+        await HandleAction(async () =>
+        {
+            await ReportService.RejectApprovalAsync(selectedReport!.Id, comments);
+            successMessage = "已驳回报告";
+        }, "批准");
+    }
+
+    private async Task HandleAction(Func<Task> action, string actionName)
+    {
+        isSaving = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            await action();
+            CloseModal();
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{actionName}失败: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
 
     private async Task LoadDataAsync()
     {
@@ -604,19 +492,21 @@
         {
             if (!string.IsNullOrEmpty(currentUserNTAccount))
             {
-                // 加载用户列表
                 users = await UserService.GetAllUsersAsync();
-
-                // 加载申请列表
                 assignments = await AssignmentService.GetAllAssignmentsAsync();
 
-                // 加载报告数据
+                if (assignments != null)
+                {
+                    availableAssignmentsForReport = assignments
+                        .Where(a => a.TestPlan != null && a.TestPlan.Status == TestPlanStatus.已完成)
+                        .ToList();
+                }
+
                 allReports = await ReportService.GetAllReportsAsync();
                 mySubmittedReports = await ReportService.GetMySubmittedReportsAsync(currentUserNTAccount);
                 myReviewTasks = await ReportService.GetMyReviewTasksAsync(currentUserNTAccount);
                 myApprovalTasks = await ReportService.GetMyApprovalTasksAsync(currentUserNTAccount);
 
-                // 设置当前显示的列表
                 UpdateCurrentList();
             }
         }
@@ -679,26 +569,6 @@
         showCreateEditModal = true;
     }
 
-    private void ShowDetailModal(ReportApproval report)
-    {
-        selectedReport = report;
-        showDetailModal = true;
-    }
-
-    private void ShowReviewModal(ReportApproval report)
-    {
-        selectedReport = report;
-        reviewComments = string.Empty;
-        showReviewModal = true;
-    }
-
-    private void ShowApproveModal(ReportApproval report)
-    {
-        selectedReport = report;
-        approvalComments = string.Empty;
-        showApproveModal = true;
-    }
-
     private void CloseCreateEditModal()
     {
         showCreateEditModal = false;
@@ -706,30 +576,9 @@
         selectedFile = null;
     }
 
-    private void CloseDetailModal()
-    {
-        showDetailModal = false;
-        selectedReport = null;
-    }
-
-    private void CloseReviewModal()
-    {
-        showReviewModal = false;
-        selectedReport = null;
-        reviewComments = string.Empty;
-    }
-
-    private void CloseApproveModal()
-    {
-        showApproveModal = false;
-        selectedReport = null;
-        approvalComments = string.Empty;
-    }
-
     private async Task HandleFileUpload(InputFileChangeEventArgs e)
     {
         selectedFile = e.File;
-        
         try
         {
             if (selectedFile != null)
@@ -753,37 +602,29 @@
 
         try
         {
-            // 获取审核人和批准人的姓名
             var reviewer = users?.FirstOrDefault(u => u.NtAccount == currentReport.ReviewerNTAccount);
             var approver = users?.FirstOrDefault(u => u.NtAccount == currentReport.ApproverNTAccount);
-            
             currentReport.ReviewerName = reviewer?.DisplayName;
             currentReport.ApproverName = approver?.DisplayName;
 
-            // 获取提交人姓名
             var submitter = users?.FirstOrDefault(u => u.NtAccount == currentReport.SubmitterNTAccount);
             currentReport.SubmitterName = submitter?.DisplayName;
 
             if (isEditMode)
             {
                 await ReportService.UpdateReportAsync(currentReport);
-
-                // 如果是草稿，直接提交为待审核
                 if (currentReport.Status == ReportApprovalStatus.草稿)
                 {
                     await ReportService.SubmitReportAsync(currentReport.Id);
                 }
-
                 successMessage = "报告更新成功并已提交审批";
             }
             else
             {
-                // 新建报告，直接设置为待审核
                 currentReport.Status = ReportApprovalStatus.待审核;
                 await ReportService.CreateReportAsync(currentReport);
                 successMessage = "报告创建成功并已提交审批";
             }
-
             CloseCreateEditModal();
             await LoadDataAsync();
         }
@@ -805,17 +646,13 @@
 
         try
         {
-            // 获取审核人和批准人的姓名
             var reviewer = users?.FirstOrDefault(u => u.NtAccount == currentReport.ReviewerNTAccount);
             var approver = users?.FirstOrDefault(u => u.NtAccount == currentReport.ApproverNTAccount);
-
             currentReport.ReviewerName = reviewer?.DisplayName;
             currentReport.ApproverName = approver?.DisplayName;
 
-            // 获取提交人姓名
             var submitter = users?.FirstOrDefault(u => u.NtAccount == currentReport.SubmitterNTAccount);
             currentReport.SubmitterName = submitter?.DisplayName;
-
             currentReport.Status = ReportApprovalStatus.草稿;
 
             if (isEditMode)
@@ -842,112 +679,17 @@
         }
     }
 
-    private async Task HandleReview(bool approve)
-    {
-        if (string.IsNullOrWhiteSpace(reviewComments))
-        {
-            errorMessage = "请填写审核意见";
-            return;
-        }
-
-        isSaving = true;
-        errorMessage = null;
-        successMessage = null;
-
-        try
-        {
-            if (selectedReport != null)
-            {
-                if (approve)
-                {
-                    await ReportService.ApproveReviewAsync(selectedReport.Id, reviewComments);
-                    successMessage = "审核通过，已转至批准环节";
-                }
-                else
-                {
-                    await ReportService.RejectReviewAsync(selectedReport.Id, reviewComments);
-                    successMessage = "已驳回报告";
-                }
-
-                CloseReviewModal();
-                await LoadDataAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"审核失败: {ex.Message}";
-        }
-        finally
-        {
-            isSaving = false;
-        }
-    }
-
-    private async Task HandleApproval(bool approve)
-    {
-        if (string.IsNullOrWhiteSpace(approvalComments))
-        {
-            errorMessage = "请填写批准意见";
-            return;
-        }
-
-        isSaving = true;
-        errorMessage = null;
-        successMessage = null;
-
-        try
-        {
-            if (selectedReport != null)
-            {
-                if (approve)
-                {
-                    await ReportService.ApproveApprovalAsync(selectedReport.Id, approvalComments);
-                    successMessage = "报告已批准通过";
-                }
-                else
-                {
-                    await ReportService.RejectApprovalAsync(selectedReport.Id, approvalComments);
-                    successMessage = "已驳回报告";
-                }
-
-                CloseApproveModal();
-                await LoadDataAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"批准失败: {ex.Message}";
-        }
-        finally
-        {
-            isSaving = false;
-        }
-    }
-    // 添加账号规范化辅助方法
     private string NormalizeAccount(string? account)
     {
         if (string.IsNullOrEmpty(account))
             return "";
-
-        // 统一转为小写并移除域名前缀
-        return account.ToLower()
-            .Replace("apac\\", "")
-            .Replace("apac/", "")
-            .Replace(@"apac\", "")
-            .Trim();
+        return account.ToLower().Replace("apac\\", "").Replace("apac/", "").Replace(@"apac\", "").Trim();
     }
 
     private bool CanEdit(ReportApproval report)
     {
-
-        if (string.IsNullOrEmpty(currentUserNTAccount) || string.IsNullOrEmpty(report.SubmitterNTAccount))
-            return false;
-
-        var currentAccount = NormalizeAccount(currentUserNTAccount);
-        var submitterAccount = NormalizeAccount(report.SubmitterNTAccount);
-
-        // 只有提交人可以编辑，且状态为草稿或被驳回
-        return report.SubmitterNTAccount == currentUserNTAccount &&
+        if (string.IsNullOrEmpty(currentUserNTAccount)) return false;
+        return NormalizeAccount(report.SubmitterNTAccount) == NormalizeAccount(currentUserNTAccount) &&
                (report.Status == ReportApprovalStatus.草稿 ||
                 report.Status == ReportApprovalStatus.审核驳回 ||
                 report.Status == ReportApprovalStatus.批准驳回);
@@ -955,25 +697,15 @@
 
     private bool CanReview(ReportApproval report)
     {
-        if (string.IsNullOrEmpty(currentUserNTAccount) || string.IsNullOrEmpty(report.ReviewerNTAccount))
-            return false;
-
-        var currentAccount = NormalizeAccount(currentUserNTAccount);
-        var reviewerAccount = NormalizeAccount(report.ReviewerNTAccount);
-
-        return currentAccount == reviewerAccount &&
+        if (string.IsNullOrEmpty(currentUserNTAccount)) return false;
+        return NormalizeAccount(report.ReviewerNTAccount) == NormalizeAccount(currentUserNTAccount) &&
                report.Status == ReportApprovalStatus.待审核;
     }
 
     private bool CanApprove(ReportApproval report)
     {
-        if (string.IsNullOrEmpty(currentUserNTAccount) || string.IsNullOrEmpty(report.ApproverNTAccount))
-            return false;
-
-        var currentAccount = NormalizeAccount(currentUserNTAccount);
-        var approverAccount = NormalizeAccount(report.ApproverNTAccount);
-
-        return currentAccount == approverAccount &&
+        if (string.IsNullOrEmpty(currentUserNTAccount)) return false;
+        return NormalizeAccount(report.ApproverNTAccount) == NormalizeAccount(currentUserNTAccount) &&
                report.Status == ReportApprovalStatus.待批准;
     }
 

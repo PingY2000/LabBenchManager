@@ -234,5 +234,70 @@ namespace LabBenchManager.Services
                 }
             });
         }
+        // 撤回报告
+        public async Task<ReportApproval> WithdrawReportAsync(int reportId, string currentUserNT)
+        {
+            await using var db = await _contextFactory.CreateDbContextAsync();
+            var report = await db.ReportApprovals.FindAsync(reportId);
+
+            if (report == null)
+            {
+                throw new KeyNotFoundException("未找到该报告。");
+            }
+
+            // 只有提交人才能撤回
+            if (report.SubmitterNTAccount != currentUserNT)
+            {
+                throw new UnauthorizedAccessException("您无权撤回此报告。");
+            }
+
+            // 只有在流程中（非草稿、非最终批准）的报告才能被撤回
+            if (report.Status == ReportApprovalStatus.草稿 || report.Status == ReportApprovalStatus.批准通过)
+            {
+                throw new InvalidOperationException($"状态为 “{report.Status}” 的报告无法撤回。");
+            }
+
+            report.Status = ReportApprovalStatus.草稿;
+            // （可选）清空之前的审核/批准意见和时间
+            report.ReviewComments = null;
+            report.ReviewTime = null;
+            report.ApprovalComments = null;
+            report.ApprovalTime = null;
+
+            await db.SaveChangesAsync();
+            return report;
+        }
+        public async Task DeleteReportAsync(int reportId, string currentUserNT)
+        {
+            await using var db = await _contextFactory.CreateDbContextAsync();
+            var report = await db.ReportApprovals.FindAsync(reportId);
+
+            if (report == null)
+            {
+                throw new KeyNotFoundException("未找到该报告。");
+            }
+
+            // 只有提交人可以删除
+            if (report.SubmitterNTAccount != currentUserNT)
+            {
+                throw new UnauthorizedAccessException("您无权删除此报告。");
+            }
+
+            // 只有草稿可以被删除
+            if (report.Status != ReportApprovalStatus.草稿)
+            {
+                throw new InvalidOperationException("只有“草稿”状态的报告可以被删除。");
+            }
+
+            // 删除关联的文件
+            if (!string.IsNullOrEmpty(report.ReportFilePath))
+            {
+                // 您已有的 DeleteReportFileAsync 方法
+                await DeleteReportFileAsync(report.ReportFilePath);
+            }
+
+            db.ReportApprovals.Remove(report);
+            await db.SaveChangesAsync();
+        }
     }
 }
