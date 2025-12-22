@@ -1,5 +1,6 @@
 ﻿@* Components/ActionableReportModal.razor *@
 @using LabBenchManager.Models
+@using LabBenchManager.Components
 @using Microsoft.AspNetCore.Components.Forms
 
 @if (Report != null)
@@ -26,6 +27,12 @@
                                 @if (Report.AssignmentId.HasValue)
                                 {
                                     <span>#@Report.AssignmentId - @Report.Assignment?.ProjectName</span>
+                                    @if (Report.Assignment != null)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-info ms-2" @onclick="ShowAssignmentDetail">
+                                            <span class="oi oi-eye"></span> 查看申请详情
+                                        </button>
+                                    }
                                 }
                                 else
                                 {
@@ -133,7 +140,7 @@
                         <hr />
                         <h5 class="fw-bold">@GetActionSectionTitle()</h5>
                         <div class="mb-3">
-                            <label class="form-label">@(Mode == ModalMode.Review ? "审核" : "批准")意见 <span class="text-danger">*</span></label>
+                            <label class="form-label">@(Mode == ModalMode.Review ? "审核" : "批准")意见 <span class="text-danger"></span></label>
                             <InputTextArea @bind-Value="comments" class="form-control" rows="4" placeholder="请填写意见..." />
                         </div>
                     }
@@ -143,13 +150,13 @@
                     @switch (Mode)
                     {
                         case ModalMode.Review:
-                            <button type="button" class="btn btn-success" @onclick="() => OnReviewSubmit.InvokeAsync(comments)" disabled="@string.IsNullOrWhiteSpace(comments)">审核通过</button>
-                            <button type="button" class="btn btn-danger" @onclick="() => OnReviewReject.InvokeAsync(comments)" disabled="@string.IsNullOrWhiteSpace(comments)">审核驳回</button>
+                            <button type="button" class="btn btn-success" @onclick="() => OnReviewSubmit.InvokeAsync(GetComments(true))">审核通过</button>
+                            <button type="button" class="btn btn-danger" @onclick="() => OnReviewReject.InvokeAsync(GetComments(false))">审核驳回</button>
                             <button type="button" class="btn btn-outline-secondary" @onclick="() => OnClose.InvokeAsync()">取消</button>
                             break;
                         case ModalMode.Approve:
-                            <button type="button" class="btn btn-success" @onclick="() => OnApproveSubmit.InvokeAsync(comments)" disabled="@string.IsNullOrWhiteSpace(comments)">批准通过</button>
-                            <button type="button" class="btn btn-danger" @onclick="() => OnApproveReject.InvokeAsync(comments)" disabled="@string.IsNullOrWhiteSpace(comments)">批准驳回</button>
+                            <button type="button" class="btn btn-success" @onclick="() => OnApproveSubmit.InvokeAsync(GetComments(true))">批准通过</button>
+                            <button type="button" class="btn btn-danger" @onclick="() => OnApproveReject.InvokeAsync(GetComments(false))">批准驳回</button>
                             <button type="button" class="btn btn-outline-secondary" @onclick="() => OnClose.InvokeAsync()">取消</button>
                             break;
                         default: // ModalMode.View
@@ -160,6 +167,13 @@
             </div>
         </div>
     </div>
+}
+
+@if (showAssignmentModal && Report?.Assignment != null)
+{
+    <AssignmentDetailModal Assignment="Report.Assignment"
+                           ShowActions="false"
+                           OnClose="CloseAssignmentDetail" />
 }
 
 @code {
@@ -178,6 +192,15 @@
     protected override void OnParametersSet()
     {
         comments = string.Empty;
+    }
+
+    private string GetComments(bool isApprove)
+    {
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return isApprove ? "通过" : "驳回";
+        }
+        return comments;
     }
 
     private string GetModalTitle() => Mode switch
@@ -205,4 +228,16 @@
         ReportApprovalStatus.批准驳回 => "bg-danger",
         _ => "bg-dark"
     };
+    private bool showAssignmentModal = false;
+
+    private void ShowAssignmentDetail()
+    {
+        showAssignmentModal = true;
+    }
+
+    private void CloseAssignmentDetail()
+    {
+        showAssignmentModal = false;
+    }
+
 }

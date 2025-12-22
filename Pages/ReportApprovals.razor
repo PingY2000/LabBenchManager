@@ -138,7 +138,7 @@
                                         }
 
                                         @* 编辑按钮 - 只在"我提交的"标签页显示 *@
-                                        @if (activeTab == "submitted" && CanEdit(report))
+                                        @if (activeTab == "submitted" && CanEdit(report) && report.Status == ReportApprovalStatus.草稿)
                                         {
                                             <button class="btn btn-sm btn-outline-warning ms-1"
                                                     @onclick="() => ShowEditModal(report)">
@@ -169,7 +169,7 @@
                                         {
                                             <button class="btn btn-sm btn-outline-success ms-1"
                                                     @onclick="() => ShowReviewModal(report)">
-                                                审核
+                                                查看
                                             </button>
                                         }
 
@@ -178,7 +178,7 @@
                                         {
                                             <button class="btn btn-sm btn-outline-info ms-1"
                                                     @onclick="() => ShowApproveModal(report)">
-                                                批准
+                                                查看
                                             </button>
                                         }
                                     </td>
