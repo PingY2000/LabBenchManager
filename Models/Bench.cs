@@ -74,5 +74,8 @@ namespace LabBenchManager.Models
         // --- Navigation Properties ---
         // 如果需要关联测试计划
         public ICollection<TestPlan>? TestPlans { get; set; }
+
+        // 新增：相关文档
+        public ICollection<BenchDocument>? Documents { get; set; }
     }
 }

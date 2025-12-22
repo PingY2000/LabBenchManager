@@ -1,6 +1,6 @@
 ﻿// Services/BenchService.cs
-using LabBenchManager.Models;
 using LabBenchManager.Data;
+using LabBenchManager.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace LabBenchManager.Services
@@ -153,7 +153,7 @@ namespace LabBenchManager.Services
 
             var today = DateTime.Today;
 
-            // 查找今天状态为“进行中”的计划
+            // 查找今天状态为"进行中"的计划
             var plans = await _db.TestPlans
                                  .Where(p => p.BenchId == benchId && p.Status == TestPlanStatus.确定计划)
                                  .ToListAsync();
@@ -168,7 +168,7 @@ namespace LabBenchManager.Services
             }
             else
             {
-                // 如果今天没有“进行中”的计划，则清空动态信息
+                // 如果今天没有"进行中"的计划，则清空动态信息
                 bench.CurrentUser = null;
                 bench.Project = null;
             }
@@ -187,6 +187,60 @@ namespace LabBenchManager.Services
             {
                 await UpdateDynamicInfoFromPlansAsync(bench.Id);
             }
+        }
+
+        // ==================== 文档管理方法 ====================
+
+        /// <summary>
+        /// 获取指定设备的所有文档
+        /// </summary>
+        public async Task<List<BenchDocument>> GetDocumentsByBenchIdAsync(int benchId)
+        {
+            return await _db.BenchDocuments
+                .Where(d => d.BenchId == benchId)
+                .OrderByDescending(d => d.UploadedAt)
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// 添加新文档
+        /// </summary>
+        public async Task<BenchDocument> AddDocumentAsync(BenchDocument document)
+        {
+            _db.BenchDocuments.Add(document);
+            await _db.SaveChangesAsync();
+            return document;
+        }
+
+        /// <summary>
+        /// 删除文档
+        /// </summary>
+        public async Task DeleteDocumentAsync(int documentId)
+        {
+            var document = await _db.BenchDocuments.FindAsync(documentId);
+            if (document != null)
+            {
+                _db.BenchDocuments.Remove(document);
+                await _db.SaveChangesAsync();
+            }
+        }
+
+        /// <summary>
+        /// 根据ID获取文档
+        /// </summary>
+        public async Task<BenchDocument?> GetDocumentByIdAsync(int documentId)
+        {
+            return await _db.BenchDocuments.FindAsync(documentId);
+        }
+
+        /// <summary>
+        /// 获取设备及其文档
+        /// </summary>
+        public async Task<Bench?> GetBenchWithDocumentsAsync(int benchId)
+        {
+            return await _db.Benches
+                .Include(b => b.Documents)
+                .FirstOrDefaultAsync(b => b.Id == benchId);
         }
     }
 }

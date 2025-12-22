@@ -78,13 +78,13 @@
                         <div class="col-md-4">
                             <label class="form-label fw-bold">审核时间</label>
                             <div class="form-control-plaintext">
-                                @(Report.ReviewTime?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "N/A")
+                                @(Report.ReviewTime?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "--")
                             </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold">批准时间</label>
                             <div class="form-control-plaintext">
-                                @(Report.ApprovalTime?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "N/A")
+                                @(Report.ApprovalTime?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "--")
                             </div>
                         </div>
                     </div>

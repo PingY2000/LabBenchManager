@@ -28,6 +28,7 @@ else
         {
             var bench = item.Bench;
             var status = item.Status;
+            var docCount = benchDocuments.ContainsKey(bench.Id) ? benchDocuments[bench.Id].Count : 0;
 
             <div class="col">
                 <div class="card h-100 @GetStatusClass(status)">
@@ -49,7 +50,6 @@ else
                                 <div>
                                     <div class="d-flex justify-content-between align-items-start">
                                         <h6 class="card-title mb-1">@bench.Name</h6>
-                                        @*<span class="badge @GetStatusBadgeClass(status)">@status.ToString()</span>*@
                                     </div>
                                     <p class="card-subtitle mb-2 text-muted small">
                                         @if (!string.IsNullOrEmpty(bench.EquipmentNo))
@@ -68,14 +68,26 @@ else
                                     <li><strong>测试类型:</strong> @(bench.TestType ?? "N/A")</li>
                                     <li><strong>测试对象:</strong> @(bench.TestObject ?? "N/A")</li>
                                     <li class="pt-1"><strong><span class="oi oi-map-marker me-1"></span>位置:</strong> @(bench.Location ?? "未指定")</li>
+                                    @if (docCount > 0)
+                                    {
+                                        <li class="pt-1">
+                                            <strong><span class="oi oi-document me-1"></span>相关文档:</strong>
+                                            <span class="badge bg-info ms-1">@docCount</span>
+                                        </li>
+                                    }
                                 </ul>
 
                                 <div class="mt-auto">
-                                    <!-- 添加查看排产按钮 -->
-                                    <div class="mt-2">
-                                        <button class="btn btn-primary btn-sm w-100" @onclick="() => ViewSchedule(bench.Id)">
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-primary btn-sm" @onclick="() => ViewSchedule(bench.Id)">
                                             <span class="oi oi-calendar me-1"></span>查看排产日历
                                         </button>
+                                        @if (docCount > 0)
+                                        {
+                                            <button class="btn btn-outline-info btn-sm" @onclick="() => ViewDocuments(bench)">
+                                                <span class="oi oi-document me-1"></span>查看文档 (@docCount)
+                                            </button>
+                                        }
                                     </div>
                                 </div>
                             </div>
@@ -87,12 +99,91 @@ else
     </div>
 }
 
-<style>
+@* 文档查看模态框 *@
+@if (showDocumentModal)
+{
+    <div class="modal fade show" style="display:block" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <span class="oi oi-document me-2"></span>
+                        相关文档 - @currentBench?.Name
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseDocumentModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (currentDocuments == null)
+                    {
+                        <p class="text-muted">加载中...</p>
+                    }
+                    else if (!currentDocuments.Any())
+                    {
+                        <div class="alert alert-info">
+                            <span class="oi oi-info me-2"></span>
+                            暂无相关文档
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group">
+                            @foreach (var doc in currentDocuments)
+                            {
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1">
+                                                <span class="@GetFileIcon(doc.FileType) me-2"></span>
+                                                @doc.FileName
+                                            </h6>
+                                            @if (!string.IsNullOrEmpty(doc.Description))
+                                            {
+                                                <p class="mb-1 text-muted small">@doc.Description</p>
+                                            }
+                                            <small class="text-muted">
+                                                <span class="me-3">
+                                                    <span class="oi oi-data-transfer-download me-1"></span>
+                                                    @FormatFileSize(doc.FileSize)
+                                                </span>
+                                                <span class="me-3">
+                                                    <span class="oi oi-clock me-1"></span>
+                                                    @doc.UploadedAt.ToString("yyyy-MM-dd HH:mm")
+                                                </span>
+                                                @if (!string.IsNullOrEmpty(doc.UploadedBy))
+                                                {
+                                                    <span>
+                                                        <span class="oi oi-person me-1"></span>
+                                                        @doc.UploadedBy
+                                                    </span>
+                                                }
+                                            </small>
+                                        </div>
+                                        <div class="ms-3">
+                                            <a href="@doc.FilePath" class="btn btn-primary btn-sm" download title="下载">
+                                                <span class="oi oi-data-transfer-download"></span> 下载
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDocumentModal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
 
+<style>
     /* 卡片边框加粗显示状态 */
     .card {
         border-width: 2px;
     }
+
     /* 确保图片容器有固定高度 */
     .img-aspect-4-3 {
         width: 100%;
@@ -115,27 +206,55 @@ else
 
     /* 修复卡片主体高度 */
     .card-body {
-        min-height: 150px; /* 缩小最小高度 */
+        min-height: 150px;
     }
 
     /* 确保卡片行等高 */
     .row.g-0 {
-        min-height: 150px; /* 缩小最小高度 */
+        min-height: 150px;
     }
-
-    /* 卡片边框加粗显示状态 */
-    .card {
-        border-width: 2px;
-    }
-
 </style>
 
 @code {
     private List<BenchWithStatus>? benchesWithStatus;
+    private Dictionary<int, List<BenchDocument>> benchDocuments = new();
+
+    // 文档查看相关
+    private bool showDocumentModal = false;
+    private Bench? currentBench = null;
+    private List<BenchDocument>? currentDocuments = null;
 
     protected override async Task OnInitializedAsync()
     {
         benchesWithStatus = await BenchSvc.GetAllWithStatusAsync();
+        await LoadAllDocuments();
+    }
+
+    private async Task LoadAllDocuments()
+    {
+        benchDocuments.Clear();
+        if (benchesWithStatus != null)
+        {
+            foreach (var item in benchesWithStatus)
+            {
+                var docs = await BenchSvc.GetDocumentsByBenchIdAsync(item.Bench.Id);
+                benchDocuments[item.Bench.Id] = docs;
+            }
+        }
+    }
+
+    private async Task ViewDocuments(Bench bench)
+    {
+        currentBench = bench;
+        currentDocuments = await BenchSvc.GetDocumentsByBenchIdAsync(bench.Id);
+        showDocumentModal = true;
+    }
+
+    private void CloseDocumentModal()
+    {
+        showDocumentModal = false;
+        currentBench = null;
+        currentDocuments = null;
     }
 
     private string GetStatusClass(BenchStatus status) => status switch
@@ -159,5 +278,34 @@ else
     private void ViewSchedule(int benchId)
     {
         NavigationManager.NavigateTo($"/schedule/{benchId}");
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private string GetFileIcon(string? fileType)
+    {
+        if (string.IsNullOrEmpty(fileType)) return "oi oi-file";
+
+        return fileType.ToLower() switch
+        {
+            ".pdf" => "oi oi-file text-danger",
+            ".doc" or ".docx" => "oi oi-file text-primary",
+            ".xls" or ".xlsx" => "oi oi-spreadsheet text-success",
+            ".ppt" or ".pptx" => "oi oi-file text-warning",
+            ".zip" or ".rar" => "oi oi-zip text-secondary",
+            ".txt" => "oi oi-document text-muted",
+            _ => "oi oi-file"
+        };
     }
 }
