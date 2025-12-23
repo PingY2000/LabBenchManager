@@ -8,6 +8,7 @@
 @inject NavigationManager NavigationManager
 @inject IWebHostEnvironment Env
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
 
 <PageTitle>设备管理</PageTitle>
 
@@ -369,7 +370,7 @@
                                                     <a href="@doc.FilePath" class="btn btn-outline-primary" download title="下载">
                                                         <span class="oi oi-data-transfer-download"></span>
                                                     </a>
-                                                    <button class="btn btn-outline-danger" @onclick="() => ConfirmDeleteDocument(doc)" title="删除">
+                                                    <button class="btn btn-outline-danger" @onclick="() => ExecuteDeleteDocument(doc)" title="删除">
                                                         <span class="oi oi-trash"></span>
                                                     </button>
                                                 </div>
@@ -390,40 +391,10 @@
     <div class="modal-backdrop fade show"></div>
 }
 
-@* 新增：文档删除确认模态框 *@
-@if (showDeleteDocumentConfirm)
-{
-    <div class="modal fade show" style="display:block" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title">确认删除文档</h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="CancelDeleteDocument"></button>
-                </div>
-                <div class="modal-body">
-                    <p>您确定要删除以下文档吗？此操作将从服务器永久删除文件。</p>
-                    @if (documentToDelete != null)
-                    {
-                        <div class="alert alert-warning">
-                            <strong>文件名:</strong> @documentToDelete.FileName
-                        </div>
-                    }
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CancelDeleteDocument">取消</button>
-                    <button type="button" class="btn btn-danger" @onclick="ExecuteDeleteDocument">
-                        <span class="oi oi-trash me-1"></span>确认删除
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="modal-backdrop fade show"></div>
-}
 
 @code {
     private List<BenchWithStatus>? benchListWithStatus;
-    private Dictionary<int, List<BenchDocument>> benchDocuments = new(); // ⭐ 添加这个
+    private Dictionary<int, List<BenchDocument>> benchDocuments = new(); 
     private bool showModal = false;
     private Bench editingBench = new();
     private IBrowserFile? selectedFile;
@@ -441,15 +412,13 @@
     private string currentUserName = string.Empty;
     private bool isUploading = false;
 
-    // 删除文档确认相关
-    private bool showDeleteDocumentConfirm = false;
-    private BenchDocument? documentToDelete = null;
+
 
     protected override async Task OnInitializedAsync()
     {
         await LoadBenches();
-        await LoadAllDocuments(); // ⭐ 添加这个
-        await GetCurrentUserName(); // ⭐ 添加这个
+        await LoadAllDocuments(); 
+        await GetCurrentUserName(); 
     }
 
     private async Task LoadBenches()
@@ -641,26 +610,22 @@
         documentDescription = string.Empty;
     }
 
-    private void ConfirmDeleteDocument(BenchDocument document)
-    {
-        documentToDelete = document;
-        showDeleteDocumentConfirm = true;
-    }
 
-    private void CancelDeleteDocument()
-    {
-        showDeleteDocumentConfirm = false;
-        documentToDelete = null;
-    }
 
-    private async Task ExecuteDeleteDocument()
+    private async Task ExecuteDeleteDocument(BenchDocument docToDelete)
     {
-        if (documentToDelete == null || currentBench == null) return;
+        if (docToDelete == null || currentBench == null) return;
 
+        // 使用 JS confirm 进行轻量级确认
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"您确定要删除文档 “{docToDelete.FileName}” 吗？");
+        if (!confirmed)
+        {
+            return; // 用户点击了“取消”
+        }
         // 删除物理文件
         try
         {
-            var relativePath = documentToDelete.FilePath.TrimStart('/', '\\');
+            var relativePath = docToDelete.FilePath.TrimStart('/', '\\');
             var filePath = Path.Combine(Env.WebRootPath, relativePath);
             if (File.Exists(filePath))
             {
@@ -673,14 +638,12 @@
         }
 
         // 从数据库删除记录
-        await BenchSvc.DeleteDocumentAsync(documentToDelete.Id);
+        await BenchSvc.DeleteDocumentAsync(docToDelete.Id);
 
         // 重新加载文档列表
         currentDocuments = await BenchSvc.GetDocumentsByBenchIdAsync(currentBench.Id);
-        await LoadAllDocuments();
+        await LoadAllDocuments(); // 更新主列表的文档计数
 
-        showDeleteDocumentConfirm = false;
-        documentToDelete = null;
         StateHasChanged();
     }
 
