@@ -68,24 +68,22 @@ else
                                     <li><strong>测试类型:</strong> @(bench.TestType ?? "N/A")</li>
                                     <li><strong>测试对象:</strong> @(bench.TestObject ?? "N/A")</li>
                                     <li class="pt-1"><strong><span class="oi oi-map-marker me-1"></span>位置:</strong> @(bench.Location ?? "未指定")</li>
-                                    @if (docCount > 0)
-                                    {
-                                        <li class="pt-1">
-                                            <strong><span class="oi oi-document me-1"></span>相关文档:</strong>
-                                            <span class="badge bg-info ms-1">@docCount</span>
-                                        </li>
-                                    }
+                                    
                                 </ul>
 
                                 <div class="mt-auto">
-                                    <div class="d-grid gap-2">
-                                        <button class="btn btn-primary btn-sm" @onclick="() => ViewSchedule(bench.Id)">
+                                    <!-- 使用 d-flex 让内部元素水平排列 -->
+                                    <div class="d-flex gap-2">
+                                        
+                                        <!-- flex-grow-1 让这个按钮也占据可用空间 -->
+                                        <button class="btn btn-primary btn-sm flex-grow-1" @onclick="() => ViewSchedule(bench.Id)">
                                             <span class="oi oi-calendar me-1"></span>查看排产日历
                                         </button>
-                                        @if (docCount > 0)
+                                        @if (docCount > -1)
                                         {
-                                            <button class="btn btn-outline-info btn-sm" @onclick="() => ViewDocuments(bench)">
-                                                <span class="oi oi-document me-1"></span>查看文档 (@docCount)
+                                            <!-- flex-grow-1 让这个按钮占据可用空间 -->
+                                            <button class="btn btn-outline-info btn-sm flex-grow-1" @onclick="() => ViewDocuments(bench)">
+                                                <span class="oi oi-document me-1"></span>相关文档 (@docCount)
                                             </button>
                                         }
                                     </div>
@@ -149,13 +147,14 @@ else
                                                     <span class="oi oi-clock me-1"></span>
                                                     @doc.UploadedAt.ToString("yyyy-MM-dd HH:mm")
                                                 </span>
+                                                @*
                                                 @if (!string.IsNullOrEmpty(doc.UploadedBy))
                                                 {
                                                     <span>
                                                         <span class="oi oi-person me-1"></span>
                                                         @doc.UploadedBy
                                                     </span>
-                                                }
+                                                }*@
                                             </small>
                                         </div>
                                         <div class="ms-3">
