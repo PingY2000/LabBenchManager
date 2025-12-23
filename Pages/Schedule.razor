@@ -1,5 +1,5 @@
 ﻿@page "/schedule/{BenchId:int}"
-@attribute [Authorize(Roles = $"{AppRoles.TestEngineer},{AppRoles.Admin}")]
+@attribute [Authorize(Roles = $"{AppRoles.TestEngineer},{AppRoles.Admin},{AppRoles.Requester}")]
 
 @using System.Globalization
 @using LabBenchManager.Models

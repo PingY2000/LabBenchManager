@@ -94,12 +94,15 @@
                                 <button class="btn btn-outline-primary" @onclick="() => ViewSchedule(bench.Id)" title="查看排产">
                                     <span class="oi oi-calendar"></span>
                                 </button>
-                                <button class="btn btn-outline-secondary" @onclick="() => EditBench(bench)" title="编辑">
-                                    <span class="oi oi-pencil"></span>
-                                </button>
-                                <button class="btn btn-outline-danger" @onclick="() => ConfirmDelete(bench)" title="删除">
-                                    <span class="oi oi-trash"></span>
-                                </button>
+                                <AuthorizeView Roles="Admin">
+                                    <button class="btn btn-outline-secondary" @onclick="() => EditBench(bench)" title="编辑">
+                                        <span class="oi oi-pencil"></span>
+                                    </button>
+                                    <button class="btn btn-outline-danger" @onclick="() => ConfirmDelete(bench)" title="删除">
+                                        <span class="oi oi-trash"></span>
+                                    </button>
+                                </AuthorizeView>
+                                
                                 
                             </div>
                         </td>

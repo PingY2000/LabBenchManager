@@ -202,7 +202,6 @@
                                                     <span class="oi oi-x"></span>
                                                 </button>
                                             }
-
                                             <!-- 分配/重新分配按钮 -->
                                             @if (CanBeAllocated(assignment))
                                             {
@@ -210,14 +209,16 @@
                                                     <span class="oi oi-fork"></span>
                                                 </button>
                                             }
-
-                                            <!-- 删除按钮 -->
-                                            @if (/*assignment.Status != AssignmentStatus.已确定 && assignment.Status != AssignmentStatus.已完成*/true)
-                                            {
-                                                <button class="btn btn-outline-danger" @onclick="() => ConfirmDelete(assignment)" title="删除申请">
-                                                    <span class="oi oi-trash"></span>
-                                                </button>
-                                            }
+                                            <AuthorizeView Roles="Admin">
+                                                <!-- 删除按钮 -->
+                                                @if (/*assignment.Status != AssignmentStatus.已确定 && assignment.Status != AssignmentStatus.已完成*/true)
+                                                {
+                                                    <button class="btn btn-outline-danger" @onclick="() => ConfirmDelete(assignment)" title="删除申请">
+                                                        <span class="oi oi-trash"></span>
+                                                    </button>
+                                                }
+                                            </AuthorizeView>
+                                            
                                         </div>
                                     </td>
                                 </tr>

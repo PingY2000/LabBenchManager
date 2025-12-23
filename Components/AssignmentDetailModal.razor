@@ -1,8 +1,10 @@
 ﻿@* Components/AssignmentDetailModal.razor *@
 @using LabBenchManager.Models
 @inject NavigationManager NavManager
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
-@if (Assignment != null)
+@if (Assignment != null && canView)
 {
     <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -212,7 +214,36 @@
         </div>
     </div>
 }
-
+else if (Assignment != null && !canView)
+{
+    @* 🔥 无权限提示模态框 - 柔和样式 *@
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-light border-bottom">
+                    <h5 class="modal-title text-secondary">
+                        <span class="oi oi-lock-locked"></span> 无权限访问
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="() => OnClose.InvokeAsync()"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <h5 class="text-secondary">您没有权限查看此申请</h5>
+                    <p class="text-muted small">
+                        只有以下用户可以查看：
+                    </p>
+                    <ul class="list-unstyled">
+                        <li class="mb-1"><span class="badge bg-secondary">管理员</span></li>
+                        <li class="mb-1"><span class="badge bg-secondary">测试工程师</span></li>
+                        <li class="mb-1"><span class="badge bg-secondary">申请发起人</span></li>
+                    </ul>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => OnClose.InvokeAsync()">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     [Parameter]
@@ -232,7 +263,55 @@
 
     [Parameter]
     public EventCallback<Assignment> OnGoToAllocate { get; set; }
+    private bool canView = false;
 
+    // 🔥 新增或替换 OnParametersSetAsync
+    protected override async Task OnParametersSetAsync()
+    {
+        await CheckViewPermission();
+    }
+
+    // 🔥 新增权限检查方法
+    private async Task CheckViewPermission()
+    {
+        if (Assignment == null)
+        {
+            canView = false;
+            return;
+        }
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (!user.Identity?.IsAuthenticated ?? true)
+        {
+            canView = false;
+            return;
+        }
+
+        var currentUserNTAccount = user.Identity?.Name;
+
+        // 权限判断：管理员 OR 测试工程师 OR 申请发起人
+        canView = user.IsInRole(AppRoles.Admin) ||
+                  user.IsInRole(AppRoles.TestEngineer)||
+              IsApplicant(currentUserNTAccount);
+    }
+
+    // 🔥 新增发起人判断方法
+    private bool IsApplicant(string? currentUserNTAccount)
+    {
+        if (string.IsNullOrEmpty(currentUserNTAccount) || Assignment == null)
+        {
+            return false;
+        }
+
+        // 不区分大小写比较 NT 账号
+        return string.Equals(
+            Assignment.ApplicantNTAccount,
+            currentUserNTAccount,
+            StringComparison.OrdinalIgnoreCase
+        );
+    }
     private void GoToSchedule()
     {
         if (Assignment == null || !Assignment.BenchId.HasValue || !Assignment.TestPlanId.HasValue)
