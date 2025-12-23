@@ -7,48 +7,152 @@ namespace LabBenchManager.Services
 {
     public class UserService
     {
-        private readonly LabDbContext _db;
+        private readonly IDbContextFactory<LabDbContext> _dbFactory;
 
-        public UserService(LabDbContext db)
+        public UserService(IDbContextFactory<LabDbContext> dbFactory)
         {
-            _db = db;
+            _dbFactory = dbFactory;
         }
 
-        // 方法名不变，但内部实现变了
-        public async Task<ApplicationUser?> GetUserWithRoleAsync(string ntAccount)
+        // 静态辅助方法 - 从 NT 账号提取用户名
+        public static string GetUserName(string? ntAccount)
         {
-            // 将传入的参数和数据库中的字段都转换为小写（或大写）进行比较。
-            // EF Core 能够将这个操作完美地翻译成 SQL 的 LOWER() 或 UPPER() 函数。
+            if (string.IsNullOrEmpty(ntAccount))
+            {
+                return "用户";
+            }
+
+            var nameParts = ntAccount.Split('\\');
+            return nameParts.Length > 1 ? nameParts[1] : ntAccount;
+        }
+
+        // 🔥 修改：检查空字符串
+        public async Task<string> GetDisplayNameOrUserNameAsync(string ntAccount)
+        {
+            var displayName = await GetUserDisplayNameAsync(ntAccount);
+            // 🔥 空字符串也视为无效
+            return !string.IsNullOrWhiteSpace(displayName) ? displayName : GetUserName(ntAccount);
+        }
+
+        // 🔥 修改：返回 null 如果是空字符串
+        public async Task<string?> GetUserDisplayNameAsync(string ntAccount)
+        {
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
             var normalizedNtAccount = ntAccount.ToLower();
 
-            return await _db.ApplicationUsers
-                            .FirstOrDefaultAsync(u => u.NtAccount.ToLower() == normalizedNtAccount);
+            var displayName = await db.ApplicationUsers
+                .Where(u => u.NtAccount.ToLower() == normalizedNtAccount)
+                .Select(u => u.DisplayName)
+                .FirstOrDefaultAsync();
+
+            // 🔥 空字符串视为 null
+            return string.IsNullOrWhiteSpace(displayName) ? null : displayName;
+        }
+
+        public async Task<string?> GetUserDepartmentAsync(string ntAccount)
+        {
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
+            var normalizedNtAccount = ntAccount.ToLower();
+
+            var department = await db.ApplicationUsers
+                .Where(u => u.NtAccount.ToLower() == normalizedNtAccount)
+                .Select(u => u.Department)
+                .FirstOrDefaultAsync();
+
+            // 🔥 空字符串视为 null
+            return string.IsNullOrWhiteSpace(department) ? null : department;
+        }
+
+        // 🔥 修改：处理空字符串
+        public async Task<(string? DisplayName, string? Department)> GetUserInfoAsync(string ntAccount)
+        {
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
+            var normalizedNtAccount = ntAccount.ToLower();
+
+            var userInfo = await db.ApplicationUsers
+                .Where(u => u.NtAccount.ToLower() == normalizedNtAccount)
+                .Select(u => new { u.DisplayName, u.Department })
+                .FirstOrDefaultAsync();
+
+            if (userInfo == null)
+            {
+                return (null, null);
+            }
+
+            // 🔥 空字符串转为 null
+            return (
+                string.IsNullOrWhiteSpace(userInfo.DisplayName) ? null : userInfo.DisplayName,
+                string.IsNullOrWhiteSpace(userInfo.Department) ? null : userInfo.Department
+            );
+        }
+
+        // 🔥 修改：批量获取时处理空字符串
+        public async Task<Dictionary<string, string>> GetUserDisplayNamesAsync(IEnumerable<string> ntAccounts)
+        {
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
+            var normalizedAccounts = ntAccounts
+                .Where(a => !string.IsNullOrEmpty(a))
+                .Select(a => a.ToLower())
+                .Distinct()
+                .ToList();
+
+            var dbUsers = await db.ApplicationUsers
+                .Where(u => normalizedAccounts.Contains(u.NtAccount.ToLower()))
+                .ToListAsync();
+
+            return dbUsers.ToDictionary(
+                u => u.NtAccount,
+                u => !string.IsNullOrWhiteSpace(u.DisplayName) ? u.DisplayName : GetUserName(u.NtAccount), // 🔥 检查空字符串
+                StringComparer.OrdinalIgnoreCase
+            );
+        }
+
+        public async Task<ApplicationUser?> GetUserWithRoleAsync(string ntAccount)
+        {
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
+            var normalizedNtAccount = ntAccount.ToLower();
+
+            return await db.ApplicationUsers
+                .FirstOrDefaultAsync(u => u.NtAccount.ToLower() == normalizedNtAccount);
         }
 
         public async Task<List<ApplicationUser>> GetAllUsersAsync()
         {
-            return await _db.ApplicationUsers.OrderBy(u => u.NtAccount).ToListAsync();
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
+            return await db.ApplicationUsers.OrderBy(u => u.NtAccount).ToListAsync();
         }
 
         public async Task AddUserAsync(ApplicationUser user)
         {
-            _db.ApplicationUsers.Add(user);
-            await _db.SaveChangesAsync();
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
+            db.ApplicationUsers.Add(user);
+            await db.SaveChangesAsync();
         }
 
         public async Task UpdateUserAsync(ApplicationUser user)
         {
-            _db.Entry(user).State = EntityState.Modified;
-            await _db.SaveChangesAsync();
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
+            db.Entry(user).State = EntityState.Modified;
+            await db.SaveChangesAsync();
         }
 
         public async Task DeleteUserAsync(int id)
         {
-            var user = await _db.ApplicationUsers.FindAsync(id);
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
+            var user = await db.ApplicationUsers.FindAsync(id);
             if (user != null)
             {
-                _db.ApplicationUsers.Remove(user);
-                await _db.SaveChangesAsync();
+                db.ApplicationUsers.Remove(user);
+                await db.SaveChangesAsync();
             }
         }
 
@@ -59,34 +163,34 @@ namespace LabBenchManager.Services
                 return (0, 0);
             }
 
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
             var addedCount = 0;
             var updatedCount = 0;
 
-            // 获取所有数据库中的NT账号，用于快速查找
-            var existingUsers = await _db.ApplicationUsers.ToDictionaryAsync(u => u.NtAccount, StringComparer.OrdinalIgnoreCase);
+            var existingUsers = await db.ApplicationUsers
+                .ToDictionaryAsync(u => u.NtAccount, StringComparer.OrdinalIgnoreCase);
 
             foreach (var user in usersFromExcel)
             {
-                if (string.IsNullOrWhiteSpace(user.NtAccount)) continue; // 跳过无效数据
+                if (string.IsNullOrWhiteSpace(user.NtAccount)) continue;
 
                 if (existingUsers.TryGetValue(user.NtAccount, out var existingUser))
                 {
-                    // 更新现有用户
                     existingUser.DisplayName = user.DisplayName;
                     existingUser.Department = user.Department;
                     existingUser.Role = user.Role;
-                    _db.ApplicationUsers.Update(existingUser);
+                    db.ApplicationUsers.Update(existingUser);
                     updatedCount++;
                 }
                 else
                 {
-                    // 添加新用户
-                    _db.ApplicationUsers.Add(user);
+                    db.ApplicationUsers.Add(user);
                     addedCount++;
                 }
             }
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             return (addedCount, updatedCount);
         }
     }

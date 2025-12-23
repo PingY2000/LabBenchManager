@@ -74,7 +74,7 @@
                                 <span class="text-danger">*</span>测试内容
                             </label>
                             <InputTextArea class="form-control" @bind-Value="newAssignment.TestContent" rows="4"
-                                           placeholder="请详细描述测试内容，包括测试目的、方法、预期结果等" />
+                                           placeholder="请描述测试内容，包括测试目的、方法、预期结果等" />
                             <ValidationMessage For="(() => newAssignment.TestContent)" class="text-danger small" />
                         </div>
 
@@ -83,7 +83,7 @@
                                 <span class="text-danger"></span>测试标准/依据
                             </label>
                             <InputText class="form-control" @bind-Value="newAssignment.TestStandard"
-                                       placeholder="例如：GB/T 2423.1-2008 等" />
+                                       placeholder="" />
                             <ValidationMessage For="(() => newAssignment.TestStandard)" class="text-danger small" />
                         </div>
 

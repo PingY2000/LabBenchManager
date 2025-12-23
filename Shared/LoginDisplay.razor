@@ -1,14 +1,19 @@
 ﻿@* Shared/LoginDisplay.razor *@
 @using Microsoft.AspNetCore.Components.Authorization
 @using LabBenchManager.Models
+@using LabBenchManager.Services
 @inject IConfiguration Configuration
 @inject NavigationManager Navigation
+@inject UserService UserService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <AuthorizeView>
     <Authorized>
         <div class="d-flex align-items-center gap-2">
             <span class="oi oi-person" aria-hidden="true"></span>
-            <strong>@GetUserName(context.User.Identity?.Name)</strong>
+
+            @* 🔥 使用 Service 方法，简化逻辑 *@
+            <strong>@(currentUserDisplayName ?? UserService.GetUserName(context.User.Identity?.Name))</strong>
 
             @* 显示当前角色徽章 *@
             @if (context.User.IsInRole(AppRoles.Admin))
@@ -28,11 +33,11 @@
                 <span class="badge bg-warning text-dark">无角色</span>
             }
 
-            @* 🔥 开发环境：角色切换下拉框 *@
+            @* 开发环境：角色切换下拉框 *@
             @if (IsDevelopment)
             {
                 <select class="form-select form-select-sm"
-                        style="width: 150px;"
+                        style="width: 180px;"
                         value="@GetCurrentRole(context)"
                         @onchange="OnRoleChange">
                     <option value="">-- 切换角色 --</option>
@@ -49,7 +54,6 @@
             <span class="oi oi-warning" aria-hidden="true"></span>
             未登录
 
-            @* 🔥 开发环境：快速登录按钮 *@
             @if (IsDevelopment)
             {
                 <button class="btn btn-sm btn-outline-primary ms-2" @onclick="DevLogin">
@@ -62,17 +66,28 @@
 
 @code {
     private bool IsDevelopment => Configuration.GetValue<bool>("IsDevelopment");
+    private string currentUserDisplayName = "用户"; // 🔥 设置默认值
 
-    private string GetUserName(string? windowsName)
+    
+
+    protected override async Task OnInitializedAsync()
     {
-        if (string.IsNullOrEmpty(windowsName))
-        {
-            return "用户";
-        }
-
-        var nameParts = windowsName.Split('\\');
-        return nameParts.Length > 1 ? nameParts[1] : windowsName;
+        await LoadCurrentUserDisplayName();
     }
+
+    private async Task LoadCurrentUserDisplayName()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true && !string.IsNullOrEmpty(user.Identity.Name))
+        {
+            // 🔥 一步获取：有 DisplayName 返回 DisplayName，否则返回从 NT 账号提取的用户名
+            currentUserDisplayName = await UserService.GetDisplayNameOrUserNameAsync(user.Identity.Name);
+        }
+    }
+
+    // 🔥 移除 GetUserName 方法，使用 UserService.GetUserName
 
     private string GetCurrentRole(AuthenticationState context)
     {
@@ -87,7 +102,6 @@
         var selectedRole = e.Value?.ToString();
         if (string.IsNullOrEmpty(selectedRole) || selectedRole == "-- 切换角色 --") return;
 
-        // 导航到角色切换端点
         Navigation.NavigateTo($"/dev/switch-role?role={selectedRole}", forceLoad: true);
     }
 
