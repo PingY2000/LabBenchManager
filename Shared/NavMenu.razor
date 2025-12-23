@@ -2,6 +2,8 @@
 @using LabBenchManager.Services
 @using LabBenchManager.Models
 @inject BenchService BenchSvc
+@inject NavigationManager Navigation
+@implements IDisposable
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
@@ -107,11 +109,42 @@
 
 @code {
     private bool collapseNavMenu = true;
-    private bool scheduleMenuExpanded = false;
+    private bool scheduleMenuExpanded = true; // ✅ 改为 true
     private List<Bench>? benches;
     private bool isLoading = false;
 
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // ✅ 初始就加载设备列表
+        await LoadBenches();
+
+        // 监听导航变化
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        // 当导航到 schedule 页面时展开菜单
+        if (e.Location.Contains("/schedule/", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!scheduleMenuExpanded)
+            {
+                scheduleMenuExpanded = true;
+                if (benches == null)
+                {
+                    await LoadBenches();
+                }
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
 
     private void ToggleNavMenu()
     {
@@ -145,8 +178,7 @@
         finally
         {
             isLoading = false;
+            StateHasChanged(); // ✅ 添加这行更保险
         }
     }
 }
-
-
