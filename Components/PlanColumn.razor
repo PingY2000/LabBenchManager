@@ -64,7 +64,6 @@
     [Parameter]
     public bool IsCollapsible { get; set; } = true;
 
-    // ★★★ 核心改动：改用 OnPlanClick 事件，点击后显示详情预览 ★★★
     [Parameter]
     public EventCallback<TestPlan> OnPlanClick { get; set; }
 
@@ -78,7 +77,7 @@
         if (Plans != null)
         {
             plansForThisStatus = Plans.Where(p => p.Status == Status)
-                                      .OrderBy(p => p.ScheduledDateList.FirstOrDefault())
+                                      .OrderByDescending(p => p.Id)  // 🔥 改为按ID降序
                                       .ToList();
         }
     }

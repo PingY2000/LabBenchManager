@@ -430,6 +430,7 @@ else
         modificationReason = "";
         showReasonInput = false;
         validationError = "";
+        viewingPlan = null;
     }
 
     // ==================== 保存逻辑 ====================
@@ -580,7 +581,16 @@ else
         if (currentViewMode == ViewMode.Edit)
         {
             ToggleDateSelection(date);
-            StateHasChanged(); 
+            StateHasChanged();
+        }
+        else if (currentViewMode == ViewMode.Detail)
+        {
+            // 详情模式下点击空白日期关闭详情
+            var hasPlans = testPlans?.Any(p => p.GetScheduledDates().Contains(date.Date)) ?? false;
+            if (!hasPlans)
+            {
+                CloseDetail();
+            }
         }
     }
 

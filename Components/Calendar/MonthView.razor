@@ -72,7 +72,7 @@
                                     </div>
                                     <div class="plan-block plan-block-half plan-more"
                                          @onclick:stopPropagation="true"
-                                         @onclick="() => OnDayClick.InvokeAsync(day.Date)"
+                                         @onclick="() => ShowMorePlans(day.Date, plansInDay)"
                                          title="点击查看全部 @plansInDay.Count 个计划">
                                         <span class="plan-text">+@(plansInDay.Count - 1) 更多...</span>
                                     </div>
@@ -86,6 +86,50 @@
     </table>
 </div>
 
+<!-- 更多计划弹出框 -->
+@if (showMorePlansModal)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1" @onclick="CloseMorePlansModal">
+        <div class="modal-dialog modal-dialog-centered" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        @selectedDate.ToString("yyyy年M月d日") 的测试计划
+                        <span class="badge bg-primary ms-2">@selectedDayPlans.Count 个</span>
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseMorePlansModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="list-group">
+                        @foreach (var plan in selectedDayPlans)
+                        {
+                            <a href="javascript:void(0)"
+                               class="list-group-item list-group-item-action @(plan.Id == HighlightedPlanId ? "active" : "")"
+                               @onclick="() => HandlePlanClickInModal(plan)">
+                                <div class="d-flex w-100 justify-content-between align-items-center">
+                                    <h6 class="mb-1">@plan.ProjectName</h6>
+                                    <span class="badge @GetStatusBadgeClass(plan.Status)">@plan.Status</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(plan.Description))
+                                {
+                                    <p class="mb-1 small text-muted">@plan.Description</p>
+                                }
+                                @if (!string.IsNullOrEmpty(plan.AssignedTo))
+                                {
+                                    <small class="text-muted">负责人: @plan.AssignedTo</small>
+                                }
+                            </a>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseMorePlansModal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public DateTime CurrentDate { get; set; }
     [Parameter] public List<TestPlan>? Plans { get; set; }
@@ -94,12 +138,42 @@
     [Parameter] public List<DateTime> SelectedDatesForPlan { get; set; } = new();
     [Parameter] public int? HighlightedPlanId { get; set; }
 
+    private bool showMorePlansModal = false;
+    private DateTime selectedDate;
+    private List<TestPlan> selectedDayPlans = new();
+
     private class DayInfo
     {
         public DateTime Date { get; set; }
         public bool IsCurrentMonth { get; set; }
         public bool IsToday { get; set; }
     }
+
+    private void ShowMorePlans(DateTime date, List<TestPlan> plans)
+    {
+        selectedDate = date;
+        selectedDayPlans = plans.OrderByDescending(p => p.Id).ToList(); // 最新的在前
+        showMorePlansModal = true;
+    }
+
+    private void CloseMorePlansModal()
+    {
+        showMorePlansModal = false;
+    }
+
+    private async Task HandlePlanClickInModal(TestPlan plan)
+    {
+        await OnPlanClick.InvokeAsync(plan);
+        CloseMorePlansModal();
+    }
+
+    private string GetStatusBadgeClass(TestPlanStatus status) => status switch
+    {
+        TestPlanStatus.初步规划 => "bg-secondary",
+        TestPlanStatus.确定计划 => "bg-primary",
+        TestPlanStatus.已完成 => "bg-success",
+        _ => "bg-dark"
+    };
 
     private List<List<DayInfo>> GetWeeks()
     {
@@ -135,6 +209,7 @@
     {
         if (Plans == null) return new List<TestPlan>();
         return Plans.Where(p => p.GetScheduledDates().Contains(date.Date))
+                    .OrderByDescending(p => p.Id) // 最新的在前
                     .ToList();
     }
 
