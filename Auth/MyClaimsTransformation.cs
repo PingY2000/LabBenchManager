@@ -33,13 +33,11 @@ namespace LabBenchManager.Auth
                 return principal;
             }
 
-            // 🔥 关键修改：检查是否已经添加过角色（避免重复转换）
             if (identity.HasClaim(c => c.Type == ClaimTypes.Role && c.Value == userInDb.Role))
             {
                 return principal;
             }
 
-            // 🔥 关键修改：创建新的 ClaimsIdentity，正确设置 RoleClaimType
             var claims = new List<Claim>(identity.Claims)
             {
                 new Claim(ClaimTypes.Role, userInDb.Role)

@@ -8,11 +8,8 @@
 
 <PageTitle>设备状态总览</PageTitle>
 
-<<<<<<< HEAD
+
 <h3>设备状态总览 </h3>
-=======
-<h3>设备状态总览 (Dashboard)</h3>
->>>>>>> tfs/main
 <p class="text-muted">实时查看所有测试台的当前状态。</p>
 
 @if (benchesWithStatus == null)
@@ -26,7 +23,7 @@ else if (benchesWithStatus.Count == 0)
     </div>
 }
 else
-{0
+{
     <div class="row row-cols-1 row-cols-lg-2 g-3">
         @foreach (var item in benchesWithStatus)
         {

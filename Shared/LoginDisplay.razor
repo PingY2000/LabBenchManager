@@ -1,22 +1,68 @@
-﻿@* Shared/LoginDisplay.razor  *@
+﻿@* Shared/LoginDisplay.razor *@
 @using Microsoft.AspNetCore.Components.Authorization
+@using LabBenchManager.Models
+@inject IConfiguration Configuration
+@inject NavigationManager Navigation
 
 <AuthorizeView>
     <Authorized>
-        <span>
+        <div class="d-flex align-items-center gap-2">
             <span class="oi oi-person" aria-hidden="true"></span>
-            你好, @GetUserName(context.User.Identity?.Name)
-        </span>
+            <strong>@GetUserName(context.User.Identity?.Name)</strong>
+
+            @* 显示当前角色徽章 *@
+            @if (context.User.IsInRole(AppRoles.Admin))
+            {
+                <span class="badge bg-danger">管理员</span>
+            }
+            else if (context.User.IsInRole(AppRoles.TestEngineer))
+            {
+                <span class="badge bg-primary">测试工程师</span>
+            }
+            else if (context.User.IsInRole(AppRoles.Requester))
+            {
+                <span class="badge bg-info">申请者</span>
+            }
+            else
+            {
+                <span class="badge bg-warning text-dark">无角色</span>
+            }
+
+            @* 🔥 开发环境：角色切换下拉框 *@
+            @if (IsDevelopment)
+            {
+                <select class="form-select form-select-sm"
+                        style="width: 150px;"
+                        value="@GetCurrentRole(context)"
+                        @onchange="OnRoleChange">
+                    <option value="">-- 切换角色 --</option>
+                    <option value="@AppRoles.Admin">管理员</option>
+                    <option value="@AppRoles.TestEngineer">测试工程师</option>
+                    <option value="@AppRoles.Requester">申请者</option>
+                    <option value="None">移除角色</option>
+                </select>
+            }
+        </div>
     </Authorized>
     <NotAuthorized>
-        <span>
+        <span class="text-muted">
             <span class="oi oi-warning" aria-hidden="true"></span>
             未登录
+
+            @* 🔥 开发环境：快速登录按钮 *@
+            @if (IsDevelopment)
+            {
+                <button class="btn btn-sm btn-outline-primary ms-2" @onclick="DevLogin">
+                    <span class="oi oi-account-login"></span> [Dev] 模拟登录
+                </button>
+            }
         </span>
     </NotAuthorized>
 </AuthorizeView>
 
 @code {
+    private bool IsDevelopment => Configuration.GetValue<bool>("IsDevelopment");
+
     private string GetUserName(string? windowsName)
     {
         if (string.IsNullOrEmpty(windowsName))
@@ -26,5 +72,27 @@
 
         var nameParts = windowsName.Split('\\');
         return nameParts.Length > 1 ? nameParts[1] : windowsName;
+    }
+
+    private string GetCurrentRole(AuthenticationState context)
+    {
+        if (context.User.IsInRole(AppRoles.Admin)) return AppRoles.Admin;
+        if (context.User.IsInRole(AppRoles.TestEngineer)) return AppRoles.TestEngineer;
+        if (context.User.IsInRole(AppRoles.Requester)) return AppRoles.Requester;
+        return "";
+    }
+
+    private void OnRoleChange(ChangeEventArgs e)
+    {
+        var selectedRole = e.Value?.ToString();
+        if (string.IsNullOrEmpty(selectedRole) || selectedRole == "-- 切换角色 --") return;
+
+        // 导航到角色切换端点
+        Navigation.NavigateTo($"/dev/switch-role?role={selectedRole}", forceLoad: true);
+    }
+
+    private void DevLogin()
+    {
+        Navigation.NavigateTo("/dev/login", forceLoad: true);
     }
 }
