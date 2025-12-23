@@ -1,9 +1,9 @@
-// Models/ApplicationUser.cs
+ï»¿// Models/ApplicationUser.cs
 using System.ComponentModel.DataAnnotations;
 
 namespace LabBenchManager.Models
 {
-    public static class AppRoles // Ê¹ÓÃ¾²Ì¬ÀàÀ´¶¨Òå½ÇÉ«³£Á¿£¬±ÜÃâÄ§·¨×Ö·û´®
+    public static class AppRoles // ä½¿ç”¨é™æ€ç±»æ¥å®šä¹‰è§’è‰²å¸¸é‡ï¼Œé¿å…é­”æ³•å­—ç¬¦ä¸²
     {
         public const string Admin = "Admin";
         public const string TestEngineer = "TestEngineer";
@@ -25,8 +25,11 @@ namespace LabBenchManager.Models
         [StringLength(100)]
         public string? DisplayName { get; set; }
 
-        // ĞÂÔö£º²¿ÃÅ×Ö¶Î
         [StringLength(100)]
         public string? Department { get; set; }
+
+        [EmailAddress]
+        [StringLength(100)]
+        public string? Email { get; set; }
     }
 }
