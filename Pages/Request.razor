@@ -3,6 +3,7 @@
 @using System.Security.Claims 
 @using LabBenchManager.Services
 @using LabBenchManager.Models
+@inject UserService UserService
 @inject AssignmentService AssignmentSvc
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -327,38 +328,48 @@
     private int lastRequestId = 0;
     private ClaimsPrincipal? currentUser;
 
-    // 修改(3): OnInitializedAsync 用于异步获取用户信息
+    // 🔥 修改：自动填充用户信息
     protected override async Task OnInitializedAsync()
     {
-        // 获取当前用户的认证状态
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         currentUser = authState.User;
 
-        // 如果用户已登录，则自动填充信息
-        if (currentUser.Identity?.IsAuthenticated ?? false)
+        if (currentUser.Identity?.IsAuthenticated == true && !string.IsNullOrEmpty(currentUser.Identity.Name))
         {
-            newAssignment.ApplicantNTAccount = currentUser.Identity.Name ?? "unknown";
-            // 您可以尝试从Claims中获取更完整的名字，如果存在的话
-            newAssignment.ApplicantName = currentUser.FindFirst(ClaimTypes.GivenName)?.Value ?? currentUser.Identity.Name ?? "";
-            var nameParts = newAssignment.ApplicantName.Split('\\');
-            newAssignment.ApplicantName = nameParts.Length > 1 ? nameParts[1] : newAssignment.ApplicantName;
+            var ntAccount = currentUser.Identity.Name;
+
+            // 🔥 设置 NT 账号
+            newAssignment.ApplicantNTAccount = ntAccount;
+
+            // 🔥 从数据库获取用户信息
+            var (displayName, department) = await UserService.GetUserInfoAsync(ntAccount);
+
+            // 🔥 自动填充显示名称（如果数据库有值）
+            newAssignment.ApplicantName = displayName ?? UserService.GetUserName(ntAccount);
+
+            // 🔥 自动填充部门（如果数据库有值）
+            if (!string.IsNullOrWhiteSpace(department))
+            {
+                newAssignment.Department = department;
+            }
         }
 
         // 设置默认时间
-        newAssignment.EstimatedSampleTime = DateTime.Today.AddDays(1);
-        newAssignment.DesiredCompletionTime = DateTime.Today.AddDays(5);
+        newAssignment.EstimatedSampleTime = DateTime.Today.AddDays(5);
+        newAssignment.DesiredCompletionTime = DateTime.Today.AddDays(15);
+        newAssignment.SampleQuantity = 1;
     }
 
     private void ResetForm()
     {
-        // 保存当前申请人的信息，便于再次申请
+        // 🔥 保存当前申请人的信息，便于再次申请
         var savedNT = newAssignment.ApplicantNTAccount;
         var savedName = newAssignment.ApplicantName;
         var savedDept = newAssignment.Department;
 
         newAssignment = new Assignment
         {
-            ApplicantNTAccount = savedNT, // 保留NT账号
+            ApplicantNTAccount = savedNT,
             ApplicantName = savedName,
             Department = savedDept,
             EstimatedSampleTime = DateTime.Today.AddDays(1),
@@ -374,15 +385,14 @@
     {
         try
         {
-            if (currentUser?.Identity?.IsAuthenticated == false)
+            if (currentUser?.Identity?.IsAuthenticated != true)
             {
-                // 可以添加一个错误提示，告知用户需要登录
                 Console.WriteLine("用户未登录，无法提交申请");
                 return;
             }
 
-            // 修改(4): 确保NT账号在提交时被设置
-            newAssignment.ApplicantNTAccount = currentUser?.Identity?.Name ?? "unknown";
+            // 🔥 确保 NT 账号在提交时被设置
+            newAssignment.ApplicantNTAccount = currentUser.Identity.Name ?? "unknown";
 
             // 验证时间逻辑
             if (newAssignment.DesiredCompletionTime <= newAssignment.EstimatedSampleTime)
@@ -401,25 +411,21 @@
                 newAssignment.UrgentReason = "项目紧急，需要尽快完成测试";
             }
 
-            // 保存到数据库
+            // 🔥 保存到数据库
             await AssignmentSvc.AddAsync(newAssignment);
-
-
-            // 显示成功消息
-            showSuccessMessage = true;
-
-            await AssignmentSvc.AddAsync(newAssignment);
-            lastRequestId = newAssignment.Id; // 获取新创建的申请ID
+            lastRequestId = newAssignment.Id;
 
             showSuccessMessage = true;
-            StateHasChanged(); // 手动触发UI刷新
+            StateHasChanged();
 
-            // 重置表单，但保留申请人信息
+            // 🔥 重置表单，但保留申请人信息
+            var savedNT = newAssignment.ApplicantNTAccount;
             var savedName = newAssignment.ApplicantName;
             var savedDept = newAssignment.Department;
 
             newAssignment = new Assignment
             {
+                ApplicantNTAccount = savedNT,
                 ApplicantName = savedName,
                 Department = savedDept,
                 EstimatedSampleTime = DateTime.Today.AddDays(1),

@@ -12,6 +12,7 @@
 @inject TestPlanService PlanSvc
 @inject AssignmentService AssignmentSvc
 @inject NavigationManager NavigationManager
+@inject UserService UserSvc
 @inject IJSRuntime JSRuntime
 @inject TestPlanHistoryService HistoryService
 @inject AuthenticationStateProvider AuthStateProvider
@@ -259,6 +260,8 @@ else
     private DateTime currentDate = DateTime.Today;
     private List<Assignment>? pendingAssignments;
 
+    private string currentUserDisplayName = "";
+
     // 状态：编辑
     private TestPlan editingPlan = new();
     private List<DateTime> selectedDatesForEditing = new();
@@ -270,7 +273,21 @@ else
     // 状态：查看申请
     private Assignment? viewingAssignment;
 
-    protected override async Task OnInitializedAsync() => await LoadData();
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentUser();
+        await LoadData();
+    }
+    private async Task LoadCurrentUser()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true && !string.IsNullOrEmpty(user.Identity.Name))
+        {
+            currentUserDisplayName = await UserSvc.GetDisplayNameOrUserNameAsync(user.Identity.Name);
+        }
+    }
     protected override async Task OnParametersSetAsync()
     {
         // 1. 如果有 initialDate 参数，则用它来设置当前月份
@@ -351,10 +368,17 @@ else
 
     private void AddNewPlan()
     {
-        editingPlan = new TestPlan { BenchId = BenchId, Status = TestPlanStatus.初步规划 };
+        editingPlan = new TestPlan
+        {
+            BenchId = BenchId,
+            Status = TestPlanStatus.初步规划,
+            AssignedTo = currentUserDisplayName  // 🔥 自动填充当前用户
+        };
         selectedDatesForEditing.Clear();
         currentViewMode = ViewMode.Edit;
         validationError = "";
+        showReasonInput = false;
+        modificationReason = "";
     }
 
     private void EditPlan(TestPlan plan)
@@ -388,11 +412,14 @@ else
             Description = assignment.TestContent,
             Status = TestPlanStatus.初步规划,
             RequestedBy = assignment.ApplicantName,
-            SampleQuantity = assignment.SampleQuantity
+            SampleQuantity = assignment.SampleQuantity,
+            AssignedTo = currentUserDisplayName  // 🔥 自动填充当前用户
         };
         selectedDatesForEditing = new List<DateTime>();
         currentViewMode = ViewMode.Edit;
         validationError = "";
+        showReasonInput = false;
+        modificationReason = "";
     }
 
     private void CancelEdit()
