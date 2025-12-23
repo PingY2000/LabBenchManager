@@ -1,0 +1,59 @@
+﻿@*Components/TestPlanHistoryView.razor*@
+@using LabBenchManager.Models
+@using LabBenchManager.Services
+@inject TestPlanHistoryService HistoryService
+
+<div class="card mt-3">
+    <div class="card-header bg-secondary text-white py-2">
+        <h6 class="mb-0">
+            <span class="oi oi-clock me-2"></span>修改历史 (@histories.Count)
+        </h6>
+    </div>
+    <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+        @if (!histories.Any())
+        {
+            <div class="p-3 text-muted text-center">
+                <span class="oi oi-info me-1"></span>暂无修改记录
+            </div>
+        }
+        else
+        {
+            @foreach (var history in histories)
+            {
+                <div class="border-bottom p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <strong class="text-primary">@history.ModifiedBy</strong>
+                            <small class="text-muted ms-2">@history.ModifiedAt.ToString("yyyy-MM-dd HH:mm")</small>
+                        </div>
+                    </div>
+
+                    <div class="small mb-1">
+                        <strong>修改内容：</strong>@history.ChangeDescription
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(history.Reason))
+                    {
+                        <div class="small text-info">
+                            <strong>修改原因：</strong>@history.Reason
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int TestPlanId { get; set; }
+
+    private List<TestPlanHistory> histories = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (TestPlanId > 0)
+        {
+            histories = await HistoryService.GetHistoryByPlanIdAsync(TestPlanId);
+        }
+    }
+}

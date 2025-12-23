@@ -1,0 +1,30 @@
+﻿@* Shared/LoginDisplay.razor  *@
+@using Microsoft.AspNetCore.Components.Authorization
+
+<AuthorizeView>
+    <Authorized>
+        <span>
+            <span class="oi oi-person" aria-hidden="true"></span>
+            你好, @GetUserName(context.User.Identity?.Name)
+        </span>
+    </Authorized>
+    <NotAuthorized>
+        <span>
+            <span class="oi oi-warning" aria-hidden="true"></span>
+            未登录
+        </span>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private string GetUserName(string? windowsName)
+    {
+        if (string.IsNullOrEmpty(windowsName))
+        {
+            return "用户";
+        }
+
+        var nameParts = windowsName.Split('\\');
+        return nameParts.Length > 1 ? nameParts[1] : windowsName;
+    }
+}

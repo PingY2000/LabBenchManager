@@ -1,0 +1,163 @@
+﻿@page "/my-assignments"
+@attribute [Authorize]
+
+@using System.Security.Claims
+@using LabBenchManager.Models
+@using LabBenchManager.Services
+@using LabBenchManager.Components
+@inject AssignmentService AssignmentSvc
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavManager
+
+<PageTitle>我的测试申请</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary">我提交的申请</h2>
+        <a href="/request" class="btn btn-success">
+            <span class="oi oi-plus me-1"></span>发起新的申请
+        </a>
+    </div>
+
+    @if (myAssignments == null)
+    {
+        <div class="text-center">
+            <p>正在加载您的申请记录...</p>
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!myAssignments.Any())
+    {
+        <div class="alert alert-info">
+            <span class="oi oi-info me-2"></span>您还没有提交过任何测试申请。
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>申请ID</th>
+                            <th>项目名称</th>
+                            <th>申请时间</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var assignment in myAssignments.OrderByDescending(a => a.RequestTime))
+                        {
+                            <tr>
+                                <td>
+                                    @assignment.Id
+                                    @if (assignment.IsUrgent)
+                                    {
+                                        <span class="badge bg-danger ms-1">加急</span>
+                                    }
+                                </td>
+                                <td>@assignment.ProjectName</td>
+                                <td>@assignment.RequestTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>
+                                    <span class="badge @GetStatusBadge(assignment.Status)">
+                                        @assignment.Status.ToString()
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        
+                                        <button class="btn btn-sm btn-outline-primary"
+                                                @onclick="() => ShowDetail(assignment)">
+                                            <span class="oi oi-eye me-1"></span>详情
+                                        </button>
+                                        @if (assignment.TestPlanId.HasValue && assignment.BenchId.HasValue)
+                                        {
+                                            <button class="btn btn-sm btn-outline-info"
+                                                    @onclick="() => GoToSchedule(assignment)" title="查看排产">
+                                                <span class="oi oi-calendar"></span>
+                                            </button>
+                                        }                                        
+                                        
+                                    </div>
+                                    
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- 申请详情模态框 -->
+<AssignmentDetailModal 
+    Assignment="selectedAssignment"
+    ShowActions="false"
+    OnClose="CloseModal" />
+
+@code {
+    private List<Assignment>? myAssignments;
+    private string? currentUserNTAccount;
+    private Assignment? selectedAssignment;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            currentUserNTAccount = user.Identity.Name;
+            if (!string.IsNullOrEmpty(currentUserNTAccount))
+            {
+                myAssignments = await AssignmentSvc.GetAssignmentsByNTAccountAsync(currentUserNTAccount);
+
+            }
+        }
+    }
+    private void GoToSchedule(Assignment assignment)
+    {
+        if (assignment.TestPlan == null || !assignment.BenchId.HasValue)
+        {
+            // 如果没有加载关联数据，则不执行任何操作
+            return;
+        }
+
+        // 获取计划的第一个日期
+        var firstDate = assignment.TestPlan.GetScheduledDates().OrderBy(d => d).FirstOrDefault();
+
+        // 如果没有日期，则默认跳转到今天所在的月份
+        var targetDate = firstDate == default ? DateTime.Today : firstDate;
+
+        // 构建带查询参数的 URL
+        var url = $"/schedule/{assignment.BenchId.Value}?initialDate={targetDate:yyyy-MM-dd}&highlightPlanId={assignment.TestPlanId}";
+
+        NavManager.NavigateTo(url);
+    }
+
+    private void ShowDetail(Assignment assignment)
+    {
+        selectedAssignment = assignment;
+    }
+
+    private void CloseModal()
+    {
+        selectedAssignment = null;
+    }
+
+    private string GetStatusBadge(AssignmentStatus status) => status switch
+    {
+        AssignmentStatus.待审批 => "bg-warning text-dark",
+        AssignmentStatus.待分配 => "bg-info text-white",
+        AssignmentStatus.已拒绝 => "bg-danger",
+        AssignmentStatus.未开始 => "bg-light text-dark",
+        AssignmentStatus.已规划 => "bg-secondary",
+        AssignmentStatus.已确定 => "bg-primary",
+        AssignmentStatus.已完成 => "bg-success",
+        _ => "bg-dark"
+    };
+}

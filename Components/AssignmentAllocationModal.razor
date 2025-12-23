@@ -1,0 +1,106 @@
+﻿@using LabBenchManager.Models
+
+@if (AssignmentToAllocate != null)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        @if (AssignmentToAllocate.BenchId.HasValue)
+                        {
+                            <span class="oi oi-loop-circular me-2"></span>
+                            <span>重新分配测试台 - 申请 #@AssignmentToAllocate.Id</span>
+                        }
+                        else
+                        {
+                            <span class="oi oi-fork me-2"></span>
+                            <span>分配测试台 - 申请 #@AssignmentToAllocate.Id</span>
+                        }
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="() => OnClose.InvokeAsync()"></button>
+                </div>
+                <div class="modal-body">
+                    <p>正在为项目 <strong>@AssignmentToAllocate.ProjectName</strong> 分配测试台。</p>
+
+                    @if (AssignmentToAllocate.BenchId.HasValue && Benches != null)
+                    {
+                        var currentBench = Benches.FirstOrDefault(b => b.Id == AssignmentToAllocate.BenchId);
+                        <div class="alert alert-info small">
+                            当前已分配至：<strong>@(currentBench?.Name ?? "未知设备")</strong> (@(currentBench?.Location ?? "未知位置"))
+                        </div>
+                    }
+
+                    @if (Benches == null)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                            <span class="ms-2">正在加载测试台列表...</span>
+                        </div>
+                    }
+                    else if (!Benches.Any())
+                    {
+                        <div class="alert alert-warning">
+                            暂无可用的测试台。
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <label for="benchSelect" class="form-label">选择一个测试台</label>
+                            <select id="benchSelect" class="form-select" @bind="selectedBenchId">
+                                <option value="0">-- 请选择 --</option>
+                                @foreach (var bench in Benches)
+                                {
+                                    <option value="@bench.Id">@bench.Name (@bench.Location)</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => OnClose.InvokeAsync()">取消</button>
+                    <button type="button" class="btn btn-primary" @onclick="ConfirmAllocation" disabled="@(selectedBenchId == 0 || Benches == null || !Benches.Any())">
+                        <span class="oi oi-check me-1"></span>确认分配
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private int selectedBenchId;
+
+    [Parameter]
+    public Assignment? AssignmentToAllocate { get; set; }
+
+    [Parameter]
+    public List<Bench>? Benches { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<(int AssignmentId, int BenchId)> OnConfirmAllocation { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // 当模态框被显示时（即AssignmentToAllocate被设置时）
+        if (AssignmentToAllocate != null)
+        {
+            // 如果是重新分配，默认选中已分配的设备；如果是新分配，则为0
+            selectedBenchId = AssignmentToAllocate.BenchId ?? 0;
+        }
+    }
+
+    private async Task ConfirmAllocation()
+    {
+        if (AssignmentToAllocate != null && selectedBenchId != 0)
+        {
+            await OnConfirmAllocation.InvokeAsync((AssignmentToAllocate.Id, selectedBenchId));
+        }
+    }
+}

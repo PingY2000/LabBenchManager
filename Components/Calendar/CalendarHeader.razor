@@ -1,0 +1,41 @@
+﻿@* Components/Calendar/CalendarHeader.razor *@
+
+<div class="card-header bg-light border-bottom p-3">
+    <div class="d-flex justify-content-between align-items-center">
+        <!-- 左侧：上一个月和下一个月按钮 -->
+        <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary" @onclick="() => OnPrevious.InvokeAsync()" title="上个月">
+                <span class="oi oi-chevron-left"></span>
+            </button>
+            <button class="btn btn-outline-secondary" @onclick="() => OnNext.InvokeAsync()" title="下个月">
+                <span class="oi oi-chevron-right"></span>
+            </button>
+        </div>
+
+        <!-- 中间：标题 -->
+        <h5 class="mb-0 fw-bold text-primary">@Title</h5>
+
+        <!-- 右侧：返回今天按钮 -->
+        <div>
+            <button class="btn btn-outline-primary btn-sm" @onclick="() => OnToday.InvokeAsync()">返回今天</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    // 移除了与视图切换相关的参数
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public EventCallback OnPrevious { get; set; }
+    [Parameter] public EventCallback OnNext { get; set; }
+    [Parameter] public EventCallback OnToday { get; set; }
+
+    // CalendarViewType 枚举可以保留，也可以删除或移动到其他地方，
+    // 因为这个组件不再直接使用它了。
+    // 如果其他日历组件（如 DayView, YearView）还在项目里并使用它，就保留。
+    public enum CalendarViewType
+    {
+        Day,
+        Month,
+        Year
+    }
+}

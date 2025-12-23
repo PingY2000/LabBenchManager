@@ -1,0 +1,284 @@
+﻿/* ==================== 徽章尺寸系统 ==================== */
+.badge-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.badge-md {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.85rem;
+}
+
+.badge-mdl {
+    padding: 0.45rem 0.8rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
+    display: inline-block;
+}
+
+.badge-lg {
+    padding: 0.5rem 0.85rem;
+    font-size: 0.95rem;
+}
+
+.badge-xl {
+    padding: 0.65rem 1rem;
+    font-size: 1rem;
+}
+
+/* ==================== 筛选区域布局 ==================== */
+.filter-section {
+    position: relative;
+}
+
+/* 筛选项和按钮在同一行 */
+.filter-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+}
+
+/* 左侧筛选选项容器 */
+.status-filters {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+/* ==================== 表单复选框优化 ==================== */
+.form-check {
+    padding-left: 0;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.form-check-input {
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    flex-shrink: 0;
+    cursor: pointer;
+    border: 2px solid #dee2e6;
+    transition: all 0.2s ease;
+}
+
+    .form-check-input:hover {
+        border-color: #0d6efd;
+    }
+
+    .form-check-input:checked {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+
+.form-check-label {
+    cursor: pointer;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 0;
+}
+
+/* 选中状态的徽章高亮效果 */
+.form-check-input:checked + .form-check-label .badge {
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+    transform: translateY(-1px);
+}
+
+/* 徽章悬停效果 */
+.form-check-label:hover .badge {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ==================== 操作按钮区域 ==================== */
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+    .filter-actions .btn {
+        font-size: 0.875rem;
+        padding: 0.375rem 0.75rem;
+        white-space: nowrap;
+    }
+
+/* ==================== 响应式布局 ==================== */
+
+/* 大屏幕 - 一行显示 */
+@media (min-width: 1200px) {
+    .filter-row {
+        gap: 2.5rem;
+        padding: 1.25rem 1.5rem;
+    }
+
+    .status-filters {
+        gap: 1.25rem;
+    }
+}
+
+/* 中等屏幕 - 一行显示，间距稍小 */
+@media (min-width: 992px) and (max-width: 1199px) {
+    .filter-row {
+        gap: 1.5rem;
+        padding: 1rem 1.25rem;
+    }
+
+    .status-filters {
+        gap: 1rem;
+    }
+
+    .badge-mdl {
+        padding: 0.4rem 0.7rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* 平板 - 按钮可能换行 */
+@media (min-width: 768px) and (max-width: 991px) {
+    .filter-row {
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .status-filters {
+        gap: 0.75rem;
+    }
+
+    .badge-mdl {
+        padding: 0.4rem 0.65rem;
+        font-size: 0.8125rem;
+    }
+
+    .filter-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+        .filter-actions .btn {
+            width: 100%;
+            min-width: 80px;
+        }
+}
+
+/* 手机 - 垂直布局 */
+@media (max-width: 767px) {
+    .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+        padding: 0.75rem;
+    }
+
+    .status-filters {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .form-check {
+        padding: 0.5rem;
+        background-color: white;
+        border-radius: 0.375rem;
+    }
+
+    .badge-mdl {
+        padding: 0.4rem 0.65rem;
+        font-size: 0.8125rem;
+    }
+
+    .form-check-input {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.5rem;
+    }
+
+    .filter-actions {
+        width: 100%;
+        flex-direction: row;
+    }
+
+        .filter-actions .btn {
+            flex: 1;
+        }
+}
+
+/* 超小屏幕 */
+@media (max-width: 576px) {
+    .badge-mdl {
+        padding: 0.375rem 0.6rem;
+        font-size: 0.75rem;
+    }
+
+    .filter-row {
+        padding: 0.625rem;
+    }
+}
+
+/* ==================== 卡片样式增强 ==================== */
+.card {
+    border: 1px solid #e3e6ea;
+    border-radius: 0.5rem;
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+
+/* ==================== 辅助样式 ==================== */
+.form-label.fw-bold {
+    color: #495057;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+}
+
+.text-muted {
+    font-size: 0.875rem;
+}
+
+    /* 统计徽章样式 */
+    .text-muted .badge {
+        font-size: 0.8125rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+/* ==================== 焦点状态优化 ==================== */
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    border-color: #0d6efd;
+}
+
+.form-check:focus-within {
+    outline: none;
+}
+
+/* ==================== 按钮样式增强 ==================== */
+.filter-actions .btn {
+    transition: all 0.2s ease;
+}
+
+    .filter-actions .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-actions .btn:active {
+        transform: translateY(0);
+    }

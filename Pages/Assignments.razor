@@ -1,0 +1,457 @@
+﻿@page "/assignments"
+
+@using LabBenchManager.Services
+@using LabBenchManager.Models
+@using LabBenchManager.Components
+
+@inject AssignmentService AssignmentSvc
+@inject BenchService BenchSvc
+@inject IJSRuntime JSRuntime
+
+<PageTitle>申请管理</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-primary">测试申请管理</h2>
+            <p class="text-muted">审批申请，并将其分配至具体测试台。</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-primary" @onclick="RefreshList">
+                <span class="oi oi-reload me-1"></span>刷新列表
+            </button>
+        </div>
+    </div>
+
+    <!-- 筛选和搜索 -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="filter-section">
+                <!-- 标题和统计信息 -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <label class="form-label fw-bold mb-0">
+                        <span class="oi oi-filter me-2"></span>项目阶段筛选
+                    </label>
+                    <small class="text-muted">
+                        已选择 <span class="badge bg-primary">@selectedStatuses.Count</span> 个阶段
+                        @if (filteredAssignments != null)
+                        {
+                            <span>，共 <span class="badge bg-info">@filteredAssignments.Count</span> 条记录</span>
+                        }
+                    </small>
+                </div>
+
+                <!-- 筛选项和操作按钮同一行 -->
+                <div class="filter-row">
+                    <!-- 左侧：筛选选项 -->
+                    <div class="status-filters">
+                        @foreach (var status in Enum.GetValues<AssignmentStatus>())
+                        {
+                            <div class="form-check">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       id="status-@status"
+                                       checked="@selectedStatuses.Contains(status)"
+                                       @onchange="@(e => ToggleStatus(status, (bool)e.Value!))" />
+                                <label class="form-check-label" for="status-@status">
+                                    <span class="badge @GetStatusBadgeClass(status) badge-mdl">
+                                        @status
+                                    </span>
+                                </label>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- 右侧：操作按钮 -->
+                    <div class="filter-actions">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="SelectAllStatuses">
+                            <span class="oi oi-check me-1"></span>全选
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ClearAllStatuses">
+                            <span class="oi oi-x me-1"></span>清空
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计信息 -->
+    @if (allAssignments != null)
+    {
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">总申请数</h5>
+                        <h2 class="fw-bold">@allAssignments.Count</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-dark">
+                    <div class="card-body">
+                        <h5 class="card-title">待审批</h5>
+                        <h2 class="fw-bold">@allAssignments.Count(a => a.Status == AssignmentStatus.待审批)</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">待分配</h5>
+                        <h2 class="fw-bold">@allAssignments.Count(a => a.Status == AssignmentStatus.待分配)</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">加急申请</h5>
+                        <h2 class="fw-bold">@allAssignments.Count(a => a.IsUrgent)</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- 申请列表 -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            @if (errorMessage != null)
+            {
+                <div class="alert alert-danger m-3">@errorMessage</div>
+            }
+            @if (filteredAssignments == null)
+            {
+                <div class="text-center p-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                    <p class="mt-2 text-muted">加载数据中...</p>
+                </div>
+            }
+            else if (!filteredAssignments.Any())
+            {
+                <div class="text-center p-5">
+                    <span class="oi oi-info" style="font-size: 3rem; color: #ccc;"></span>
+                    <p class="mt-3 text-muted">没有符合条件的申请记录</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>申请编号</th>
+                                <th>项目名称</th>
+                                <th>申请人</th>
+                                <th>分配设备</th>
+                                <th>样品数量</th>
+                                <th>申请时间</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var assignment in filteredAssignments)
+                            {
+                                <tr class="align-middle @(assignment.TestPlanId.HasValue ? "table-success" : "")">
+                                    <td>
+                                        <strong>@assignment.Id</strong>
+                                        @if (assignment.IsUrgent)
+                                        {
+                                            <span class="badge bg-danger ms-1">加急</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold">@assignment.ProjectName</div>
+                                    </td>
+                                    <td>
+                                        <div>@assignment.ApplicantName</div>
+                                        <small class="text-muted">@assignment.Department</small>
+                                    </td>
+                                    <td>
+                                        <span class="fw-bold">@(assignment.Bench?.Name ?? "---")</span>
+                                    </td>
+                                    <td><span class="badge bg-light text-dark">@assignment.SampleQuantity 个</span></td>
+                                    <td>
+                                        <div>@assignment.RequestTime.ToString("yyyy-MM-dd")</div>
+                                        <small class="text-muted">@assignment.RequestTime.ToString("HH:mm")</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(assignment.Status) badge-mdl">
+                                            @assignment.Status
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <!-- 查看详情按钮 -->
+                                            <button class="btn btn-outline-primary" @onclick="() => ShowDetail(assignment)" title="查看详情">
+                                                <span class="oi oi-eye"></span>
+                                            </button>
+
+                                            <!-- 审批按钮 (仅待审批状态) -->
+                                            @if (assignment.Status == AssignmentStatus.待审批)
+                                            {
+                                                <button class="btn btn-outline-success" @onclick="() => ProcessApproval(assignment, true)" title="批准">
+                                                    <span class="oi oi-check"></span>
+                                                </button>
+                                                <button class="btn btn-outline-danger" @onclick="() => ProcessApproval(assignment, false)" title="拒绝">
+                                                    <span class="oi oi-x"></span>
+                                                </button>
+                                            }
+
+                                            <!-- 分配/重新分配按钮 -->
+                                            @if (CanBeAllocated(assignment))
+                                            {
+                                                <button class="btn btn-outline-info" @onclick="() => ShowAllocationModal(assignment)" title="分配/重新分配测试台">
+                                                    <span class="oi oi-fork"></span>
+                                                </button>
+                                            }
+
+                                            <!-- 删除按钮 -->
+                                            @if (/*assignment.Status != AssignmentStatus.已确定 && assignment.Status != AssignmentStatus.已完成*/true)
+                                            {
+                                                <button class="btn btn-outline-danger" @onclick="() => ConfirmDelete(assignment)" title="删除申请">
+                                                    <span class="oi oi-trash"></span>
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- 新的模态框组件调用方式 -->
+<AssignmentDetailModal Assignment="selectedAssignment"
+                       OnClose="CloseDetail"
+                       OnApprove="HandleApproval"
+                       OnReject="HandleRejection"
+                       OnGoToAllocate="HandleGoToAllocate" />
+
+<AssignmentAllocationModal AssignmentToAllocate="assignmentToAllocate"
+                           Benches="benches"
+                           OnClose="CloseAllocationModal"
+                           OnConfirmAllocation="HandleAllocationConfirmed" />
+
+
+@code {
+    // 原始数据
+    private List<Assignment>? allAssignments;
+    // 筛选后用于显示的数据
+    private List<Assignment>? filteredAssignments;
+    private List<Bench>? benches;
+
+    // 控制模态框显示的状态
+    private Assignment? selectedAssignment;
+    private Assignment? assignmentToAllocate;
+
+    // 筛选参数 - 改为多选列表
+    private HashSet<AssignmentStatus> selectedStatuses = new();
+    private int timeRange = 7;
+    private string? errorMessage;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 初始化时默认选中所有状态
+        selectedStatuses = Enum.GetValues<AssignmentStatus>().ToHashSet();
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        errorMessage = null;
+        try
+        {
+            filteredAssignments = null; // 显示加载动画
+            StateHasChanged();
+
+            // 串行加载数据以避免潜在的并发问题
+            allAssignments = await AssignmentSvc.GetAllAsync();
+            benches = await BenchSvc.GetAllAsync();
+
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"数据加载失败: {ex.Message}";
+            allAssignments = new List<Assignment>();
+            filteredAssignments = new List<Assignment>();
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    // 切换单个状态的选中状态
+    private void ToggleStatus(AssignmentStatus status, bool isChecked)
+    {
+        if (isChecked)
+        {
+            selectedStatuses.Add(status);
+        }
+        else
+        {
+            selectedStatuses.Remove(status);
+        }
+        ApplyFilters();
+    }
+
+    // 全选所有状态
+    private void SelectAllStatuses()
+    {
+        selectedStatuses = Enum.GetValues<AssignmentStatus>().ToHashSet();
+        ApplyFilters();
+    }
+
+    // 清空所有状态选择
+    private void ClearAllStatuses()
+    {
+        selectedStatuses.Clear();
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        if (allAssignments == null) return;
+
+        var query = allAssignments.AsEnumerable();
+
+        // 根据选中的状态筛选
+        if (selectedStatuses.Any())
+        {
+            query = query.Where(a => selectedStatuses.Contains(a.Status));
+        }
+
+        // 根据时间范围筛选
+        if (timeRange > 0)
+        {
+            var startDate = DateTime.Today.AddDays(-timeRange);
+            query = query.Where(a => a.RequestTime.Date >= startDate.Date);
+        }
+
+        filteredAssignments = query.OrderByDescending(a => a.RequestTime).ToList();
+    }
+
+    private async Task RefreshList()
+    {
+        allAssignments = null;
+        filteredAssignments = null;
+        await LoadData();
+    }
+
+    // --- 模态框控制方法 ---
+    private void ShowDetail(Assignment assignment) => selectedAssignment = assignment;
+    private void CloseDetail() => selectedAssignment = null;
+
+    private void ShowAllocationModal(Assignment assignment) => assignmentToAllocate = assignment;
+    private void CloseAllocationModal() => assignmentToAllocate = null;
+
+    // --- 响应子组件事件的方法 ---
+
+    private async Task HandleApproval(Assignment assignment) => await ProcessApproval(assignment, true);
+    private async Task HandleRejection(Assignment assignment) => await ProcessApproval(assignment, false);
+
+    // 统一处理审批/拒绝逻辑，可被列表按钮和模态框按钮复用
+    private async Task ProcessApproval(Assignment assignment, bool isApproved)
+    {
+        try
+        {
+            assignment.Status = isApproved ? AssignmentStatus.待分配 : AssignmentStatus.已拒绝;
+            await AssignmentSvc.UpdateAsync(assignment);
+
+            if (selectedAssignment != null) CloseDetail(); // 如果操作来自模态框，则关闭它
+
+            ApplyFilters(); // 刷新列表UI
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"处理审批时出错: {ex.Message}";
+            Console.WriteLine(errorMessage);
+        }
+    }
+
+    // 响应分配模态框的确认事件
+    private async Task HandleAllocationConfirmed((int AssignmentId, int BenchId) allocationData)
+    {
+        var assignment = allAssignments?.FirstOrDefault(a => a.Id == allocationData.AssignmentId);
+        if (assignment == null) return;
+
+        try
+        {
+            assignment.BenchId = allocationData.BenchId;
+            assignment.Status = AssignmentStatus.未开始;
+            await AssignmentSvc.UpdateAsync(assignment);
+
+            CloseAllocationModal();
+            ApplyFilters();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"分配测试台时出错: {ex.Message}";
+            Console.WriteLine(errorMessage);
+        }
+    }
+
+    // --- 新增：删除逻辑 ---
+    private async Task ConfirmDelete(Assignment assignment)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"确定要删除申请 #{assignment.Id} ({assignment.ProjectName}) 吗？此操作无法撤销。");
+        if (confirmed)
+        {
+            try
+            {
+                await AssignmentSvc.DeleteAsync(assignment.Id);
+                await RefreshList(); // 删除成功后刷新列表
+            }
+            catch (InvalidOperationException ex)
+            {
+                errorMessage = ex.Message; // 显示业务逻辑错误（例如，无法删除已排程的申请）
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"删除失败: {ex.Message}";
+            }
+        }
+    }
+
+    // 响应详情模态框中的 "去分配" 按钮
+    private void HandleGoToAllocate(Assignment assignment)
+    {
+        CloseDetail();
+        ShowAllocationModal(assignment);
+    }
+
+    // --- 辅助方法 ---
+    private bool CanBeAllocated(Assignment assignment)
+    {
+        // 允许分配的条件：状态是"待分配"，或者是"未开始"但尚未创建测试计划
+        return assignment.Status == AssignmentStatus.待分配 ||
+               (assignment.Status == AssignmentStatus.未开始 && !assignment.TestPlanId.HasValue);
+    }
+
+    // 此方法保留在父组件中，因为主列表需要它
+    private string GetStatusBadgeClass(AssignmentStatus status) => status switch
+    {
+        AssignmentStatus.待审批 => "bg-warning text-dark",
+        AssignmentStatus.待分配 => "bg-info text-white",
+        AssignmentStatus.已拒绝 => "bg-danger",
+        AssignmentStatus.未开始 => "bg-light text-dark",
+        AssignmentStatus.已规划 => "bg-secondary",
+        AssignmentStatus.已确定 => "bg-primary",
+        AssignmentStatus.已完成 => "bg-success",
+        _ => "bg-dark"
+    };
+}

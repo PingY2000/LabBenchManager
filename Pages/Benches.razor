@@ -1,0 +1,759 @@
+﻿@page "/benches"
+@attribute [Authorize(Roles = $"{AppRoles.TestEngineer},{AppRoles.Admin}")]
+
+@using LabBenchManager.Services
+@using LabBenchManager.Models
+@using Microsoft.AspNetCore.Components.Authorization
+@inject BenchService BenchSvc
+@inject NavigationManager NavigationManager
+@inject IWebHostEnvironment Env
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
+
+<PageTitle>设备管理</PageTitle>
+
+<h3>设备管理 (Benches)</h3>
+<p class="text-muted">在这里添加、编辑或删除测试台设备。</p>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="ShowAddModal">
+        <span class="oi oi-plus" aria-hidden="true"></span> 添加新设备
+    </button>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>图片</th>
+                <th>名称</th>
+                <th>设备编号</th>
+                <th>资产编号</th>
+                <th>位置</th>
+                <th>测试类型</th>
+                <th>测试对象</th>
+                <th>文档</th>
+                <th style="width: 180px;">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (benchListWithStatus == null)
+            {
+                <tr><td colspan="9"><em>加载中...</em></td></tr>
+            }
+            else if (benchListWithStatus.Count == 0)
+            {
+                <tr><td colspan="9" class="text-center text-muted">暂无设备数据</td></tr>
+            }
+            else
+            {
+                @foreach (var item in benchListWithStatus)
+                {
+                    var bench = item.Bench;
+                    var status = item.Status;
+
+                    <tr>
+                        <td>
+                            @if (!string.IsNullOrEmpty(bench.PictureUrl))
+                            {
+                                <img src="@bench.PictureUrl" class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover;" alt="@bench.Name" />
+                            }
+                            else
+                            {
+                                <div class="text-muted text-center" style="width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; border: 1px dashed #ccc;">
+                                    <span class="oi oi-image"></span>
+                                </div>
+                            }
+                        </td>
+                        <td>
+                            <strong>@bench.Name</strong>
+                        </td>
+                        <td>@(bench.EquipmentNo ?? "-")</td>
+                        <td>@(bench.AssetNo ?? "-")</td>
+                        <td>@bench.Location</td>
+                        <td>@bench.TestType</td>
+                        <td>@bench.TestObject</td>
+                        <td>
+                            @{
+                                var docCount = benchDocuments.ContainsKey(bench.Id) ? benchDocuments[bench.Id].Count : 0;
+                            }
+                            @if (docCount > 0)
+                            {
+                                <span class="badge bg-info">@docCount 个文档</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">无</span>
+                            }
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-info" @onclick="() => ManageDocuments(bench)" title="管理文档">
+                                    <span class="oi oi-document"></span>
+                                </button>
+                                <button class="btn btn-outline-primary" @onclick="() => ViewSchedule(bench.Id)" title="查看排产">
+                                    <span class="oi oi-calendar"></span>
+                                </button>
+                                <button class="btn btn-outline-secondary" @onclick="() => EditBench(bench)" title="编辑">
+                                    <span class="oi oi-pencil"></span>
+                                </button>
+                                <button class="btn btn-outline-danger" @onclick="() => ConfirmDelete(bench)" title="删除">
+                                    <span class="oi oi-trash"></span>
+                                </button>
+                                
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@* 添加/编辑模态框 *@
+@if (showModal)
+{
+    <div class="modal fade show" style="display:block" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(editingBench.Id == 0 ? "添加新设备" : "编辑设备")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@editingBench" OnValidSubmit="HandleSave">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger" />
+
+                        <!-- 基本信息 -->
+                        <h6 class="border-bottom pb-2 mb-3">基本信息</h6>
+
+                        <div class="mb-3">
+                            <label class="form-label">设备名称 <span class="text-danger">*</span></label>
+                            <InputText class="form-control" @bind-Value="editingBench.Name" placeholder="例如: VO36_General function hydraulic test bench" />
+                            <ValidationMessage For="@(() => editingBench.Name)" />
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">设备编号</label>
+                                <InputText class="form-control" @bind-Value="editingBench.EquipmentNo" placeholder="例如: 12235422" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">资产编号</label>
+                                <InputText class="form-control" @bind-Value="editingBench.AssetNo" placeholder="例如: 105500" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">位置</label>
+                            <InputText class="form-control" @bind-Value="editingBench.Location" placeholder="例如: DCCC-204-1F,Lab DC-IH/ECH-CN" />
+                        </div>
+
+                        <!-- 测试信息 -->
+                        <h6 class="border-bottom pb-2 mb-3 mt-4">测试信息</h6>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">测试类型</label>
+                                <InputText class="form-control" @bind-Value="editingBench.TestType" placeholder="例如: Functional test" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">测试对象</label>
+                                <InputText class="form-control" @bind-Value="editingBench.TestObject" placeholder="例如: valve" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">数量</label>
+                                <InputNumber class="form-control" @bind-Value="editingBench.Quantity" />
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label">工时规范</label>
+                                <InputText class="form-control" @bind-Value="editingBench.WorkingHoursNorm" placeholder="例如: 1 x 8 h x 5 day" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">基本性能与配置</label>
+                            <InputTextArea class="form-control" @bind-Value="editingBench.BasicPerformanceAndConfiguration" rows="3" placeholder="例如: 3 working areas A1 A2 A3" />
+                        </div>
+
+                        <!-- 图片上传 -->
+                        <h6 class="border-bottom pb-2 mb-3 mt-4">设备图片</h6>
+
+                        <div class="mb-3">
+                            <label class="form-label">上传图片</label>
+                            <InputFile OnChange="LoadFile" class="form-control" accept="image/png, image/jpeg, image/gif, image/jpg" />
+                            <small class="form-text text-muted">支持 PNG, JPG, GIF 格式，最大 5MB</small>
+
+                            @if (!string.IsNullOrEmpty(editingBench.PictureUrl))
+                            {
+                                <div class="mt-3">
+                                    <label class="form-label">当前图片预览:</label><br />
+                                    <img src="@editingBench.PictureUrl" class="img-thumbnail" style="max-width: 300px; max-height: 300px;" />
+                                </div>
+                            }
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">取消</button>
+                            <button type="submit" class="btn btn-primary">
+                                <span class="oi oi-check me-1"></span>保存
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@* 删除确认对话框 *@
+@if (showDeleteConfirm)
+{
+    <div class="modal fade show" style="display:block" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">确认删除</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <span class="oi oi-warning me-2"></span>
+                        <strong>警告：此操作无法撤销！</strong>
+                    </div>
+                    <p>您确定要删除以下设备吗？</p>
+                    @if (benchToDelete != null)
+                    {
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">@benchToDelete.Name</h6>
+                                <p class="card-text mb-1">
+                                    <strong>设备编号:</strong> @(benchToDelete.EquipmentNo ?? "-")<br />
+                                    <strong>位置:</strong> @benchToDelete.Location
+                                </p>
+                            </div>
+                        </div>
+                    }
+                    <p class="text-danger small mt-3">
+                        <span class="oi oi-info me-1"></span>
+                        删除设备将同时删除其关联的图片文件。
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete">取消</button>
+                    <button type="button" class="btn btn-danger" @onclick="ExecuteDelete">
+                        <span class="oi oi-trash me-1"></span>确认删除
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+@* 文档管理模态框 *@
+@if (showDocumentModal)
+{
+    <div class="modal fade show" style="display:block" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <span class="oi oi-document me-2"></span>
+                        管理文档 - @currentBench?.Name
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseDocumentModal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- 上传新文档 -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><span class="oi oi-cloud-upload me-2"></span>上传新文档</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">选择文件（可多选）</label>
+                                <InputFile OnChange="LoadDocumentFiles" class="form-control" multiple 
+                                          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar" />
+                                <small class="form-text text-muted">
+                                    支持 PDF, Word, Excel, PowerPoint, TXT, ZIP, RAR 等格式，单文件最大 50MB
+                                </small>
+                            </div>
+
+                            @if (selectedDocumentFiles.Any())
+                            {
+                                <div class="alert alert-info">
+                                    <strong>已选择 @selectedDocumentFiles.Count 个文件：</strong>
+                                    <ul class="mb-0 mt-2">
+                                        @foreach (var file in selectedDocumentFiles)
+                                        {
+                                            <li>@file.Name (@FormatFileSize(file.Size))</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+
+                            <div class="mb-3">
+                                <label class="form-label">文档描述（可选）</label>
+                                <InputTextArea class="form-control" @bind-Value="documentDescription" rows="2" 
+                                             placeholder="简要描述这些文档的用途..." />
+                            </div>
+
+                            <button class="btn btn-primary" @onclick="UploadDocuments" disabled="@(!selectedDocumentFiles.Any() || isUploading)">
+                                @if (isUploading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                    <span>上传中...</span>
+                                }
+                                else
+                                {
+                                    <span class="oi oi-cloud-upload me-1"></span>
+                                    <span>上传文档 (@selectedDocumentFiles.Count)</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 现有文档列表 -->
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><span class="oi oi-list me-2"></span>已上传文档</h6>
+                        </div>
+                        <div class="card-body">
+                            @if (currentDocuments == null)
+                            {
+                                <p class="text-muted">加载中...</p>
+                            }
+                            else if (!currentDocuments.Any())
+                            {
+                                <p class="text-muted">暂无文档</p>
+                            }
+                            else
+                            {
+                                <div class="list-group">
+                                    @foreach (var doc in currentDocuments)
+                                    {
+                                        <div class="list-group-item">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-1">
+                                                        <span class="oi oi-file me-2"></span>
+                                                        @doc.FileName
+                                                    </h6>
+                                                    @if (!string.IsNullOrEmpty(doc.Description))
+                                                    {
+                                                        <p class="mb-1 text-muted small">@doc.Description</p>
+                                                    }
+                                                    <small class="text-muted">
+                                                        <span class="me-3">
+                                                            <span class="oi oi-data-transfer-download me-1"></span>
+                                                            @FormatFileSize(doc.FileSize)
+                                                        </span>
+                                                        <span class="me-3">
+                                                            <span class="oi oi-clock me-1"></span>
+                                                            @doc.UploadedAt.ToString("yyyy-MM-dd HH:mm")
+                                                        </span>
+                                                        @if (!string.IsNullOrEmpty(doc.UploadedBy))
+                                                        {
+                                                            <span>
+                                                                <span class="oi oi-person me-1"></span>
+                                                                @doc.UploadedBy
+                                                            </span>
+                                                        }
+                                                    </small>
+                                                </div>
+                                                <div class="btn-group btn-group-sm ms-3">
+                                                    <a href="@doc.FilePath" class="btn btn-outline-primary" download title="下载">
+                                                        <span class="oi oi-data-transfer-download"></span>
+                                                    </a>
+                                                    <button class="btn btn-outline-danger" @onclick="() => ExecuteDeleteDocument(doc)" title="删除">
+                                                        <span class="oi oi-trash"></span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDocumentModal" disabled="@isUploading">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+
+@code {
+    private List<BenchWithStatus>? benchListWithStatus;
+    private Dictionary<int, List<BenchDocument>> benchDocuments = new(); 
+    private bool showModal = false;
+    private Bench editingBench = new();
+    private IBrowserFile? selectedFile;
+
+    // 删除确认相关
+    private bool showDeleteConfirm = false;
+    private Bench? benchToDelete = null;
+
+    // 文档管理相关
+    private bool showDocumentModal = false;
+    private Bench? currentBench = null;
+    private List<BenchDocument>? currentDocuments = null;
+    private List<IBrowserFile> selectedDocumentFiles = new();
+    private string documentDescription = string.Empty;
+    private string currentUserName = string.Empty;
+    private bool isUploading = false;
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBenches();
+        await LoadAllDocuments(); 
+        await GetCurrentUserName(); 
+    }
+
+    private async Task LoadBenches()
+    {
+        benchListWithStatus = await BenchSvc.GetAllWithStatusAsync();
+    }
+
+    private async Task LoadAllDocuments()
+    {
+        benchDocuments.Clear();
+        if (benchListWithStatus != null)
+        {
+            foreach (var item in benchListWithStatus)
+            {
+                var docs = await BenchSvc.GetDocumentsByBenchIdAsync(item.Bench.Id);
+                benchDocuments[item.Bench.Id] = docs;
+            }
+        }
+    }
+
+    private async Task GetCurrentUserName()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var name = user.Identity.Name ?? "未知用户";
+            var nameParts = name.Split('\\');
+            currentUserName = nameParts.Length > 1 ? nameParts[1] : name;
+        }
+    }
+
+    private void LoadFile(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+    }
+
+    private void ShowAddModal()
+    {
+        editingBench = new Bench { Quantity = 1 };
+        selectedFile = null;
+        showModal = true;
+    }
+
+    private void EditBench(Bench benchToEdit)
+    {
+        editingBench = new Bench
+        {
+            Id = benchToEdit.Id,
+            Name = benchToEdit.Name,
+            EquipmentNo = benchToEdit.EquipmentNo,
+            AssetNo = benchToEdit.AssetNo,
+            Location = benchToEdit.Location,
+            TestType = benchToEdit.TestType,
+            TestObject = benchToEdit.TestObject,
+            Quantity = benchToEdit.Quantity,
+            WorkingHoursNorm = benchToEdit.WorkingHoursNorm,
+            BasicPerformanceAndConfiguration = benchToEdit.BasicPerformanceAndConfiguration,
+            PictureUrl = benchToEdit.PictureUrl
+        };
+        selectedFile = null;
+        showModal = true;
+    }
+
+    private async Task HandleSave()
+    {
+        // 处理文件上传
+        if (selectedFile != null)
+        {
+            var uploadPath = Path.Combine(Env.WebRootPath, "images", "benches");
+            if (!Directory.Exists(uploadPath))
+            {
+                Directory.CreateDirectory(uploadPath);
+            }
+
+            var uniqueFileName = $"{Guid.NewGuid()}{Path.GetExtension(selectedFile.Name)}";
+            var physicalPath = Path.Combine(uploadPath, uniqueFileName);
+
+            await using var fs = new FileStream(physicalPath, FileMode.Create);
+            await selectedFile.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).CopyToAsync(fs);
+
+            // 如果是编辑模式且有旧图片，删除旧图片
+            if (editingBench.Id != 0 && !string.IsNullOrEmpty(editingBench.PictureUrl))
+            {
+                try
+                {
+                    var oldFilePath = Path.Combine(Env.WebRootPath, editingBench.PictureUrl.TrimStart('/'));
+                    if (File.Exists(oldFilePath))
+                    {
+                        File.Delete(oldFilePath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error deleting old file: {ex.Message}");
+                }
+            }
+
+            editingBench.PictureUrl = $"/images/benches/{uniqueFileName}";
+        }
+
+        if (editingBench.Id == 0)
+        {
+            await BenchSvc.AddAsync(editingBench);
+        }
+        else
+        {
+            await BenchSvc.UpdateAsync(editingBench);
+        }
+
+        showModal = false;
+        await LoadBenches();
+        await LoadAllDocuments(); // ⭐ 刷新文档列表
+    }
+
+    // ==================== 文档管理方法 ====================
+
+    private async Task ManageDocuments(Bench bench)
+    {
+        currentBench = bench;
+        currentDocuments = await BenchSvc.GetDocumentsByBenchIdAsync(bench.Id);
+        selectedDocumentFiles.Clear();
+        documentDescription = string.Empty;
+        showDocumentModal = true;
+    }
+
+    private void LoadDocumentFiles(InputFileChangeEventArgs e)
+    {
+        selectedDocumentFiles = e.GetMultipleFiles(maximumFileCount: 10).ToList();
+    }
+
+    private async Task UploadDocuments()
+    {
+        if (currentBench == null || !selectedDocumentFiles.Any())
+            return;
+        isUploading = true; // <-- 开始上传
+        StateHasChanged();
+        var uploadPath = Path.Combine(Env.WebRootPath, "documents", "benches", currentBench.Id.ToString());
+        if (!Directory.Exists(uploadPath))
+        {
+            Directory.CreateDirectory(uploadPath);
+        }
+
+        foreach (var file in selectedDocumentFiles)
+        {
+            try
+            {
+                var uniqueFileName = $"{Guid.NewGuid()}_{file.Name}";
+                var physicalPath = Path.Combine(uploadPath, uniqueFileName);
+
+                await using var fs = new FileStream(physicalPath, FileMode.Create);
+                await file.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024).CopyToAsync(fs); // 50MB max
+
+                var document = new BenchDocument
+                {
+                    BenchId = currentBench.Id,
+                    FileName = file.Name,
+                    FilePath = $"/documents/benches/{currentBench.Id}/{uniqueFileName}",
+                    FileType = Path.GetExtension(file.Name),
+                    FileSize = file.Size,
+                    Description = documentDescription,
+                    UploadedBy = currentUserName,
+                    UploadedAt = DateTime.Now
+                };
+
+                await BenchSvc.AddDocumentAsync(document);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error uploading file {file.Name}: {ex.Message}");
+            }
+        }
+
+        // 重新加载文档列表
+        currentDocuments = await BenchSvc.GetDocumentsByBenchIdAsync(currentBench.Id);
+        await LoadAllDocuments(); // 更新主列表的文档计数
+        selectedDocumentFiles.Clear();
+        documentDescription = string.Empty;
+        StateHasChanged();
+        isUploading = false;
+    }
+
+    private void CloseDocumentModal()
+    {
+        showDocumentModal = false;
+        currentBench = null;
+        currentDocuments = null;
+        selectedDocumentFiles.Clear();
+        documentDescription = string.Empty;
+    }
+
+
+
+    private async Task ExecuteDeleteDocument(BenchDocument docToDelete)
+    {
+        if (docToDelete == null || currentBench == null) return;
+
+        // 使用 JS confirm 进行轻量级确认
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"您确定要删除文档 “{docToDelete.FileName}” 吗？");
+        if (!confirmed)
+        {
+            return; // 用户点击了“取消”
+        }
+        // 删除物理文件
+        try
+        {
+            var relativePath = docToDelete.FilePath.TrimStart('/', '\\');
+            var filePath = Path.Combine(Env.WebRootPath, relativePath);
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting document file: {ex.Message}");
+        }
+
+        // 从数据库删除记录
+        await BenchSvc.DeleteDocumentAsync(docToDelete.Id);
+
+        // 重新加载文档列表
+        currentDocuments = await BenchSvc.GetDocumentsByBenchIdAsync(currentBench.Id);
+        await LoadAllDocuments(); // 更新主列表的文档计数
+
+        StateHasChanged();
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    // ==================== 删除相关方法 ====================
+
+    private void ConfirmDelete(Bench bench)
+    {
+        benchToDelete = bench;
+        showDeleteConfirm = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+        benchToDelete = null;
+    }
+
+    private async Task ExecuteDelete()
+    {
+        if (benchToDelete == null) return;
+
+        // 删除关联的图片文件
+        if (!string.IsNullOrEmpty(benchToDelete.PictureUrl))
+        {
+            try
+            {
+                var relativePath = benchToDelete.PictureUrl.TrimStart('/', '\\');
+                var filePath = Path.Combine(Env.WebRootPath, relativePath);
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting file: {ex.Message}");
+            }
+        }
+
+        // 删除所有关联文档
+        var docs = await BenchSvc.GetDocumentsByBenchIdAsync(benchToDelete.Id);
+        foreach (var doc in docs)
+        {
+            try
+            {
+                var relativePath = doc.FilePath.TrimStart('/', '\\');
+                var filePath = Path.Combine(Env.WebRootPath, relativePath);
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                }
+                await BenchSvc.DeleteDocumentAsync(doc.Id);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting document: {ex.Message}");
+            }
+        }
+
+        // 删除文档文件夹
+        var docFolder = Path.Combine(Env.WebRootPath, "documents", "benches", benchToDelete.Id.ToString());
+        if (Directory.Exists(docFolder))
+        {
+            try
+            {
+                Directory.Delete(docFolder, true);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting document folder: {ex.Message}");
+            }
+        }
+
+        await BenchSvc.RemoveAsync(benchToDelete.Id);
+
+        showDeleteConfirm = false;
+        benchToDelete = null;
+        await LoadBenches();
+        await LoadAllDocuments();
+    }
+
+    private void ViewSchedule(int benchId)
+    {
+        NavigationManager.NavigateTo($"/schedule/{benchId}");
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+
+    private string GetStatusBadgeClass(BenchStatus status) => status switch
+    {
+        BenchStatus.空闲 => "bg-success",
+        BenchStatus.使用中 => "bg-warning text-dark",
+        BenchStatus.维护中 => "bg-danger",
+        BenchStatus.已预定 => "bg-info text-dark",
+        _ => "bg-secondary"
+    };
+}

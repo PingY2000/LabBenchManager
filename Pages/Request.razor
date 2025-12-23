@@ -1,0 +1,435 @@
+﻿@page "/request"
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims 
+@using LabBenchManager.Services
+@using LabBenchManager.Models
+@inject AssignmentService AssignmentSvc
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>申请测试</PageTitle>
+
+<div class="container-fluid py-4">
+    
+
+    <!-- 页面标题 (添加一个查看我的申请的按钮)-->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-primary">测试申请单</h2>
+            <p class="text-muted">请详细填写以下测试申请信息，所有带 <span class="text-danger">*</span> 的为必填项。</p>
+        </div>
+        <!-- 修改(2): 在页面右上角也添加一个"查看我的申请"按钮 -->
+        <a href="/my-assignments" class="btn btn-outline-primary">
+            <span class="oi oi-list-rich me-1"></span>我提交的申请
+        </a>
+    </div>
+
+    <EditForm Model="@newAssignment" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="alert alert-danger" />
+
+        <div class="row">
+            <!-- 左侧：申请单位信息 -->
+            <div class="col-lg-6">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <span class="oi oi-person me-2"></span>申请单位信息
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    <span class="text-danger">*</span>申请人姓名
+                                </label>
+                                <InputText class="form-control" @bind-Value="newAssignment.ApplicantName"
+                                           placeholder="请输入申请人姓名" />
+                                <ValidationMessage For="(() => newAssignment.ApplicantName)" class="text-danger small" />
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    <span class="text-danger"></span>部门
+                                </label>
+                                <InputText class="form-control" @bind-Value="newAssignment.Department"
+                                           placeholder="请输入部门或单位名称" />
+                                <ValidationMessage For="(() => newAssignment.Department)" class="text-danger small" />
+                            </div>
+                        </div>
+
+                        
+                    </div>
+                </div>
+                <!-- 测试要求详情 -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">
+                            <span class="oi oi-clipboard me-2"></span>测试要求详情
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <span class="text-danger">*</span>测试内容
+                            </label>
+                            <InputTextArea class="form-control" @bind-Value="newAssignment.TestContent" rows="4"
+                                           placeholder="请详细描述测试内容，包括测试目的、方法、预期结果等" />
+                            <ValidationMessage For="(() => newAssignment.TestContent)" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <span class="text-danger"></span>测试标准/依据
+                            </label>
+                            <InputText class="form-control" @bind-Value="newAssignment.TestStandard"
+                                       placeholder="例如：GB/T 2423.1-2008 等" />
+                            <ValidationMessage For="(() => newAssignment.TestStandard)" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">
+                                测试参数/条件
+                            </label>
+                            <InputTextArea class="form-control" @bind-Value="newAssignment.TestParameters" rows="3"
+                                           placeholder="例如：温度范围、湿度条件、压力参数等" />
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+
+            <!-- 右侧：测试需求 -->
+            <div class="col-lg-6">
+                <!-- 项目基本信息 -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <span class="oi oi-document me-2"></span>项目基本信息
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <span class="text-danger">*</span>项目名称
+                            </label>
+                            <InputText class="form-control" @bind-Value="newAssignment.ProjectName"
+                                       placeholder="请输入项目名称" />
+                            <ValidationMessage For="(() => newAssignment.ProjectName)" class="text-danger small" />
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    <span class="text-danger">*</span>预计交样时间
+                                </label>
+                                <InputDate class="form-control" @bind-Value="newAssignment.EstimatedSampleTime" />
+                                <ValidationMessage For="(() => newAssignment.EstimatedSampleTime)" class="text-danger small" />
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    <span class="text-danger">*</span>期望完成时间
+                                </label>
+                                <InputDate class="form-control" @bind-Value="newAssignment.DesiredCompletionTime" />
+                                <ValidationMessage For="(() => newAssignment.DesiredCompletionTime)" class="text-danger small" />
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+                <!-- 样品信息 -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <span class="oi oi-beaker me-2"></span>样品信息
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    <span class="text-danger">*</span>样品数量
+                                </label>
+                                <InputNumber class="form-control" @bind-Value="newAssignment.SampleQuantity" />
+                                <ValidationMessage For="(() => newAssignment.SampleQuantity)" class="text-danger small" />
+                                <div class="form-text">本次测试的样品总数量</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    样品规格/型号
+                                </label>
+                                <InputText class="form-control" @bind-Value="newAssignment.SampleSpecification"
+                                           placeholder="例如：型号、尺寸、规格等" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    样品批号
+                                </label>
+                                <InputText class="form-control" @bind-Value="newAssignment.SampleBatchNo"
+                                           placeholder="样品生产批号或编号" />
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    样品特殊要求
+                                </label>
+                                <InputText class="form-control" @bind-Value="newAssignment.SampleRequirements"
+                                           placeholder="存储、运输等特殊要求" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+
+        <!-- 特殊要求和备注 -->
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">
+                            <span class="oi oi-warning me-2"></span>特殊要求
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">
+                                特殊要求
+                            </label>
+                            <InputTextArea class="form-control" @bind-Value="newAssignment.SpecialRequirements" rows="3"
+                                           placeholder="例如：特殊环境要求、保密要求、报告格式要求等" />
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <InputCheckbox class="form-check-input" @bind-Value="newAssignment.IsUrgent" />
+                            <label class="form-check-label">
+                                是否需要加急处理
+                            </label>
+                        </div>
+
+                        @if (newAssignment.IsUrgent)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    加急原因
+                                </label>
+                                <InputTextArea class="form-control" @bind-Value="newAssignment.UrgentReason" rows="2"
+                                               placeholder="请说明加急原因" />
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">
+                            <span class="oi oi-comment-square me-2"></span>备注说明
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">
+                                其他需要说明的事项
+                            </label>
+                            <InputTextArea class="form-control" @bind-Value="newAssignment.Notes" rows="5"
+                                           placeholder="其他需要说明的事项..." />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 提交按钮 -->
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">确认提交</h6>
+                        <p class="text-muted small mb-0">提交前请确认所有信息填写正确</p>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-outline-secondary me-2" @onclick="ResetForm">
+                            <span class="oi oi-reload me-1"></span>重置表单
+                        </button>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <span class="oi oi-check me-1"></span>提交测试申请
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+
+    <!-- 成功提示 -->
+    @if (showSuccessMessage)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <div class="d-flex align-items-center">
+                <span class="oi oi-check me-3" style="font-size: 1.5rem;"></span>
+                <div class="flex-grow-1">
+                    <h5 class="alert-heading mb-1">申请提交成功！</h5>
+                    <p class="mb-0">您的测试申请已提交，申请编号：<strong>@lastRequestId</strong>。管理员将会尽快审批。</p>
+                    <div class="mt-2">
+                        <!-- 修改(1): "查看我的申请"按钮现在导航到新页面 -->
+                        <a href="/my-assignments" class="btn btn-sm btn-outline-success me-2">
+                            <span class="oi oi-list me-1"></span>查看我的申请
+                        </a>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ResetForm">
+                            <span class="oi oi-plus me-1"></span>继续申请
+                        </button>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" @onclick="() => showSuccessMessage = false" aria-label="Close"></button>
+            </div>
+        </div>
+    }
+
+    <!-- 填写指南 -->
+    <div class="card shadow-sm mt-4">
+        <div class="card-body">
+            <h5 class="card-title">
+                <span class="oi oi-info me-2"></span>填写指南
+            </h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>基本信息</h6>
+                    <ul class="small">
+                        <li><strong>申请人信息</strong>：请填写准确的联系信息，便于沟通</li>
+                        <li><strong>样品信息</strong>：详细描述样品有助于测试准备</li>
+                        <li><strong>项目信息</strong>：清晰的项目名称便于管理</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6>测试要求</h6>
+                    <ul class="small">
+                        <li><strong>测试内容</strong>：尽可能详细描述测试需求</li>
+                        <li><strong>测试标准</strong>：明确测试依据的标准或方法</li>
+                        <li><strong>时间要求</strong>：合理安排交样和期望完成时间</li>
+                        <li><strong>特殊要求</strong>：如有特殊需求请明确说明</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private Assignment newAssignment = new();
+    private bool showSuccessMessage = false;
+    private int lastRequestId = 0;
+    private ClaimsPrincipal? currentUser;
+
+    // 修改(3): OnInitializedAsync 用于异步获取用户信息
+    protected override async Task OnInitializedAsync()
+    {
+        // 获取当前用户的认证状态
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        currentUser = authState.User;
+
+        // 如果用户已登录，则自动填充信息
+        if (currentUser.Identity?.IsAuthenticated ?? false)
+        {
+            newAssignment.ApplicantNTAccount = currentUser.Identity.Name ?? "unknown";
+            // 您可以尝试从Claims中获取更完整的名字，如果存在的话
+            newAssignment.ApplicantName = currentUser.FindFirst(ClaimTypes.GivenName)?.Value ?? currentUser.Identity.Name ?? "";
+            var nameParts = newAssignment.ApplicantName.Split('\\');
+            newAssignment.ApplicantName = nameParts.Length > 1 ? nameParts[1] : newAssignment.ApplicantName;
+        }
+
+        // 设置默认时间
+        newAssignment.EstimatedSampleTime = DateTime.Today.AddDays(1);
+        newAssignment.DesiredCompletionTime = DateTime.Today.AddDays(5);
+    }
+
+    private void ResetForm()
+    {
+        // 保存当前申请人的信息，便于再次申请
+        var savedNT = newAssignment.ApplicantNTAccount;
+        var savedName = newAssignment.ApplicantName;
+        var savedDept = newAssignment.Department;
+
+        newAssignment = new Assignment
+        {
+            ApplicantNTAccount = savedNT, // 保留NT账号
+            ApplicantName = savedName,
+            Department = savedDept,
+            EstimatedSampleTime = DateTime.Today.AddDays(1),
+            DesiredCompletionTime = DateTime.Today.AddDays(5),
+            SampleQuantity = 1,
+        };
+
+        showSuccessMessage = false;
+        lastRequestId = 0;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            if (currentUser?.Identity?.IsAuthenticated == false)
+            {
+                // 可以添加一个错误提示，告知用户需要登录
+                Console.WriteLine("用户未登录，无法提交申请");
+                return;
+            }
+
+            // 修改(4): 确保NT账号在提交时被设置
+            newAssignment.ApplicantNTAccount = currentUser?.Identity?.Name ?? "unknown";
+
+            // 验证时间逻辑
+            if (newAssignment.DesiredCompletionTime <= newAssignment.EstimatedSampleTime)
+            {
+                Console.WriteLine("期望完成时间必须晚于预计交样时间");
+                return;
+            }
+
+            // 设置提交时的默认值
+            newAssignment.RequestTime = DateTime.UtcNow.AddHours(8);
+            newAssignment.Status = AssignmentStatus.待审批;
+
+            // 如果选择加急但未填写原因，提供默认原因
+            if (newAssignment.IsUrgent && string.IsNullOrWhiteSpace(newAssignment.UrgentReason))
+            {
+                newAssignment.UrgentReason = "项目紧急，需要尽快完成测试";
+            }
+
+            // 保存到数据库
+            await AssignmentSvc.AddAsync(newAssignment);
+
+
+            // 显示成功消息
+            showSuccessMessage = true;
+
+            await AssignmentSvc.AddAsync(newAssignment);
+            lastRequestId = newAssignment.Id; // 获取新创建的申请ID
+
+            showSuccessMessage = true;
+            StateHasChanged(); // 手动触发UI刷新
+
+            // 重置表单，但保留申请人信息
+            var savedName = newAssignment.ApplicantName;
+            var savedDept = newAssignment.Department;
+
+            newAssignment = new Assignment
+            {
+                ApplicantName = savedName,
+                Department = savedDept,
+                EstimatedSampleTime = DateTime.Today.AddDays(1),
+                DesiredCompletionTime = DateTime.Today.AddDays(5),
+                SampleQuantity = 1,
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"提交申请时出错: {ex.Message}");
+        }
+    }
+}
