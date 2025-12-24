@@ -12,8 +12,13 @@
         <div class="d-flex align-items-center gap-2">
             <span class="oi oi-person" aria-hidden="true"></span>
 
-            @* 🔥 使用 Service 方法，简化逻辑 *@
-            <strong>@(currentUserDisplayName ?? UserService.GetUserName(context.User.Identity?.Name))</strong>
+            @* 🔥 可点击的用户名，打开编辑弹窗 *@
+            <strong class="text-decoration-none"
+                    style="cursor: pointer;"
+                    @onclick="OpenEditDialog"
+                    title="点击编辑个人信息">
+                @(currentUserDisplayName ?? UserService.GetUserName(context.User.Identity?.Name))
+            </strong>
 
             @* 显示当前角色徽章 *@
             @if (context.User.IsInRole(AppRoles.Admin))
@@ -32,6 +37,13 @@
             {
                 <span class="badge bg-warning text-dark">无角色</span>
             }
+
+            @* 🆕 编辑按钮 *@
+            <button class="btn btn-sm btn-outline-secondary"
+                    @onclick="OpenEditDialog"
+                    title="编辑个人信息">
+                <span class="oi oi-pencil"></span>
+            </button>
 
             @* 开发环境：角色切换下拉框 *@
             @if (IsDevelopment)
@@ -64,11 +76,110 @@
     </NotAuthorized>
 </AuthorizeView>
 
+@* 🆕 用户信息编辑弹窗 *@
+@if (showEditDialog)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <span class="oi oi-person"></span> 编辑个人信息
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseEditDialog"></button>
+                </div>
+                <div class="modal-body">
+                    @if (editModel != null)
+                    {
+                        <EditForm Model="editModel" OnValidSubmit="SaveUserInfo">
+                            <DataAnnotationsValidator />
+
+                            <div class="mb-3">
+                                <label class="form-label">NT 账号</label>
+                                <input type="text" class="form-control" value="@editModel.NtAccount" disabled />
+                                <small class="text-muted">系统账号，无法修改</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <span class="oi oi-tag"></span> 名称
+                                </label>
+                                <InputText @bind-Value="editModel.DisplayName"
+                                           class="form-control"
+                                           placeholder="" />
+                                <ValidationMessage For="@(() => editModel.DisplayName)" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <span class="oi oi-briefcase"></span> 部门
+                                </label>
+                                <InputText @bind-Value="editModel.Department"
+                                           class="form-control"
+                                           placeholder="" />
+                                <ValidationMessage For="@(() => editModel.Department)" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <span class="oi oi-envelope-closed"></span> 邮箱
+                                </label>
+                                <InputText @bind-Value="editModel.Email"
+                                           type="email"
+                                           class="form-control"
+                                           placeholder="" />
+                                <ValidationMessage For="@(() => editModel.Email)" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">角色</label>
+                                <input type="text" class="form-control" value="@GetRoleName(editModel.Role)" disabled />
+                                <small class="text-muted">角色由管理员分配，如需变更请联系管理员</small>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(saveMessage))
+                            {
+                                <div class="alert @(saveSuccess ? "alert-success" : "alert-danger")" role="alert">
+                                    <span class="oi @(saveSuccess ? "oi-check" : "oi-warning")"></span>
+                                    @saveMessage
+                                </div>
+                            }
+
+                            <div class="d-flex justify-content-end gap-2">
+                                <button type="button" class="btn btn-secondary" @onclick="CloseEditDialog">
+                                    <span class="oi oi-x"></span> 取消
+                                </button>
+                                <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                                    @if (isSaving)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1"></span>
+                                        <text>保存中...</text>
+                                    }
+                                    else
+                                    {
+                                        <span class="oi oi-check"></span>
+                                        <text> 保存</text>
+                                    }
+                                </button>
+                            </div>
+                        </EditForm>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private bool IsDevelopment => Configuration.GetValue<bool>("IsDevelopment");
-    private string currentUserDisplayName = "用户"; // 🔥 设置默认值
+    private string currentUserDisplayName = "用户";
 
-    
+    // 🆕 编辑弹窗相关
+    private bool showEditDialog = false;
+    private ApplicationUser? editModel;
+    private bool isSaving = false;
+    private string? saveMessage;
+    private bool saveSuccess = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -82,12 +193,116 @@
 
         if (user.Identity?.IsAuthenticated == true && !string.IsNullOrEmpty(user.Identity.Name))
         {
-            // 🔥 一步获取：有 DisplayName 返回 DisplayName，否则返回从 NT 账号提取的用户名
             currentUserDisplayName = await UserService.GetDisplayNameOrUserNameAsync(user.Identity.Name);
         }
     }
 
-    // 🔥 移除 GetUserName 方法，使用 UserService.GetUserName
+    // 🆕 打开编辑弹窗
+    private async Task OpenEditDialog()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated != true || string.IsNullOrEmpty(user.Identity.Name))
+        {
+            return;
+        }
+
+        // 加载当前用户完整信息
+        var currentUser = await UserService.GetUserWithRoleAsync(user.Identity.Name);
+
+        if (currentUser == null)
+        {
+            // 如果用户不存在（理论上不应该发生，因为已经自动注册了）
+            editModel = new ApplicationUser
+            {
+                NtAccount = user.Identity.Name,
+                Role = AppRoles.Requester
+            };
+        }
+        else
+        {
+            // 创建副本用于编辑
+            editModel = new ApplicationUser
+            {
+                Id = currentUser.Id,
+                NtAccount = currentUser.NtAccount,
+                Role = currentUser.Role,
+                DisplayName = currentUser.DisplayName,
+                Department = currentUser.Department,
+                Email = currentUser.Email
+            };
+        }
+
+        saveMessage = null;
+        showEditDialog = true;
+    }
+
+    // 🆕 关闭编辑弹窗
+    private void CloseEditDialog()
+    {
+        showEditDialog = false;
+        editModel = null;
+        saveMessage = null;
+    }
+
+    // 🆕 保存用户信息
+    private async Task SaveUserInfo()
+    {
+        if (editModel == null) return;
+
+        isSaving = true;
+        saveMessage = null;
+
+        try
+        {
+            var success = await UserService.UpdateCurrentUserInfoAsync(
+                editModel.NtAccount,
+                editModel.DisplayName,
+                editModel.Department,
+                editModel.Email
+            );
+
+            if (success)
+            {
+                saveSuccess = true;
+                saveMessage = "个人信息保存成功！";
+
+                // 刷新显示名称
+                await LoadCurrentUserDisplayName();
+
+                // 延迟关闭弹窗
+                await Task.Delay(1500);
+                CloseEditDialog();
+            }
+            else
+            {
+                saveSuccess = false;
+                saveMessage = "保存失败，请重试。";
+            }
+        }
+        catch (Exception ex)
+        {
+            saveSuccess = false;
+            saveMessage = $"保存出错：{ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    // 🆕 获取角色中文名称
+    private string GetRoleName(string role)
+    {
+        return role switch
+        {
+            AppRoles.Admin => "管理员",
+            AppRoles.TestEngineer => "测试工程师",
+            AppRoles.Requester => "申请者",
+            _ => "未分配"
+        };
+    }
 
     private string GetCurrentRole(AuthenticationState context)
     {
