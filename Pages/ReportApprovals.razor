@@ -164,6 +164,17 @@
                                                 <span class="oi oi-trash"></span>
                                             </button>
                                         }
+                                        else
+                                        {
+                                            <AuthorizeView Roles="@AppRoles.Admin">
+                                                <Authorized>
+                                                    <button class="btn btn-sm btn-outline-danger ms-1"
+                                                            @onclick="() => HandleDelete(report)">
+                                                        <span class="oi oi-trash"></span>
+                                                    </button>
+                                                </Authorized>
+                                            </AuthorizeView>
+                                        }
 
                                         @* 审核按钮 - 只在"待我审核"标签页显示 *@
                                         @if (activeTab == "review" && CanReview(report))
@@ -462,7 +473,7 @@
             var confirmed = await JS.InvokeAsync<bool>("confirm", $"您确定要撤回报告 “{report.ReportTitle}” 吗？\n撤回后报告将返回草稿状态，需要重新提交。");
             if (confirmed && !string.IsNullOrEmpty(currentUserNTAccount))
             {
-                await ReportService.WithdrawReportAsync(report.Id, currentUserNTAccount);
+                await ReportService.WithdrawReportAsync(report.Id, currentUserNTAccount.ToLower());
                 successMessage = "报告已成功撤回至草稿状态。";
                 await LoadDataAsync();
             }
@@ -607,9 +618,10 @@
 
     private void ShowCreateModal()
     {
+
         currentReport = new ReportApproval
         {
-            SubmitterNTAccount = currentUserNTAccount ?? "",
+            SubmitterNTAccount = currentUserNTAccount?.ToLower() ?? "",
             Status = ReportApprovalStatus.草稿
         };
         isEditMode = false;
@@ -630,7 +642,8 @@
             ReportFilePath = report.ReportFilePath,
             Notes = report.Notes,
             Status = report.Status,
-            SubmitterNTAccount = report.SubmitterNTAccount
+            SubmitterNTAccount = report.SubmitterNTAccount,
+            SubmitterName = report.SubmitterName
         };
         isEditMode = true;
         showCreateEditModal = true;
@@ -751,7 +764,7 @@
     {
         if (string.IsNullOrEmpty(account))
             return "";
-        return account.ToLower().Replace("apac\\", "").Replace("apac/", "").Replace(@"apac\", "").Trim();
+        return account.ToLower();
     }
 
     private bool CanEdit(ReportApproval report)

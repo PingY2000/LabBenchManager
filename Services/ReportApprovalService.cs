@@ -247,7 +247,7 @@ namespace LabBenchManager.Services
             }
 
             // 只有提交人才能撤回
-            if (report.SubmitterNTAccount != currentUserNT)
+            if (report.SubmitterNTAccount.ToLower() != currentUserNT)
             {
                 throw new UnauthorizedAccessException("您无权撤回此报告。");
             }

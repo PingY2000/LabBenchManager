@@ -12,14 +12,17 @@
 
 <PageTitle>设备管理</PageTitle>
 
-<h3>设备管理 (Benches)</h3>
-<p class="text-muted">在这里添加、编辑或删除测试台设备。</p>
+<h3>设备管理 </h3>
+<AuthorizeView Roles="Admin">
+    <p class="text-muted">在这里添加、编辑或删除测试台设备。</p>
 
-<div class="mb-3">
-    <button class="btn btn-primary" @onclick="ShowAddModal">
-        <span class="oi oi-plus" aria-hidden="true"></span> 添加新设备
-    </button>
-</div>
+    <div class="mb-3">
+        <button class="btn btn-primary" @onclick="ShowAddModal">
+            <span class="oi oi-plus" aria-hidden="true"></span> 添加新设备
+        </button>
+    </div>
+</AuthorizeView>
+
 
 <div class="table-responsive">
     <table class="table table-striped table-hover">
