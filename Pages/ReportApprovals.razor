@@ -296,9 +296,9 @@
                                 <label class="form-label">审核人 <span class="text-danger">*</span></label>
                                 <InputSelect class="form-select" @bind-Value="currentReport.ReviewerNTAccount">
                                     <option value="">-- 请选择 --</option>
-                                    @if (users != null)
+                                    @if (reviewersAndApprovers != null)
                                     {
-                                        @foreach (var user in users)
+                                        @foreach (var user in reviewersAndApprovers)
                                         {
                                             <option value="@user.NtAccount">
                                                 @(user.DisplayName ?? user.NtAccount)
@@ -307,14 +307,15 @@
                                     }
                                 </InputSelect>
                                 <ValidationMessage For="() => currentReport.ReviewerNTAccount" />
+                                <small class="text-muted">仅显示管理员和测试人员</small>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">批准人 <span class="text-danger">*</span></label>
                                 <InputSelect class="form-select" @bind-Value="currentReport.ApproverNTAccount">
                                     <option value="">-- 请选择 --</option>
-                                    @if (users != null)
+                                    @if (reviewersAndApprovers != null)
                                     {
-                                        @foreach (var user in users)
+                                        @foreach (var user in reviewersAndApprovers)
                                         {
                                             <option value="@user.NtAccount">
                                                 @(user.DisplayName ?? user.NtAccount)
@@ -323,6 +324,7 @@
                                     }
                                 </InputSelect>
                                 <ValidationMessage For="() => currentReport.ApproverNTAccount" />
+                                <small class="text-muted">仅显示管理员和测试人员</small>
                             </div>
                         </div>
 
@@ -417,6 +419,8 @@
     private bool isEditMode = false;
     private bool showCreateEditModal = false;
     private IBrowserFile? selectedFile;
+
+    private List<ApplicationUser>? reviewersAndApprovers;
 
     private bool isModalVisible = false;
     private ActionableReportModal.ModalMode currentModalMode;
@@ -559,6 +563,10 @@
             if (!string.IsNullOrEmpty(currentUserNTAccount))
             {
                 users = await UserService.GetAllUsersAsync();
+                reviewersAndApprovers = users?
+                    .Where(u => u.Role == AppRoles.Admin || u.Role == AppRoles.TestEngineer)
+                    .OrderBy(u => u.DisplayName ?? u.NtAccount)
+                    .ToList();
                 assignments = await AssignmentService.GetAllAssignmentsAsync();
 
                 if (assignments != null)
