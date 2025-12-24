@@ -28,9 +28,14 @@
             <p class="text-muted mb-0"><span class="oi oi-map-marker me-1"></span>@currentBench.Location</p>
         }
     </div>
+    <div class="d-flex gap-2">
+    <a href="/stats/@BenchId" class="btn btn-outline-primary">
+        <span class="oi oi-bar-chart me-1"></span>使用统计
+    </a>
     <button class="btn btn-success" @onclick="AddNewPlan" disabled="@(currentViewMode != ViewMode.List)">
         <span class="oi oi-plus me-1"></span>添加测试计划
     </button>
+</div>
 </div>
 
 @if (currentBench == null)

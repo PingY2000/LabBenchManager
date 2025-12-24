@@ -28,5 +28,63 @@
     </div>
 
     <script src="_framework/blazor.server.js"></script>
+
+    <!-- ↓↓↓ ADD THESE SCRIPTS HERE ↓↓↓ -->
+    <!-- Chart.js and SheetJS CDNs for chart rendering and Excel export -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <script>
+        // Blazor calls this function to export Excel
+        function exportToExcel(fileName, jsonData) {
+            const ws = XLSX.utils.json_to_sheet(jsonData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Usage Report");
+            XLSX.writeFile(wb, fileName);
+        }
+
+        // Blazor calls this function to render the bar chart
+        function renderBarChart(canvasId, chartData) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+
+            // If a chart already exists on this canvas, destroy it first
+            // to prevent memory leaks and rendering issues on updates.
+            const existingChart = Chart.getChart(canvas);
+            if (existingChart) {
+                existingChart.destroy();
+            }
+
+            const ctx = canvas.getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: '年度使用天数对比'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '使用天数'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+    <!-- ↑↑↑ SCRIPTS END HERE ↑↑↑ -->
+
 </body>
 </html>

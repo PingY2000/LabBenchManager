@@ -1,0 +1,275 @@
+﻿@page "/stats/{BenchId:int}"
+@attribute [Authorize(Roles = $"{AppRoles.TestEngineer},{AppRoles.Admin},{AppRoles.Requester}")]
+
+@using System.Globalization
+@using LabBenchManager.Models
+@using LabBenchManager.Services
+@inject BenchService BenchSvc
+@inject TestPlanService PlanSvc
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+
+<PageTitle>@pageTitle</PageTitle>
+
+@if (currentBench == null)
+{
+    <div class="alert alert-warning">正在加载设备信息...</div>
+}
+else
+{
+    <!-- 页面头部 -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="fw-bold text-primary"><span class="oi oi-bar-chart me-2"></span>@currentBench.Name - 使用情况分析</h2>
+            <p class="text-muted mb-0"><span class="oi oi-map-marker me-1"></span>@currentBench.Location</p>
+        </div>
+        <!-- FIX 1: Replaced inline lambda with a method call to avoid quote issues -->
+        <button class="btn btn-outline-secondary" @onclick="NavigateBack">
+            <span class="oi oi-arrow-left me-1"></span>返回总览
+        </button>
+    </div>
+
+    <!-- 筛选与操作面板 -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label fw-bold">选择对比年份 (已记录的年份)</label>
+                    <div class="d-flex flex-wrap gap-3">
+                        @if (availableYears.Any())
+                        {
+                            @foreach (var year in availableYears)
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="year-@year" @bind="selectedYears[year]">
+                                    <label class="form-check-label" for="year-@year">@year 年</label>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-muted">此设备暂无使用记录</span>
+                        }
+                    </div>
+                </div>
+                <div class="col-md-4 d-flex justify-content-start justify-content-md-end gap-2">
+                    <button class="btn btn-primary" @onclick="GenerateReport" disabled="@(isLoading || !selectedYears.Any(kv => kv.Value))">
+                        @if (isLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span> <span class="ms-1">生成中...</span>
+                        }
+                        else
+                        {
+                            <!-- FIX 2: Moved the text "分析" inside the span tag -->
+                            <span class="oi oi-magnifying-glass me-1"> 分析</span>
+                        }
+                    </button>
+                    <button class="btn btn-success" @onclick="ExportToExcel" disabled="@(reportData == null || !reportData.Any())">
+                        <span class="oi oi-spreadsheet me-1"></span> 导出Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 结果展示 -->
+    @if (reportData != null)
+    {
+        <div class="row">
+            <!-- 左侧：柱状图 -->
+            <div class="col-lg-7 mb-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header">
+                        图表分析
+                    </div>
+                    <div class="card-body">
+                        <canvas id="usageChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：数据表格 -->
+            <div class="col-lg-5">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        数据详情：各月已安排天数
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped table-hover mb-0">
+                            <thead class="table-light text-center">
+                                <tr>
+                                    <th>月份</th>
+                                    @foreach (var year in reportData.First().YearData.Keys.OrderBy(y => y))
+                                    {
+                                        <th>@year 年</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody class="text-center">
+                                @foreach (var row in reportData)
+                                {
+                                    <tr>
+                                        <td class="fw-bold">@row.MonthName</td>
+                                        @foreach (var year in row.YearData.Keys.OrderBy(y => y))
+                                        {
+                                            <td>@row.YearData[year]</td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if(!isLoading)
+    {
+         <div class="alert alert-info">
+            <span class="oi oi-info me-2"></span>请选择要对比的年份，然后点击 "分析" 按钮生成报告。
+        </div>
+    }
+}
+
+
+@code {
+    [Parameter]
+    public int BenchId { get; set; }
+
+    private Bench? currentBench;
+    private string pageTitle = "使用情况分析";
+    private bool isLoading = false;
+    
+    private List<TestPlan> allPlansForBench = new();
+    private List<int> availableYears = new();
+    private Dictionary<int, bool> selectedYears = new();
+
+    private List<MonthlyUsageRow>? reportData;
+
+    // 报表行数据模型
+    private class MonthlyUsageRow
+    {
+        public int Month { get; set; }
+        public string MonthName => new DateTime(2000, Month, 1).ToString("MMMM", CultureInfo.GetCultureInfo("zh-CN"));
+        public Dictionary<int, int> YearData { get; set; } = new();
+    }
+
+    // FIX 1: Added a dedicated method for navigation
+    private void NavigateBack()
+    {
+        NavigationManager.NavigateTo("/stats");
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        currentBench = await BenchSvc.GetByIdAsync(BenchId);
+        if (currentBench != null)
+        {
+            pageTitle = $"{currentBench.Name} - 使用情况分析";
+            allPlansForBench = await PlanSvc.GetPlansByBenchIdAsync(BenchId);
+
+            // 从计划中提取所有存在的年份
+            availableYears = allPlansForBench
+                .SelectMany(p => p.GetScheduledDates())
+                .Select(d => d.Year)
+                .Distinct()
+                .OrderByDescending(y => y)
+                .ToList();
+
+            // 初始化年份选择字典
+            selectedYears = availableYears.ToDictionary(y => y, y => false);
+            // 默认勾选最近的两年（如果存在）
+            if (availableYears.Count > 0) selectedYears[availableYears[0]] = true;
+            if (availableYears.Count > 1) selectedYears[availableYears[1]] = true;
+        }
+        reportData = null; // 清空旧数据
+        isLoading = false;
+    }
+
+    private async Task GenerateReport()
+    {
+        isLoading = true;
+        await Task.Delay(10); // 允许UI更新显示加载状态
+
+        var yearsToAnalyze = selectedYears.Where(kv => kv.Value).Select(kv => kv.Key).ToList();
+        if (!yearsToAnalyze.Any())
+        {
+            isLoading = false;
+            return;
+        }
+
+        // 1. 按年和月对所有计划日期进行分组和计数
+        var usageByMonthYear = allPlansForBench
+            .SelectMany(p => p.GetScheduledDates())
+            .Where(d => yearsToAnalyze.Contains(d.Year))
+            .GroupBy(d => new { d.Year, d.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, Days = g.Select(d => d.Day).Distinct().Count() })
+            .ToList();
+
+        // 2. 构建报表数据结构
+        var results = new List<MonthlyUsageRow>();
+        for (int m = 1; m <= 12; m++)
+        {
+            var row = new MonthlyUsageRow { Month = m };
+            foreach (var year in yearsToAnalyze)
+            {
+                var usage = usageByMonthYear.FirstOrDefault(u => u.Year == year && u.Month == m);
+                row.YearData[year] = usage?.Days ?? 0;
+            }
+            results.Add(row);
+        }
+
+        reportData = results;
+        isLoading = false;
+
+        // 3. 渲染图表
+        await RenderChart();
+    }
+
+    private async Task RenderChart()
+    {
+        if (reportData == null || !reportData.Any()) return;
+
+        var years = reportData.First().YearData.Keys.OrderBy(y => y).ToList();
+        var colors = new List<string> { "rgba(54, 162, 235, 0.8)", "rgba(255, 99, 132, 0.8)", "rgba(75, 192, 192, 0.8)", "rgba(255, 206, 86, 0.8)" };
+
+        var chartData = new
+        {
+            labels = reportData.Select(r => r.MonthName).ToList(),
+            datasets = years.Select((year, index) => new
+            {
+                label = $"{year} 年",
+                data = reportData.Select(r => r.YearData[year]).ToList(),
+                backgroundColor = colors[index % colors.Count]
+            }).ToList()
+        };
+
+        await JSRuntime.InvokeVoidAsync("renderBarChart", "usageChart", chartData);
+    }
+
+    private async Task ExportToExcel()
+    {
+        if (reportData == null || !reportData.Any()) return;
+
+        var years = reportData.First().YearData.Keys.OrderBy(y => y).ToList();
+
+        // 将数据转换为动态对象列表以进行导出
+        var exportList = new List<Dictionary<string, object>>();
+        foreach (var row in reportData)
+        {
+            var exportRow = new Dictionary<string, object>
+            {
+                { "月份", row.MonthName }
+            };
+            foreach (var year in years)
+            {
+                exportRow[$"{year}年"] = row.YearData[year];
+            }
+            exportList.Add(exportRow);
+        }
+        
+        var fileName = $"{currentBench?.Name}_UsageAnalysis_{string.Join("_", years)}.xlsx";
+        await JSRuntime.InvokeVoidAsync("exportToExcel", fileName, exportList);
+    }
+}
