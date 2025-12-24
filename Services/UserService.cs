@@ -1,4 +1,5 @@
 ﻿// Services/UserService.cs
+using DocumentFormat.OpenXml.InkML;
 using LabBenchManager.Data;
 using LabBenchManager.Models;
 using Microsoft.EntityFrameworkCore;
@@ -192,6 +193,30 @@ namespace LabBenchManager.Services
 
             await db.SaveChangesAsync();
             return (addedCount, updatedCount);
+        }
+        public async Task<Dictionary<string, string>> GetDisplayNamesByAccountsAsync(List<string> ntAccounts)
+        {
+            if (ntAccounts == null || !ntAccounts.Any())
+                return new Dictionary<string, string>();
+
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
+            var normalizedAccounts = ntAccounts
+                .Where(a => !string.IsNullOrEmpty(a))
+                .Select(a => a.ToLower())
+                .Distinct()
+                .ToList();
+
+            var users = await db.ApplicationUsers
+                .Where(u => normalizedAccounts.Contains(u.NtAccount.ToLower()))
+                .Select(u => new { u.NtAccount, u.DisplayName })
+                .ToListAsync();
+
+            return users.ToDictionary(
+                u => u.NtAccount.ToLower(),
+                u => !string.IsNullOrWhiteSpace(u.DisplayName) ? u.DisplayName : GetUserName(u.NtAccount),
+                StringComparer.OrdinalIgnoreCase
+            );
         }
     }
 }

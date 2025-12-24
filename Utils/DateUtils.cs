@@ -62,5 +62,6 @@ namespace LabBenchManager.Utils
 
             return string.Join(", ", ranges);
         }
+
     }
 }

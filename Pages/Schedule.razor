@@ -450,27 +450,18 @@ else
             var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "您确定要保存对该计划的修改吗？");
             if (!confirmed)
             {
-                return; // 用户点击“取消”，则中止保存
+                return; // 用户点击"取消"，则中止保存
             }
         }
-
-        // 如果是修改确定计划，检查是否填写了修改原因 (这段逻辑保持不变)
-        /*
-        if (editingPlan.Id > 0)
-        {
-            var originalPlan = testPlans?.FirstOrDefault(p => p.Id == editingPlan.Id);
-            if (originalPlan?.Status == TestPlanStatus.确定计划 && string.IsNullOrWhiteSpace(modificationReason))
-            {
-                validationError = "修改确定计划需要填写修改原因";
-                return;
-            }
-        }*/
-        
 
         editingPlan.SetScheduledDates(selectedDatesForEditing);
 
         try
         {
+            // 获取当前用户信息
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var currentUser = authState.User.Identity?.Name ?? "未知用户";
+
             // 在更新前创建原始计划的深拷贝
             TestPlan? originalPlanSnapshot = null;
             if (editingPlan.Id > 0)
@@ -496,10 +487,40 @@ else
             }
 
             TestPlan savedPlan;
-            if (editingPlan.Id == 0)
+            bool isNewPlan = editingPlan.Id == 0;
+
+            if (isNewPlan)
             {
                 await PlanSvc.AddAsync(editingPlan);
                 savedPlan = editingPlan;
+
+                // 🔥 新增：如果新建的计划是"确定计划"或"已完成"，记录历史
+                if (savedPlan.Status == TestPlanStatus.确定计划 ||
+                    savedPlan.Status == TestPlanStatus.已完成)
+                {
+                    Console.WriteLine($"Recording creation history: Status = {savedPlan.Status}");
+                    Console.WriteLine($"User = {currentUser}, Reason = {modificationReason}");
+
+                    // 创建一个"空"的原始状态（表示从无到有）
+                    var emptyOriginal = new TestPlan
+                    {
+                        Id = savedPlan.Id,
+                        BenchId = savedPlan.BenchId,
+                        AssignmentId = savedPlan.AssignmentId,
+                        ProjectName = savedPlan.ProjectName,
+                        Description = savedPlan.Description,
+                        Status = TestPlanStatus.初步规划, // 假设初始状态是"初步规划"
+                        AssignedTo = savedPlan.AssignedTo,
+                        RequestedBy = savedPlan.RequestedBy,
+                        SampleQuantity = savedPlan.SampleQuantity
+                    };
+                    emptyOriginal.SetScheduledDates(new List<DateTime>()); // 空的日期列表
+
+                    await HistoryService.RecordPlanModificationAsync(
+                        emptyOriginal, savedPlan, currentUser, modificationReason ?? "创建计划");
+
+                    Console.WriteLine("Creation history recording completed");
+                }
             }
             else
             {
@@ -509,9 +530,6 @@ else
                 // 记录修改历史 - 使用快照
                 if (originalPlanSnapshot != null)
                 {
-                    var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-                    var currentUser = authState.User.Identity?.Name ?? "未知用户";
-
                     Console.WriteLine($"Recording history: Original Status = {originalPlanSnapshot.Status}, Modified Status = {savedPlan.Status}");
                     Console.WriteLine($"User = {currentUser}, Reason = {modificationReason}");
 
@@ -522,6 +540,7 @@ else
                 }
             }
 
+            // 更新关联的 Assignment
             if (savedPlan.AssignmentId.HasValue)
             {
                 var relatedAssignment = await AssignmentSvc.GetByIdAsync(savedPlan.AssignmentId.Value);
