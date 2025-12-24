@@ -9,6 +9,29 @@
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 
+<!-- CHANGE: Added a style block for the new daily grid view. You can also move this to your site.css file. -->
+<style>
+    .daily-grid {
+        display: grid;
+        grid-template-columns: repeat(16, 1fr); /* Compact two-row layout */
+        gap: 2px;
+        padding: 2px 0;
+    }
+
+    .day-cell {
+        width: 10px;
+        height: 10px;
+        border: 1px solid #eee;
+        background-color: #f7f7f7;
+        border-radius: 2px;
+    }
+
+        .day-cell.used {
+            background-color: #3498db; /* A nice blue for used days */
+            border-color: #2980b9;
+        }
+</style>
+
 <PageTitle>@pageTitle</PageTitle>
 
 @if (currentBench == null)
@@ -23,9 +46,8 @@ else
             <h2 class="fw-bold text-primary"><span class="oi oi-bar-chart me-2"></span>@currentBench.Name - 使用情况分析</h2>
             <p class="text-muted mb-0"><span class="oi oi-map-marker me-1"></span>@currentBench.Location</p>
         </div>
-        <!-- FIX 1: Replaced inline lambda with a method call to avoid quote issues -->
         <button class="btn btn-outline-secondary" @onclick="NavigateBack">
-            <span class="oi oi-arrow-left me-1"></span>返回总览
+            <span class="oi oi-arrow-left me-1"></span>返回规划
         </button>
     </div>
 
@@ -33,7 +55,7 @@ else
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <div class="row g-3 align-items-end">
-                <div class="col-md-8">
+                <div class="col-md-9">
                     <label class="form-label fw-bold">选择对比年份 (已记录的年份)</label>
                     <div class="d-flex flex-wrap gap-3">
                         @if (availableYears.Any())
@@ -41,7 +63,10 @@ else
                             @foreach (var year in availableYears)
                             {
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="year-@year" @bind="selectedYears[year]">
+                                    <!-- CHANGE: Added @bind:after to automatically trigger report generation on change -->
+                                    <input class="form-check-input" type="checkbox" id="year-@year"
+                                           @bind="selectedYears[year]"
+                                           @bind:after="GenerateReport" />
                                     <label class="form-check-label" for="year-@year">@year 年</label>
                                 </div>
                             }
@@ -52,18 +77,8 @@ else
                         }
                     </div>
                 </div>
-                <div class="col-md-4 d-flex justify-content-start justify-content-md-end gap-2">
-                    <button class="btn btn-primary" @onclick="GenerateReport" disabled="@(isLoading || !selectedYears.Any(kv => kv.Value))">
-                        @if (isLoading)
-                        {
-                            <span class="spinner-border spinner-border-sm"></span> <span class="ms-1">生成中...</span>
-                        }
-                        else
-                        {
-                            <!-- FIX 2: Moved the text "分析" inside the span tag -->
-                            <span class="oi oi-magnifying-glass me-1"> 分析</span>
-                        }
-                    </button>
+                <!-- CHANGE: Removed the "分析" button. The Export button is now the only action. -->
+                <div class="col-md-3 d-flex justify-content-start justify-content-md-end">
                     <button class="btn btn-success" @onclick="ExportToExcel" disabled="@(reportData == null || !reportData.Any())">
                         <span class="oi oi-spreadsheet me-1"></span> 导出Excel
                     </button>
@@ -83,7 +98,16 @@ else
                         图表分析
                     </div>
                     <div class="card-body">
-                        <canvas id="usageChart"></canvas>
+                        @if (isLoading)
+                        {
+                            <div class="d-flex justify-content-center align-items-center h-100">
+                                <span class="spinner-border spinner-border-sm"></span> <span class="ms-2">正在生成图表...</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <canvas id="usageChart"></canvas>
+                        }
                     </div>
                 </div>
             </div>
@@ -95,24 +119,42 @@ else
                         数据详情：各月已安排天数
                     </div>
                     <div class="table-responsive">
+                        <!-- CHANGE: Table structure is updated for the new view -->
                         <table class="table table-bordered table-striped table-hover mb-0">
                             <thead class="table-light text-center">
                                 <tr>
-                                    <th>月份</th>
+                                    <th rowspan="2" class="align-middle">月份</th>
                                     @foreach (var year in reportData.First().YearData.Keys.OrderBy(y => y))
                                     {
-                                        <th>@year 年</th>
+                                        <th colspan="2">@year 年</th>
+                                    }
+                                </tr>
+                                <tr>
+                                    @foreach (var year in reportData.First().YearData.Keys.OrderBy(y => y))
+                                    {
+                                        <th>每日详情</th>
+                                        <th class="fw-bold">总计</th>
                                     }
                                 </tr>
                             </thead>
-                            <tbody class="text-center">
+                            <tbody>
                                 @foreach (var row in reportData)
                                 {
                                     <tr>
-                                        <td class="fw-bold">@row.MonthName</td>
+                                        <td class="fw-bold text-center">@row.MonthName</td>
                                         @foreach (var year in row.YearData.Keys.OrderBy(y => y))
                                         {
-                                            <td>@row.YearData[year]</td>
+                                            var usage = row.YearData[year];
+                                            <td>
+                                                <div class="daily-grid">
+                                                    @for (int day = 1; day <= 31; day++)
+                                                    {
+                                                        var isUsed = usage.UsedDays.Contains(day);
+                                                        <div class="day-cell @(isUsed ? "used" : "")" title="@(isUsed ? $"{year}-{row.Month}-{day} 已占用" : "")"></div>
+                                                    }
+                                                </div>
+                                            </td>
+                                            <td class="text-center fw-bold align-middle">@usage.TotalDays</td>
                                         }
                                     </tr>
                                 }
@@ -123,10 +165,10 @@ else
             </div>
         </div>
     }
-    else if(!isLoading)
+    else if (!isLoading)
     {
-         <div class="alert alert-info">
-            <span class="oi oi-info me-2"></span>请选择要对比的年份，然后点击 "分析" 按钮生成报告。
+        <div class="alert alert-info">
+            <span class="oi oi-info me-2"></span>请选择要对比的年份，报告将自动生成。
         </div>
     }
 }
@@ -139,25 +181,33 @@ else
     private Bench? currentBench;
     private string pageTitle = "使用情况分析";
     private bool isLoading = false;
-    
+
     private List<TestPlan> allPlansForBench = new();
     private List<int> availableYears = new();
     private Dictionary<int, bool> selectedYears = new();
 
     private List<MonthlyUsageRow>? reportData;
 
-    // 报表行数据模型
+    // 新增：一个标志，告诉 Blazor 在下一次渲染后是否需要更新图表
+    private bool shouldRenderChart = false;
+
+    private class MonthlyUsageDetail
+    {
+        public int TotalDays { get; set; }
+        public HashSet<int> UsedDays { get; set; } = new();
+    }
+
     private class MonthlyUsageRow
     {
         public int Month { get; set; }
         public string MonthName => new DateTime(2000, Month, 1).ToString("MMMM", CultureInfo.GetCultureInfo("zh-CN"));
-        public Dictionary<int, int> YearData { get; set; } = new();
+        public Dictionary<int, MonthlyUsageDetail> YearData { get; set; } = new();
     }
 
-    // FIX 1: Added a dedicated method for navigation
     private void NavigateBack()
     {
-        NavigationManager.NavigateTo("/stats");
+        // 使用字符串插值 ($"...") 将 BenchId 的值插入到 URL 中
+        NavigationManager.NavigateTo($"/schedule/{BenchId}");
     }
 
     protected override async Task OnParametersSetAsync()
@@ -169,7 +219,6 @@ else
             pageTitle = $"{currentBench.Name} - 使用情况分析";
             allPlansForBench = await PlanSvc.GetPlansByBenchIdAsync(BenchId);
 
-            // 从计划中提取所有存在的年份
             availableYears = allPlansForBench
                 .SelectMany(p => p.GetScheduledDates())
                 .Select(d => d.Year)
@@ -177,37 +226,54 @@ else
                 .OrderByDescending(y => y)
                 .ToList();
 
-            // 初始化年份选择字典
             selectedYears = availableYears.ToDictionary(y => y, y => false);
-            // 默认勾选最近的两年（如果存在）
             if (availableYears.Count > 0) selectedYears[availableYears[0]] = true;
             if (availableYears.Count > 1) selectedYears[availableYears[1]] = true;
         }
-        reportData = null; // 清空旧数据
+        reportData = null;
         isLoading = false;
+
+        await GenerateReport();
+    }
+
+    // 新增：实现 OnAfterRenderAsync 生命周期方法
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // 检查标志，确保只在需要时才调用 JS
+        if (shouldRenderChart)
+        {
+            // 重置标志，防止不必要的重复渲染
+            shouldRenderChart = false;
+            await RenderChart();
+        }
     }
 
     private async Task GenerateReport()
     {
         isLoading = true;
-        await Task.Delay(10); // 允许UI更新显示加载状态
+        await InvokeAsync(StateHasChanged); // 强制UI更新以显示加载状态
 
         var yearsToAnalyze = selectedYears.Where(kv => kv.Value).Select(kv => kv.Key).ToList();
         if (!yearsToAnalyze.Any())
         {
+            reportData = null;
             isLoading = false;
+            shouldRenderChart = true; // 即使没有数据，也触发一次渲染，以确保旧图表被清除
             return;
         }
 
-        // 1. 按年和月对所有计划日期进行分组和计数
         var usageByMonthYear = allPlansForBench
             .SelectMany(p => p.GetScheduledDates())
             .Where(d => yearsToAnalyze.Contains(d.Year))
             .GroupBy(d => new { d.Year, d.Month })
-            .Select(g => new { g.Key.Year, g.Key.Month, Days = g.Select(d => d.Day).Distinct().Count() })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                UsedDays = g.Select(d => d.Day).ToHashSet()
+            })
             .ToList();
 
-        // 2. 构建报表数据结构
         var results = new List<MonthlyUsageRow>();
         for (int m = 1; m <= 12; m++)
         {
@@ -215,7 +281,11 @@ else
             foreach (var year in yearsToAnalyze)
             {
                 var usage = usageByMonthYear.FirstOrDefault(u => u.Year == year && u.Month == m);
-                row.YearData[year] = usage?.Days ?? 0;
+                row.YearData[year] = new MonthlyUsageDetail
+                {
+                    TotalDays = usage?.UsedDays.Count ?? 0,
+                    UsedDays = usage?.UsedDays ?? new HashSet<int>()
+                };
             }
             results.Add(row);
         }
@@ -223,27 +293,39 @@ else
         reportData = results;
         isLoading = false;
 
-        // 3. 渲染图表
-        await RenderChart();
+        // 修改：不再直接调用 RenderChart()，而是设置标志
+        shouldRenderChart = true;
     }
 
     private async Task RenderChart()
     {
-        if (reportData == null || !reportData.Any()) return;
+        // 如果没有数据，调用 JS 时传递一个空的数据集，Chart.js 会自动清空画布
+        object? chartData = null;
 
-        var years = reportData.First().YearData.Keys.OrderBy(y => y).ToList();
-        var colors = new List<string> { "rgba(54, 162, 235, 0.8)", "rgba(255, 99, 132, 0.8)", "rgba(75, 192, 192, 0.8)", "rgba(255, 206, 86, 0.8)" };
-
-        var chartData = new
+        if (reportData != null && reportData.Any())
         {
-            labels = reportData.Select(r => r.MonthName).ToList(),
-            datasets = years.Select((year, index) => new
+            var years = reportData.First().YearData.Keys.OrderBy(y => y).ToList();
+            var colors = new List<string> { "rgba(54, 162, 235, 0.8)", "rgba(255, 99, 132, 0.8)", "rgba(75, 192, 192, 0.8)", "rgba(255, 206, 86, 0.8)" };
+
+            chartData = new
             {
-                label = $"{year} 年",
-                data = reportData.Select(r => r.YearData[year]).ToList(),
-                backgroundColor = colors[index % colors.Count]
-            }).ToList()
-        };
+                labels = reportData.Select(r => r.MonthName).ToList(),
+                datasets = years.Select((year, index) => new
+                {
+                    label = $"{year} 年",
+                    data = reportData.Select(r => r.YearData[year].TotalDays).ToList(),
+                    backgroundColor = colors[index % colors.Count]
+                }).ToList()
+            };
+        }
+        else // 创建一个空的数据结构来清空图表
+        {
+            chartData = new
+            {
+                labels = new List<string>(),
+                datasets = new List<object>()
+            };
+        }
 
         await JSRuntime.InvokeVoidAsync("renderBarChart", "usageChart", chartData);
     }
@@ -254,7 +336,6 @@ else
 
         var years = reportData.First().YearData.Keys.OrderBy(y => y).ToList();
 
-        // 将数据转换为动态对象列表以进行导出
         var exportList = new List<Dictionary<string, object>>();
         foreach (var row in reportData)
         {
@@ -264,11 +345,11 @@ else
             };
             foreach (var year in years)
             {
-                exportRow[$"{year}年"] = row.YearData[year];
+                exportRow[$"{year}年 总天数"] = row.YearData[year].TotalDays;
             }
             exportList.Add(exportRow);
         }
-        
+
         var fileName = $"{currentBench?.Name}_UsageAnalysis_{string.Join("_", years)}.xlsx";
         await JSRuntime.InvokeVoidAsync("exportToExcel", fileName, exportList);
     }
