@@ -35,11 +35,84 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <script>
-        // Blazor calls this function to export Excel
-        function exportToExcel(fileName, jsonData) {
-            const ws = XLSX.utils.json_to_sheet(jsonData);
+        function exportTableToExcel(fileName, payload) {
+            // 🔥 修复：第一个检查也要兼容大小写
+            if (!payload || !(payload.Data || payload.data) || !(payload.Headers || payload.headers)) {
+                console.error("Invalid payload for Excel export.", payload);
+                return;
+            }
+
+            // 🔥 统一获取属性（兼容大小写）
+            const headers = payload.Headers || payload.headers;
+            const data = payload.Data || payload.data;
+
+            if (!data || !headers) {
+                console.error("Invalid payload for Excel export: 'data' or 'headers' property is missing.");
+                return;
+            }
+
+            // Create a new worksheet just with the headers first
+            const ws = XLSX.utils.aoa_to_sheet([headers]);
+
+            // Map the data rows to an array of arrays, respecting the header order
+            const dataRows = data.map(row => {
+                return headers.map(header => {
+                    // Get value by header, default to empty string if not found
+                    return row[header] !== undefined && row[header] !== null ? row[header] : "";
+                });
+            });
+
+            // Append data to the worksheet starting from the second row (A2)
+            XLSX.utils.sheet_add_aoa(ws, dataRows, { origin: "A2" });
+
+            // 🔥 紧凑型列宽设置
+            const columnWidths = headers.map((header, index) => {
+                // 为日期列（1-31）设置固定的小宽度
+                if (!isNaN(parseInt(header)) && parseInt(header) >= 1 && parseInt(header) <= 31) {
+                    return { wch: 4 }; // 日期列非常窄
+                }
+
+                // 为"年份"和"月份"列设置固定宽度
+                if (header === "年份") {
+                    return { wch: 6 };
+                }
+                if (header === "月份") {
+                    return { wch: 8 };
+                }
+
+                // 为"总计"列设置固定宽度
+                if (header.includes("总计")) {
+                    return { wch: 8 };
+                }
+
+                // 其他列自动计算，但更紧凑
+                let maxWidth = header.length;
+                data.forEach(row => {
+                    const value = row[header];
+                    if (value && value.toString().length > maxWidth) {
+                        maxWidth = value.toString().length;
+                    }
+                });
+                // 🔥 减少额外空间，最大宽度限制为 30
+                return { wch: Math.min(maxWidth + 1, 30) };
+            });
+            ws['!cols'] = columnWidths;
+
+            // 🔥 新增：设置紧凑的行高
+            const rowHeights = [];
+            // 表头行稍高一点
+            rowHeights.push({ hpx: 20 });
+            // 数据行设置较小的行高
+            for (let i = 0; i < dataRows.length; i++) {
+                rowHeights.push({ hpx: 16 }); // 16像素高度，非常紧凑
+            }
+            ws['!rows'] = rowHeights;
+
+            // Create a new workbook and append the worksheet
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Usage Report");
+            XLSX.utils.book_append_sheet(wb, ws, "Usage Analysis");
+
+            // Write the workbook and trigger download
             XLSX.writeFile(wb, fileName);
         }
 

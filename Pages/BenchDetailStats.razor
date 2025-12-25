@@ -447,31 +447,75 @@ else
     {
         if (reportData == null || !reportData.Any()) return;
 
-        var years = reportData.First().YearData.Keys.OrderBy(y => y).ToList();
-
-        var exportList = new List<Dictionary<string, object>>();
-        foreach (var row in reportData)
+        // --- 1. 构造表头 ---
+        var headers = new List<string> { "年份", "月份" };
+        for (int day = 1; day <= 31; day++)
         {
-            var exportRow = new Dictionary<string, object>
+            headers.Add(day.ToString());
+        }
+        headers.Add("总计 (占用天数)");
+
+        // --- 2. 构造数据行 ---
+        var exportData = new List<Dictionary<string, object>>();
+
+        // 按照页面显示的顺序 (年份降序, 月份降序) 遍历
+        foreach (var year in reportData.First().YearData.Keys.OrderByDescending(y => y))
+        {
+            foreach (var row in reportData.OrderByDescending(r => r.Month))
             {
-                { "月份", row.MonthName }
-            };
-            foreach (var year in years)
-            {
-                if (row.YearData.TryGetValue(year, out var usage))
+                var exportRow = new Dictionary<string, object>();
+
+                // 年份和月份列
+                exportRow["年份"] = year;
+                exportRow["月份"] = row.MonthName;
+
+                MonthlyUsageDetail? usage = null;
+                row.YearData.TryGetValue(year, out usage);
+
+                // 日期列 (1-31)
+                for (int day = 1; day <= 31; day++)
                 {
-                    exportRow[$"{year}年 总天数"] = usage.UsageDetails.Count;
+                    string header = day.ToString();
+                    string cellValue = "";
+
+                    bool isDayInMonth = day <= DateTime.DaysInMonth(year, row.Month);
+
+                    if (isDayInMonth)
+                    {
+                        // 如果当天有安排，拼接所有安排详情
+                        if (usage?.UsageDetails.TryGetValue(day, out var info) == true && info.Plans.Any())
+                        {
+                            cellValue = string.Join("; ", info.Plans.Select(p => p.Details));
+                        }
+                    }
+                    else
+                    {
+                        // 如果不是有效日期，则为空 (Excel 中显示为空白)
+                        cellValue = "";
+                    }
+                    exportRow[header] = cellValue;
                 }
-                else
-                {
-                    exportRow[$"{year}年 总天数"] = 0;
-                }
+
+                // 总计列
+                exportRow["总计 (占用天数)"] = usage?.UsageDetails.Count ?? 0;
+
+                exportData.Add(exportRow);
             }
-            exportList.Add(exportRow);
         }
 
-        var fileName = $"{currentBench?.Name}_UsageAnalysis_{string.Join("_", years)}.xlsx";
-        await JSRuntime.InvokeVoidAsync("exportToExcel", fileName, exportList);
+        // --- 3. 调用 JavaScript 导出 ---
+        var fileName = $"{currentBench?.Name}_UsageAnalysis_{DateTime.Now:yyyyMMdd}.xlsx";
+
+        // 我们需要将数据和表头都传给 JS
+        // 注意：JS 函数需要能处理这种带有明确表头的数据结构
+        var excelPayload = new
+        {
+            Headers = headers,
+            Data = exportData
+        };
+
+        // 假设你的 JS 函数名为 exportTableToExcel
+        await JSRuntime.InvokeVoidAsync("exportTableToExcel", fileName, excelPayload);
     }
 
     private string GetStatusClass(TestPlanStatus status)
