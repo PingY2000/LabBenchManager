@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authentication.Negotiate;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
-using System.Security.Claims;  // 🔥 关键
+using System.Security.Claims;  
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,8 +17,9 @@ builder.Services.AddServerSideBlazor();
 
 // --- 数据库上下文 ---
 var connectionString = builder.Configuration.GetConnectionString("Default")
-    ?? "Server=(localdb)\\MSSQLLocalDB;Database=LabBenchDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
-
+    ?? throw new InvalidOperationException("Connection string 'Default' not found in configuration."); 
+    //?? "Server=(localdb)\\MSSQLLocalDB;Database=LabBenchDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
+   
 builder.Services.AddDbContextFactory<LabDbContext>(options =>
 {
     options.UseSqlServer(connectionString);

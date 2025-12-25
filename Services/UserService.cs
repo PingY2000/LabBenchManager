@@ -290,6 +290,7 @@ namespace LabBenchManager.Services
                 {
                     existingUser.DisplayName = user.DisplayName;
                     existingUser.Department = user.Department;
+                    existingUser.Email = user.Email;
                     existingUser.Role = user.Role;
                     db.ApplicationUsers.Update(existingUser);
                     updatedCount++;
