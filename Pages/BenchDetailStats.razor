@@ -11,43 +11,58 @@
 
 <!-- CHANGE: Added a style block for the new daily grid view. You can also move this to your site.css file. -->
 <style>
-    .day-cell {
+    /* 单元格基础样式 */
+    day-cell {
         width: 20px;
-        height: 20px;
+        height: 25px;
         padding: 0 !important;
         text-align: center;
         vertical-align: middle;
         border: 1px solid #eee;
-    }
-
-    .day-cell.used {
-        background-color: #3498db;
         cursor: help;
     }
 
+    /* 🔥 NEW: 状态颜色定义 */
+    .day-cell.status-preliminary {
+        background-color: #6c757d; /* 灰色 - 初步规划 */
+    }
+
+    .day-cell.status-confirmed {
+        background-color: #0d6efd; /* 蓝色 - 确定计划 */
+    }
+
+    .day-cell.status-completed {
+        background-color: #198754; /* 绿色 - 已完成 */
+    }
+
+    /* .day-cell.used 规则可以删除了 */
+
     .day-cell.disabled-day {
         background-color: #f7f7f7;
-        color: #ccc; /* 🔥 NEW: 让斜杠颜色变浅 */
-        font-family: monospace; /* 让斜杠看起来更规整 */
+        color: #ccc;
+        font-family: monospace;
+        cursor: default;
     }
-
+    
+    /* 字体和表头样式 */
     .table-sm th,
     .table-sm td {
-        /* 🔥 CHANGE: 将字体大小从 0.75rem 进一步减小到 0.7rem */
-        font-size: 0.7rem;
-        padding: 0.15rem; /* 也可以稍微再减小一点内边距 */
+        font-size: 0.75rem; /* 字体可以稍微调回一点，因为布局不那么挤了 */
+        padding: 0.2rem;
     }
-
-    /* 🔥 NEW: 让表头的日期数字更小 */
     .table-sm thead th {
-        font-size: 0.65rem;
+        font-size: 0.7rem;
     }
 
     .table-responsive {
-        /* 🔥 CHANGE: 可以增加最大高度，因为表格变宽了 */
         max-height: 80vh;
-        overflow-y: auto;
-        overflow-x: auto; /* 同时允许水平滚动 */
+        overflow: auto;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 20vh; /* 你可以调整这个值，比如 300px 或 40vh */
+        width: 100%;
     }
 </style>
 
@@ -75,7 +90,7 @@ else
         <div class="card-body">
             <div class="row g-3 align-items-end">
                 <div class="col-md-9">
-                    <label class="form-label fw-bold">选择对比年份 (已记录的年份)</label>
+                    <label class="form-label fw-bold">选择年份 (已记录的年份)</label>
                     <div class="d-flex flex-wrap gap-3">
                         @if (availableYears.Any())
                         {
@@ -116,7 +131,7 @@ else
                     <div class="card-header">
                         图表分析
                     </div>
-                    <div class="card-body">
+                     <div class="card-body chart-container"> 
                         @if (isLoading)
                         {
                             <div class="d-flex justify-content-center align-items-center h-100">
@@ -142,61 +157,65 @@ else
                         <table class="table table-sm table-bordered table-striped table-hover mb-0">
                             <thead class="table-light text-center">
                                 <tr>
-                                    <!-- 🔥 CHANGE: 新的表头 -->
-                                    <th rowspan="2" class="align-middle">月份</th>
-                                    @foreach (var year in reportData.First().YearData.Keys.OrderBy(y => y))
+                                    <!-- 🔥 CHANGE: 回到经典的纵向布局表头 -->
+                                    <th>年份</th>
+                                    <th>月份</th>
+                                    @for (int day = 1; day <= 31; day++)
                                     {
-                                        <th colspan="32">@year 年</th> <!-- 31天 + 1个总计列 -->
+                                        <th style="min-width: 20px;">@day</th>
                                     }
-                                </tr>
-                                <tr>
-                                    @foreach (var year in reportData.First().YearData.Keys.OrderBy(y => y))
-                                    {
-                                        @for (int day = 1; day <= 31; day++)
-                                        {
-                                            <th style="min-width: 20px;">@day</th>
-                                        }
-                                        <th class="fw-bold" style="min-width: 50px;">总计</th>
-                                    }
+                                    <th style="min-width: 50px;">总计</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- 🔥 CHANGE: 修改整个循环结构 -->
-                                @foreach (var row in reportData) 
+                                <!-- 🔥 CHANGE: 恢复经典的纵向布局 -->
+                                @foreach (var year in reportData.First().YearData.Keys.OrderByDescending(y => y))
                                 {
-                                    <tr>
-                                        <td class="fw-bold text-center">@row.MonthName</td>
-            
-                                        @foreach (var year in reportData.First().YearData.Keys.OrderBy(y => y))
-                                        {
-                                            var usage = row.YearData[year];
+                                    @foreach (var row in reportData.OrderByDescending(r => r.Month))
+                                    {
+                                        <tr>
+                                            @if (row.Month == 12)
+                                            {
+                                                <td class="fw-bold align-middle text-center" rowspan="12">@year</td>
+                                            }
+
+                                            <td class="fw-bold text-center align-middle">@row.MonthName</td>
+
+                                            @{
+                                                // 🔥 FIX: 使用 TryGetValue 安全地获取 usage 对象
+                                                MonthlyUsageDetail? usage = null;
+                                                row.YearData.TryGetValue(year, out usage);
+                                            }
 
                                             @for (int day = 1; day <= 31; day++)
                                             {
                                                 bool isDayInMonth = day <= DateTime.DaysInMonth(year, row.Month);
                                                 string cellClass = "day-cell";
                                                 string titleText = "";
-                                                string cellContent = ""; // 用于显示斜杠
+                                                string cellContent = "";
 
                                                 if (isDayInMonth)
                                                 {
-                                                    if (usage.UsageDetails.TryGetValue(day, out var details))
+                                                    // 🔥 FIX: 这里的 null 检查现在变得至关重要
+                                                    if (usage != null && usage.UsageDetails != null && usage.UsageDetails.TryGetValue(day, out var info))
                                                     {
-                                                        cellClass += " used";
-                                                        titleText = details;
+                                                        cellClass += " " + GetStatusClass(info.Status);
+                                                        titleText = info.Details;
                                                     }
                                                 }
-                                                else // 🔥 NEW: 如果不是有效日期
+                                                else
                                                 {
                                                     cellClass += " disabled-day";
-                                                    cellContent = "/"; // 显示斜杠
+                                                    cellContent = "/";
                                                 }
 
                                                 <td class="@cellClass" title="@titleText">@((MarkupString)cellContent)</td>
                                             }
-                                            <td class="text-center fw-bold align-middle">@usage.TotalDays</td>
-                                        }
-                                    </tr>
+
+                                            <!-- 🔥 FIX: 安全地访问 TotalDays，如果 usage 为 null，则显示 0 -->
+                                            <td class="text-center fw-bold align-middle">@(usage?.TotalDays ?? 0)</td>
+                                        </tr>
+                                    }
                                 }
                             </tbody>
                         </table>
@@ -208,7 +227,7 @@ else
     else if (!isLoading)
     {
         <div class="alert alert-info">
-            <span class="oi oi-info me-2"></span>请选择要对比的年份
+            <span class="oi oi-info me-2"></span>请选择年份
         </div>
     }
 }
@@ -228,13 +247,20 @@ else
 
     private List<MonthlyUsageRow>? reportData;
 
+    
     // 新增：一个标志，告诉 Blazor 在下一次渲染后是否需要更新图表
     private bool shouldRenderChart = false;
 
+    private class DailyUsageInfo
+    {
+        public string Details { get; set; } = string.Empty;
+        public TestPlanStatus Status { get; set; }
+    }
     private class MonthlyUsageDetail
     {
         public int TotalDays { get; set; }
-        public Dictionary<int, string> UsageDetails { get; set; } = new();
+        // 🔥 CHANGE: 字典的值类型改变为 DailyUsageInfo
+        public Dictionary<int, DailyUsageInfo> UsageDetails { get; set; } = new();
     }
 
     private class MonthlyUsageRow
@@ -304,19 +330,18 @@ else
 
         // 🔥 FIX 1: 将 Plan 和 Date 一起打包，并按完整的 Year/Month/Day 分组
         var usageByDay = allPlansForBench
-            // 将每个 Plan 和它的所有日期关联起来，创建一个包含 { Plan, Date } 的对象流
             .SelectMany(p => p.GetScheduledDates().Select(d => new { Plan = p, Date = d }))
             .Where(x => yearsToAnalyze.Contains(x.Date.Year))
-            // 按完整的年月日进行分组，这样才能聚合同一天的所有安排
             .GroupBy(x => new { x.Date.Year, x.Date.Month, x.Date.Day })
             .Select(g => new
             {
                 g.Key.Year,
                 g.Key.Month,
                 g.Key.Day,
-                // 将同一天的所有安排信息拼接成一个字符串
-                Details = string.Join(", ", g.Select(x => $"{x.Plan.ProjectName} ({x.Plan.RequestedBy})"))
+                // 假设一天只有一个计划，或取第一个
+                PlanInfo = g.Select(x => new { Details = $"{x.Plan.ProjectName} ({x.Plan.RequestedBy})", x.Plan.Status }).FirstOrDefault()
             })
+            .Where(x => x.PlanInfo != null)
             .ToList();
 
         var results = new List<MonthlyUsageRow>();
@@ -325,16 +350,16 @@ else
             var row = new MonthlyUsageRow { Month = m };
             foreach (var year in yearsToAnalyze)
             {
-                // 🔥 FIX 2: 从 usageByDay 中筛选出当前年份和月份的数据，并转换为字典
+                // 🔥 FIX: ToDictionary 的第二个参数需要传入完整的 PlanInfo 对象
                 var dailyUsages = usageByDay
                     .Where(u => u.Year == year && u.Month == m)
-                    .ToDictionary(u => u.Day, u => u.Details);
+                    // 👇 这里是关键修改
+                    .ToDictionary(u => u.Day, u => new DailyUsageInfo { Details = u.PlanInfo!.Details, Status = u.PlanInfo.Status });
 
-                // 🔥 FIX 3: 使用修正后的 dailyUsages 字典来填充数据
                 row.YearData[year] = new MonthlyUsageDetail
                 {
-                    TotalDays = dailyUsages.Count, // 总天数就是字典里元素的数量
-                    UsageDetails = dailyUsages     // 赋值详细信息字典
+                    TotalDays = dailyUsages.Count,
+                    UsageDetails = dailyUsages
                 };
             }
             results.Add(row);
@@ -400,5 +425,16 @@ else
 
         var fileName = $"{currentBench?.Name}_UsageAnalysis_{string.Join("_", years)}.xlsx";
         await JSRuntime.InvokeVoidAsync("exportToExcel", fileName, exportList);
+    }
+
+    private string GetStatusClass(TestPlanStatus status)
+    {
+        return status switch
+        {
+            TestPlanStatus.初步规划 => "status-preliminary",
+            TestPlanStatus.确定计划 => "status-confirmed",
+            TestPlanStatus.已完成 => "status-completed",
+            _ => ""
+        };
     }
 }
