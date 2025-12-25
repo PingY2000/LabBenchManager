@@ -12,48 +12,69 @@
 <!-- CHANGE: Added a style block for the new daily grid view. You can also move this to your site.css file. -->
 <style>
     /* 单元格基础样式 */
-    day-cell {
+    .day-cell {
         width: 20px;
         height: 25px;
-        padding: 0 !important;
+        padding: 1px !important; /* 给内部的块一点空间 */
         text-align: center;
-        vertical-align: middle;
+        vertical-align: top; /* 堆叠从顶部开始 */
         border: 1px solid #eee;
         cursor: help;
     }
 
-    /* 🔥 NEW: 状态颜色定义 */
-    .day-cell.status-preliminary {
-        background-color: #6c757d; /* 灰色 - 初步规划 */
+    /* 竖向堆叠容器 */
+    .daily-stack {
+        display: flex;
+        flex-direction: column; /* 竖向排列 */
+        height: 100%;
     }
 
-    .day-cell.status-confirmed {
-        background-color: #0d6efd; /* 蓝色 - 确定计划 */
+    /* 每个计划的小方块 */
+    .plan-block {
+        flex-grow: 1; /* 让所有块平分高度 */
+        width: 100%;
+        border-radius: 1px;
+        margin-bottom: 1px; /* 块之间的间距 */
     }
 
-    .day-cell.status-completed {
-        background-color: #198754; /* 绿色 - 已完成 */
-    }
+        .plan-block:last-child {
+            margin-bottom: 0;
+        }
 
-    /* .day-cell.used 规则可以删除了 */
+        /* 状态颜色定义 */
+        .plan-block.status-preliminary {
+            background-color: #6c757d; /* 灰色 */
+        }
 
+        .plan-block.status-confirmed {
+            background-color: #0d6efd; /* 蓝色 */
+        }
+
+        .plan-block.status-completed {
+            background-color: #198754; /* 绿色 */
+        }
+
+    /* 非本月日期的样式 */
     .day-cell.disabled-day {
         background-color: #f7f7f7;
         color: #ccc;
         font-family: monospace;
         cursor: default;
+        vertical-align: middle; /* 让斜杠居中 */
     }
-    
+
     /* 字体和表头样式 */
     .table-sm th,
     .table-sm td {
-        font-size: 0.75rem; /* 字体可以稍微调回一点，因为布局不那么挤了 */
+        font-size: 0.75rem;
         padding: 0.2rem;
     }
+
     .table-sm thead th {
         font-size: 0.7rem;
     }
 
+    /* 响应式和图表容器 */
     .table-responsive {
         max-height: 80vh;
         overflow: auto;
@@ -61,7 +82,7 @@
 
     .chart-container {
         position: relative;
-        height: 20vh; /* 你可以调整这个值，比如 300px 或 40vh */
+        height: 20vh;
         width: 100%;
     }
 </style>
@@ -182,7 +203,6 @@ else
                                             <td class="fw-bold text-center align-middle">@row.MonthName</td>
 
                                             @{
-                                                // 🔥 FIX: 使用 TryGetValue 安全地获取 usage 对象
                                                 MonthlyUsageDetail? usage = null;
                                                 row.YearData.TryGetValue(year, out usage);
                                             }
@@ -190,30 +210,42 @@ else
                                             @for (int day = 1; day <= 31; day++)
                                             {
                                                 bool isDayInMonth = day <= DateTime.DaysInMonth(year, row.Month);
-                                                string cellClass = "day-cell";
-                                                string titleText = "";
-                                                string cellContent = "";
+                                                string cellClass = "day-cell"; // 单元格基础类
 
-                                                if (isDayInMonth)
+                                                if (!isDayInMonth)
                                                 {
-                                                    // 🔥 FIX: 这里的 null 检查现在变得至关重要
-                                                    if (usage != null && usage.UsageDetails != null && usage.UsageDetails.TryGetValue(day, out var info))
-                                                    {
-                                                        cellClass += " " + GetStatusClass(info.Status);
-                                                        titleText = info.Details;
-                                                    }
+                                                    // 如果不是有效日期，则显示一个带斜杠的单元格
+                                                    <td class="day-cell disabled-day">/</td>
                                                 }
                                                 else
                                                 {
-                                                    cellClass += " disabled-day";
-                                                    cellContent = "/";
-                                                }
+                                                    DailyUsageInfo? info = null;
+                                                    string titleText = "";
 
-                                                <td class="@cellClass" title="@titleText">@((MarkupString)cellContent)</td>
+                                                    // 尝试获取当天的安排信息
+                                                    if (usage?.UsageDetails.TryGetValue(day, out info) == true && info.Plans.Any())
+                                                    {
+                                                        // 🔥 CHANGE: 将所有安排的详情拼接起来作为悬停提示
+                                                        titleText = string.Join("\n", info.Plans.Select(p => p.Details));
+                                                    }
+
+                                                    <td class="@cellClass" title="@titleText">
+                                                        @if (info != null && info.Plans.Any())
+                                                        {
+                                                            <!-- 🔥 NEW: 渲染多个小方块 -->
+                                                            <div class="daily-stack">
+                                                                @foreach (var plan in info.Plans)
+                                                                {
+                                                                    <div class="plan-block @GetStatusClass(plan.Status)"></div>
+                                                                }
+                                                            </div>
+                                                        }
+                                                    </td>
+                                                }
                                             }
 
-                                            <!-- 🔥 FIX: 安全地访问 TotalDays，如果 usage 为 null，则显示 0 -->
-                                            <td class="text-center fw-bold align-middle">@(usage?.TotalDays ?? 0)</td>
+                                            <!-- 总计列: 现在计算的是总共有安排的天数，而不是总安排数 -->
+                                            <td class="text-center fw-bold align-middle">@(usage?.UsageDetails.Count ?? 0)</td>
                                         </tr>
                                     }
                                 }
@@ -251,15 +283,18 @@ else
     // 新增：一个标志，告诉 Blazor 在下一次渲染后是否需要更新图表
     private bool shouldRenderChart = false;
 
-    private class DailyUsageInfo
+    private class DailyUsageInfo // 这个类现在代表一天的所有安排
+    {
+        // 🔥 CHANGE: 新增一个安排列表
+        public List<PlanDetail> Plans { get; set; } = new();
+    }
+    private class PlanDetail
     {
         public string Details { get; set; } = string.Empty;
         public TestPlanStatus Status { get; set; }
     }
     private class MonthlyUsageDetail
     {
-        public int TotalDays { get; set; }
-        // 🔥 CHANGE: 字典的值类型改变为 DailyUsageInfo
         public Dictionary<int, DailyUsageInfo> UsageDetails { get; set; } = new();
     }
 
@@ -328,21 +363,24 @@ else
             return;
         }
 
-        // 🔥 FIX 1: 将 Plan 和 Date 一起打包，并按完整的 Year/Month/Day 分组
         var usageByDay = allPlansForBench
-            .SelectMany(p => p.GetScheduledDates().Select(d => new { Plan = p, Date = d }))
-            .Where(x => yearsToAnalyze.Contains(x.Date.Year))
-            .GroupBy(x => new { x.Date.Year, x.Date.Month, x.Date.Day })
-            .Select(g => new
+        .SelectMany(p => p.GetScheduledDates().Select(d => new { Plan = p, Date = d }))
+        .Where(x => yearsToAnalyze.Contains(x.Date.Year))
+        // 按完整的年月日进行分组
+        .GroupBy(x => new { x.Date.Year, x.Date.Month, x.Date.Day })
+        .Select(g => new
+        {
+            g.Key.Year,
+            g.Key.Month,
+            g.Key.Day,
+            // 🔥 将同一天的所有计划转换为 PlanDetail 列表
+            Plans = g.Select(x => new PlanDetail
             {
-                g.Key.Year,
-                g.Key.Month,
-                g.Key.Day,
-                // 假设一天只有一个计划，或取第一个
-                PlanInfo = g.Select(x => new { Details = $"{x.Plan.ProjectName} ({x.Plan.RequestedBy})", x.Plan.Status }).FirstOrDefault()
-            })
-            .Where(x => x.PlanInfo != null)
-            .ToList();
+                Details = $"{x.Plan.ProjectName} ({x.Plan.RequestedBy})",
+                Status = x.Plan.Status
+            }).ToList()
+        })
+        .ToList();
 
         var results = new List<MonthlyUsageRow>();
         for (int m = 1; m <= 12; m++)
@@ -350,16 +388,18 @@ else
             var row = new MonthlyUsageRow { Month = m };
             foreach (var year in yearsToAnalyze)
             {
-                // 🔥 FIX: ToDictionary 的第二个参数需要传入完整的 PlanInfo 对象
-                var dailyUsages = usageByDay
-                    .Where(u => u.Year == year && u.Month == m)
-                    // 👇 这里是关键修改
-                    .ToDictionary(u => u.Day, u => new DailyUsageInfo { Details = u.PlanInfo!.Details, Status = u.PlanInfo.Status });
+                var dailyUsagesInYearMonth = usageByDay
+                    .Where(u => u.Year == year && u.Month == m);
+
+                var usageDetailsDict = new Dictionary<int, DailyUsageInfo>();
+                foreach (var dailyUsage in dailyUsagesInYearMonth)
+                {
+                    usageDetailsDict[dailyUsage.Day] = new DailyUsageInfo { Plans = dailyUsage.Plans };
+                }
 
                 row.YearData[year] = new MonthlyUsageDetail
                 {
-                    TotalDays = dailyUsages.Count,
-                    UsageDetails = dailyUsages
+                    UsageDetails = usageDetailsDict
                 };
             }
             results.Add(row);
@@ -386,7 +426,7 @@ else
                 datasets = years.Select((year, index) => new
                 {
                     label = $"{year} 年",
-                    data = reportData.Select(r => r.YearData[year].TotalDays).ToList(),
+                    data = reportData.Select(r => r.YearData.TryGetValue(year, out var usage) ? usage.UsageDetails.Count : 0).ToList(),
                     backgroundColor = colors[index % colors.Count]
                 }).ToList()
             };
@@ -418,7 +458,14 @@ else
             };
             foreach (var year in years)
             {
-                exportRow[$"{year}年 总天数"] = row.YearData[year].TotalDays;
+                if (row.YearData.TryGetValue(year, out var usage))
+                {
+                    exportRow[$"{year}年 总天数"] = usage.UsageDetails.Count;
+                }
+                else
+                {
+                    exportRow[$"{year}年 总天数"] = 0;
+                }
             }
             exportList.Add(exportRow);
         }
