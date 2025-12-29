@@ -230,6 +230,12 @@
                                 <label class="form-label">报告编号 <span class="text-danger">*</span></label>
                                 <InputText class="form-control" @bind-Value="currentReport.ReportNumber" />
                                 <ValidationMessage For="() => currentReport.ReportNumber" />
+                                <!-- ========== 新增的HTML，用于显示查重错误 ========== -->
+                                @if (!string.IsNullOrEmpty(reportNumberErrorMessage))
+                                {
+                                    <div class="validation-message text-danger">@reportNumberErrorMessage</div>
+                                }
+                                <!-- ========== 新增HTML结束 ========== -->
                             </div>
                             <div class="col-md-12 mb-3">
                                 <label class="form-label">关联申请</label>
@@ -424,6 +430,7 @@
 
     private bool isModalVisible = false;
     private ActionableReportModal.ModalMode currentModalMode;
+    private string? reportNumberErrorMessage;
 
     private void ShowDetailModal(ReportApproval report)
     {
@@ -624,13 +631,15 @@
         };
     }
 
-    private void ShowCreateModal()
+    private async Task ShowCreateModal() // <-- 将方法改为 async Task
     {
-
+        reportNumberErrorMessage = null;
         currentReport = new ReportApproval
         {
             SubmitterNTAccount = currentUserNTAccount?.ToLower() ?? "",
-            Status = ReportApprovalStatus.草稿
+            Status = ReportApprovalStatus.草稿,
+            // 自动填充报告编号
+            ReportNumber = await ReportService.GetNextReportNumberAsync()
         };
         isEditMode = false;
         showCreateEditModal = true;
@@ -688,6 +697,18 @@
         isSaving = true;
         errorMessage = null;
         successMessage = null;
+        reportNumberErrorMessage = null; // 每次保存前都清空旧的查重错误
+
+        // ========== 新增的查重逻辑 ==========
+        bool isUnique = await ReportService.IsReportNumberUniqueAsync(currentReport.ReportNumber, currentReport.Id);
+        if (!isUnique)
+        {
+            // 如果不唯一，设置错误消息并立即停止执行
+            reportNumberErrorMessage = $"报告编号 “{currentReport.ReportNumber}” 已存在，请修改。";
+            isSaving = false;
+            return;
+        }
+        // ========== 查重逻辑结束 ==========
 
         try
         {
@@ -732,7 +753,18 @@
         isSaving = true;
         errorMessage = null;
         successMessage = null;
+        reportNumberErrorMessage = null; // 每次保存前都清空旧的查重错误
 
+        // ========== 新增的查重逻辑 ==========
+        bool isUnique = await ReportService.IsReportNumberUniqueAsync(currentReport.ReportNumber, currentReport.Id);
+        if (!isUnique)
+        {
+            // 如果不唯一，设置错误消息并立即停止执行
+            reportNumberErrorMessage = $"报告编号 “{currentReport.ReportNumber}” 已存在，请修改。";
+            isSaving = false;
+            return;
+        }
+        // ========== 查重逻辑结束 ==========
         try
         {
             var reviewer = users?.FirstOrDefault(u => u.NtAccount == currentReport.ReviewerNTAccount);

@@ -301,6 +301,57 @@ namespace LabBenchManager.Services
             await db.SaveChangesAsync();
         }
 
-        
+        public async Task<string> GetNextReportNumberAsync()
+        {
+            await using var db = await _contextFactory.CreateDbContextAsync();
+
+            var today = DateTime.UtcNow;
+            var datePrefix = $"C{today:yyMMdd}"; 
+
+            // 查找今天已经创建的所有报告
+            var todaysReports = await db.ReportApprovals
+                .Where(r => r.ReportNumber.StartsWith(datePrefix))
+                .Select(r => r.ReportNumber)
+                .ToListAsync();
+
+            int maxSequence = 0;
+            if (todaysReports.Any())
+            {
+                // 从报告编号中解析出序列号，并找到最大值
+                maxSequence = todaysReports
+                    .Select(num => {
+                        if (num.StartsWith("C") && num.Length >= 9)
+                        {
+                            // 取最后2位作为序列号
+                            string seqStr = num.Substring(num.Length - 2);
+                            if (int.TryParse(seqStr, out int seq))
+                            {
+                                return seq;
+                            }
+                        }
+                        return 0; // 如果格式不匹配，则忽略
+                    })
+                    .DefaultIfEmpty(0) // 如果没有有效序列号，则返回0
+                    .Max();
+            }
+
+            // 新的序列号是最大值 + 1
+            int nextSequence = maxSequence + 1;
+
+            // 格式化为三位数的字符串，例如 1 -> "001"
+            return $"{datePrefix}{nextSequence:D2}";
+        }
+
+        // ========== 新增方法：检查报告编号是否唯一 ==========
+        public async Task<bool> IsReportNumberUniqueAsync(string reportNumber, int currentReportId)
+        {
+            await using var db = await _contextFactory.CreateDbContextAsync();
+
+            // 检查数据库中是否存在其他报告使用了这个编号。
+            // 我们需要忽略大小写，并排除当前正在编辑的报告本身。
+            return !await db.ReportApprovals
+                .AnyAsync(r => r.ReportNumber.ToLower() == reportNumber.ToLower() && r.Id != currentReportId);
+        }
+
     }
 }
