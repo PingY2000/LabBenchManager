@@ -37,7 +37,7 @@
                                     <div class="form-control-plaintext">@Assignment.Department</div>
                                 </div>
                             </div>
-                            
+
                             <div class="row mb-3">
                                 <div class="col-6">
                                     <label class="form-label fw-bold">申请时间</label>
@@ -123,11 +123,13 @@
                         <h6 class="text-muted border-bottom pb-2 mb-3">测试内容</h6>
                         <pre class="form-control-plaintext bg-light p-3 rounded">@Assignment.TestContent</pre>
                     </div>
+
                     @if (Assignment.TestPlan != null)
                     {
                         <div class="mt-4">
                             <h6 class="text-muted border-bottom pb-2 mb-3">
-                                关联的测试计划 <button type="button" class="btn btn-sm btn-outline-info" @onclick="GoToSchedule">
+                                关联的测试计划
+                                <button type="button" class="btn btn-sm btn-outline-info" @onclick="GoToSchedule">
                                     <span class="oi oi-calendar me-1"></span>转到日历
                                 </button>
                             </h6>
@@ -163,8 +165,17 @@
                                     }
                                 </div>
                             </div>
+
+                            @* 🔥 整合测试计划历史记录 *@
+                            @if (Assignment.TestPlanId.HasValue)
+                            {
+                                <div class="mt-3">
+                                    <TestPlanHistoryView TestPlanId="@Assignment.TestPlanId.Value" />
+                                </div>
+                            }
                         </div>
                     }
+
                     @if (!string.IsNullOrEmpty(Assignment.SpecialRequirements))
                     {
                         <div class="mt-3">
@@ -263,15 +274,16 @@ else if (Assignment != null && !canView)
 
     [Parameter]
     public EventCallback<Assignment> OnGoToAllocate { get; set; }
+
     private bool canView = false;
 
-    // 🔥 新增或替换 OnParametersSetAsync
+    // 🔥 权限检查
     protected override async Task OnParametersSetAsync()
     {
         await CheckViewPermission();
     }
 
-    // 🔥 新增权限检查方法
+    // 🔥 权限检查方法
     private async Task CheckViewPermission()
     {
         if (Assignment == null)
@@ -293,11 +305,11 @@ else if (Assignment != null && !canView)
 
         // 权限判断：管理员 OR 测试工程师 OR 申请发起人
         canView = user.IsInRole(AppRoles.Admin) ||
-                  user.IsInRole(AppRoles.TestEngineer)||
-              IsApplicant(currentUserNTAccount);
+                  user.IsInRole(AppRoles.TestEngineer) ||
+                  IsApplicant(currentUserNTAccount);
     }
 
-    // 🔥 新增发起人判断方法
+    // 🔥 发起人判断方法
     private bool IsApplicant(string? currentUserNTAccount)
     {
         if (string.IsNullOrEmpty(currentUserNTAccount) || Assignment == null)
@@ -312,6 +324,7 @@ else if (Assignment != null && !canView)
             StringComparison.OrdinalIgnoreCase
         );
     }
+
     private void GoToSchedule()
     {
         if (Assignment == null || !Assignment.BenchId.HasValue || !Assignment.TestPlanId.HasValue)
@@ -330,7 +343,7 @@ else if (Assignment != null && !canView)
         NavManager.NavigateTo(url);
     }
 
-    // Auxiliary method for plan status badge (add if not present)
+    // 计划状态徽章样式
     private string GetPlanStatusBadgeClass(TestPlanStatus status) => status switch
     {
         TestPlanStatus.初步规划 => "bg-secondary",
@@ -339,7 +352,7 @@ else if (Assignment != null && !canView)
         _ => "bg-dark"
     };
 
-    // 将辅助方法也移动到这里
+    // 申请状态徽章样式
     private string GetStatusBadgeClass(AssignmentStatus status) => status switch
     {
         AssignmentStatus.待审批 => "bg-warning text-dark",
@@ -347,9 +360,8 @@ else if (Assignment != null && !canView)
         AssignmentStatus.已拒绝 => "bg-danger",
         AssignmentStatus.未开始 => "bg-light text-dark",
         AssignmentStatus.已规划 => "bg-secondary",
-        AssignmentStatus.已确定 => "bg-primary",   // “已确定”可以沿用之前“进行中”的醒目颜色
+        AssignmentStatus.已确定 => "bg-primary",
         AssignmentStatus.已完成 => "bg-success",
         _ => "bg-dark"
     };
-
 }

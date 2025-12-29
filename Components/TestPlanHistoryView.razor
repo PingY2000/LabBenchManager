@@ -1,6 +1,7 @@
 ﻿@*Components/TestPlanHistoryView.razor*@
 @using LabBenchManager.Models
 @using LabBenchManager.Services
+@using LabBenchManager.Utils
 @inject TestPlanHistoryService HistoryService
 @inject UserService UserService
 
@@ -30,7 +31,7 @@
                     </div>
 
                     <div class="small mb-1">
-                        <strong>修改内容：</strong>@history.ChangeDescription
+                        <strong>修改内容：</strong>@((MarkupString)FormatChangeDescription(history.ChangeDescription))
                     </div>
 
                     @if (!string.IsNullOrEmpty(history.Reason))
@@ -92,5 +93,88 @@
 
         // 如果找不到，使用静态方法提取用户名
         return UserService.GetUserName(ntAccount);
+    }
+
+    /// <summary>
+    /// 格式化修改描述，将日期列表转换为紧凑格式
+    /// </summary>
+    private string FormatChangeDescription(string description)
+    {
+        if (string.IsNullOrEmpty(description))
+            return description;
+
+        // 检查是否包含"测试日期"
+        if (!description.Contains("测试日期:"))
+            return description;
+
+        try
+        {
+            // 提取字段名和变更内容
+            // 格式: "测试日期: 2025-12-02, 2025-12-03 → 2025-12-04, 2025-12-05"
+            var parts = description.Split(new[] { ": " }, 2, StringSplitOptions.None);
+            if (parts.Length != 2)
+                return description;
+
+            var fieldName = parts[0]; // "测试日期"
+            var changePart = parts[1]; // "2025-12-02, 2025-12-03 → 2025-12-04, 2025-12-05"
+
+            // 分割前后值
+            var arrowParts = changePart.Split(new[] { " → " }, StringSplitOptions.None);
+
+            string formattedOldDates = "";
+            string formattedNewDates = "";
+
+            if (arrowParts.Length == 2)
+            {
+                // 有前后对比
+                formattedOldDates = FormatDateString(arrowParts[0].Trim());
+                formattedNewDates = FormatDateString(arrowParts[1].Trim());
+                return $"{fieldName}: <span class='text-muted'>{formattedOldDates}</span> → <span class='text-success'>{formattedNewDates}</span>";
+            }
+            else
+            {
+                // 只有新值（添加）
+                formattedNewDates = FormatDateString(changePart.Trim());
+                return $"{fieldName}: <span class='text-success'>{formattedNewDates}</span>";
+            }
+        }
+        catch
+        {
+            // 解析失败时返回原始描述
+            return description;
+        }
+    }
+
+    /// <summary>
+    /// 将日期字符串列表转换为紧凑格式
+    /// 输入: "2025-12-02, 2025-12-03, 2025-12-04"
+    /// 输出: "12/02–04"
+    /// </summary>
+    private string FormatDateString(string dateString)
+    {
+        if (string.IsNullOrWhiteSpace(dateString))
+            return "(未排期)";
+
+        try
+        {
+            // 解析日期字符串
+            var dateStrings = dateString.Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries);
+            var dates = new List<DateTime>();
+
+            foreach (var ds in dateStrings)
+            {
+                if (DateTime.TryParse(ds.Trim(), out var date))
+                {
+                    dates.Add(date);
+                }
+            }
+
+            // 使用 DateUtils 格式化
+            return DateUtils.FormatDateListWithRanges(dates);
+        }
+        catch
+        {
+            return dateString; // 解析失败时返回原始字符串
+        }
     }
 }
