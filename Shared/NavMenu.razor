@@ -48,12 +48,17 @@
                         @foreach (var bench in benches)
                         {
                             <NavLink class="nav-link submenu-item" href="@($"schedule/{bench.Id}")" Match="NavLinkMatch.All">
-								@*<span class="oi oi-wrench me-2"></span>*@
-                                <span class="bench-name">@bench.Name</span>
-                                @if (!string.IsNullOrEmpty(bench.EquipmentNo))
-                                {
-                                    <small class="text-muted ms-1">(#@bench.EquipmentNo)</small>
-                                }
+                                @* 如果需要图标，可以取消注释下面这行 *@
+                                @* <span class="oi oi-wrench submenu-icon"></span> *@
+
+                                <div class="bench-info">
+                                    <span class="bench-name">@bench.Name</span>
+
+                                    @if (!string.IsNullOrEmpty(bench.EquipmentNo))
+                                    {
+                                        <span class="bench-number">#@bench.EquipmentNo</span>
+                                    }
+                                </div>
                             </NavLink>
                         }
                     }
