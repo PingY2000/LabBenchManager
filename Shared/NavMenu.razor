@@ -3,25 +3,25 @@
 @using LabBenchManager.Models
 @inject BenchService BenchSvc
 
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">测试台管理平台</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
+<div class="top-row ps-4">
+    <a class="navbar-brand" href="">
+        <img src="/images/Rexroth-Logo.png" alt="测试台管理平台" style="height: 45px;" />
+    </a>
+    <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+        <span class="navbar-toggler-icon"></span>
+    </button>
 </div>
 
 <div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
     <nav class="flex-column">
-        <div class="nav-item px-3">
+        <div class="nav-item px-2">
             <NavLink class="nav-link" href="dashboard" Match="NavLinkMatch.All">
                 <span class="oi oi-dashboard" aria-hidden="true"></span> 设备状态
             </NavLink>
         </div>
 
         @* 排产日历 - 可展开菜单 *@
-        <div class="nav-item px-3">
+        <div class="nav-item px-2">
             <div class="nav-link expandable" @onclick="ToggleScheduleMenu" @onclick:stopPropagation="true">
                 <span class="oi oi-calendar" aria-hidden="true"></span> 使用规划
                 <span class="oi @(scheduleMenuExpanded ? "oi-chevron-bottom" : "oi-chevron-right") chevron-icon ms-auto"></span>
@@ -62,7 +62,7 @@
         </div>
         @* 申请管理: 只有 TestEngineer, Admin 能看到 *@
         <AuthorizeView Roles="TestEngineer, Admin">
-        <div class="nav-item px-3">
+        <div class="nav-item px-2">
             <NavLink class="nav-link" href="report-approvals">
                 <span class="oi oi-document" aria-hidden="true"></span> 报告审批
             </NavLink>
@@ -71,14 +71,14 @@
         
         @* 申请管理: 只有 TestEngineer, Admin 能看到 *@
         <AuthorizeView Roles="TestEngineer, Admin">
-            <div class="nav-item px-3">
+            <div class="nav-item px-2">
                 <NavLink class="nav-link" href="assignments" Match="NavLinkMatch.All">
                     <span class="oi oi-spreadsheet" aria-hidden="true"></span> 申请管理
                 </NavLink>
             </div>
         </AuthorizeView>
 
-        <div class="nav-item px-3">
+        <div class="nav-item px-2">
             <NavLink class="nav-link" href="request" Match="NavLinkMatch.All">
                 <span class="oi oi-pencil" aria-hidden="true"></span> 申请测试
             </NavLink>
@@ -86,7 +86,7 @@
 
         @* 设备管理: 只有 TestEngineer, Admin 能看到 *@
         <AuthorizeView Roles="TestEngineer, Admin">
-            <div class="nav-item px-3">
+            <div class="nav-item px-2">
                 <NavLink class="nav-link" href="benches" Match="NavLinkMatch.All">
                     <span class="oi oi-cog" aria-hidden="true"></span> 设备管理
                 </NavLink>
@@ -94,7 +94,7 @@
         </AuthorizeView>
 
         <AuthorizeView Roles="Admin">
-            <div class="nav-item px-3">
+            <div class="nav-item px-2">
                 <NavLink class="nav-link" href="adminusers" Match="NavLinkMatch.All">
                     <span class="oi oi-people" aria-hidden="true"></span> 用户管理
                 </NavLink>
