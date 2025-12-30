@@ -8,9 +8,14 @@
     </div>
 
     <main>
-        <div class="top-row px-4 d-flex justify-content-end align-items-center">
-            @* 将 LoginDisplay 组件放在这里 *@
-            <LoginDisplay />
+        <div class="top-row px-4">
+            @* 🔑 标题绝对定位在屏幕中央 *@
+            <h4 class="top-row-title mb-0 text-dark fw-bold">试验室测试台管理系统</h4>
+
+            @* 登录信息保持在右侧 *@
+            <div class="ms-auto">
+                <LoginDisplay />
+            </div>
         </div>
 
         <article class="content px-4">

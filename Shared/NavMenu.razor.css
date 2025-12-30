@@ -7,15 +7,52 @@
 
 .top-row {
     height: 4rem;
-    background-color: rgba(0,0,0,0.4); /*  <-- 核心修改在这里！ */
+    background-color: rgba(0,0,0,0.4);
     display: flex;
     justify-content: space-between;
     align-items: center;
     width: 100%;
+    flex-shrink: 0; /* 🆕 防止顶部栏被压缩 */
+    position: sticky; /* 🆕 顶部栏固定 */
+    top: 0;
+    z-index: 10; /* 🆕 确保顶部栏在上层 */
 }
 
 .navbar-brand {
     font-size: 1.1rem;
+}
+
+/* ========== 🆕 导航菜单滚动容器 ========== */
+nav.flex-column {
+    max-height: calc(100vh - 4rem); /* 减去顶部栏高度 */
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 1rem;
+}
+
+    /* 🆕 自定义滚动条样式 */
+    nav.flex-column::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    nav.flex-column::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+    }
+
+    nav.flex-column::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+    }
+
+        nav.flex-column::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+/* 🆕 Firefox 滚动条样式 */
+nav.flex-column {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
 }
 
 /* ========== 图标通用样式 ========== */
@@ -92,7 +129,32 @@
     background-color: rgba(0, 0, 0, 0.2) !important;
     margin: 0.25rem 0.3rem !important;
     border-radius: 0.25rem;
-    overflow: hidden;
+    overflow: hidden; /* 🆕 限制子菜单最大高度 */
+    overflow-y: auto; /* 🆕 子菜单可滚动 */
+}
+
+    /* 🆕 子菜单滚动条样式 */
+    .submenu::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .submenu::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .submenu::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 3px;
+    }
+
+        .submenu::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+/* 🆕 Firefox 子菜单滚动条 */
+.submenu {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) rgba(255, 255, 255, 0.03);
 }
 
     /* ========== 子菜单项样式 - 使用 ::deep 穿透 ========== */
@@ -105,7 +167,7 @@
         color: #d7d7d7 !important;
         display: flex !important;
         flex-direction: row !important;
-        align-items: center !important; 
+        align-items: center !important;
         border-left: 3px solid transparent !important;
         transition: all 0.2s;
     }
@@ -128,9 +190,8 @@
         font-size: 0.9em !important;
         flex-shrink: 0 !important;
         margin-right: 0.75rem !important;
-        margin-top: 0 !important; 
-        align-self: center !important; 
-
+        margin-top: 0 !important;
+        align-self: center !important;
     }
 
     /* ========== 设备信息容器 ========== */
@@ -145,8 +206,8 @@
 
     /* ========== 设备名称 ========== */
     .submenu ::deep .bench-name {
-        font-size: 1em !important; /* 增大字体 - 原来继承 0.85em */
-        font-weight: 500 !important; /* 加粗 - 原来是 500 */
+        font-size: 1em !important;
+        font-weight: 500 !important;
         color: inherit !important;
         line-height: 1.4 !important;
         word-wrap: break-word !important;
@@ -214,5 +275,14 @@
 
     .submenu ::deep .bench-number {
         font-size: 0.75em !important;
+    }
+
+    /* 🆕 移动端调整滚动高度 */
+    nav.flex-column {
+        max-height: calc(100vh - 4rem);
+    }
+
+    .submenu {
+        max-height: 50vh;
     }
 }

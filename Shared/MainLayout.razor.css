@@ -19,17 +19,30 @@ main {
     height: 4rem;
     display: flex;
     align-items: center;
+    position: relative; /* ?? 添加相对定位 */
 }
 
-    .top-row ::deep a, .top-row .btn-link {
-        white-space: nowrap;
-        margin-left: 1.5rem;
-    }
+.top-row-title {
+    position: fixed; /* 改为 fixed，相对于视口定位 */
+    left: 50vw;
+    transform: translateX(-50%);
+    z-index: 10;
+}
 
-    .top-row a:first-child {
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
+.top-row .ms-auto {
+    position: relative;
+    z-index: 1;
+}
+
+.top-row ::deep a, .top-row .btn-link {
+    white-space: nowrap;
+    margin-left: 1.5rem;
+}
+
+.top-row a:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
 @media (max-width: 640.98px) {
     .top-row:not(.auth) {
@@ -42,6 +55,12 @@ main {
 
     .top-row a, .top-row .btn-link {
         margin-left: 0;
+    }
+
+    /* ?? 小屏幕标题也居中 */
+    .top-row-title {
+        left: 50%;
+        transform: translateX(-50%);
     }
 }
 

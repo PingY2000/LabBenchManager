@@ -9,7 +9,7 @@
 
 <PageTitle>设备状态总览</PageTitle>
 
-<h2 class="fw-bold text-primary">设备状态总览</h2>
+<h3 class="fw-bold text-primary">设备状态总览</h3>
 <p class="text-muted">实时查看所有测试台的当前状态。</p>
 
 @if (benchesWithStatus == null)
@@ -24,7 +24,7 @@ else if (benchesWithStatus.Count == 0)
 }
 else
 {
-    <div class="row row-cols-1 row-cols-lg-2 g-3">
+    <div class="row row-cols-1 row-cols-lg-2 g-3 mb-4">
         @foreach (var item in benchesWithStatus)
         {
             var bench = item.Bench;
@@ -185,13 +185,19 @@ else
     .card {
         border-width: 2px;
     }
-
-    /* 确保图片容器有固定高度 */
+        /* 🔑 图片容器使用 aspect-ratio 固定比例 */
+        .card .col-5 {
+            aspect-ratio: 4 / 3;
+            max-height: 200px;
+            overflow: hidden;
+        }
+    /* 确保图片容器有固定高度，4:3 比例 */
     .img-aspect-4-3 {
         width: 100%;
         height: 100%;
-        object-fit: cover;
-        border-radius: var(--bs-border-radius) 0 0 var(--bs-border-radius);
+        object-fit: contain; /* 🔑 改为 contain，保持图片完整 */
+        background-color: white; /* 🔑 白色背景填充空白区域 */
+        border-right: 2px solid #adb5bd;
     }
 
     /* 占位符样式 */
@@ -203,6 +209,7 @@ else
         align-items: center;
         justify-content: center;
         color: #6c757d;
+        border: 1px solid #dee2e6; /* 🔑 占位符也添加边框保持一致 */
         border-radius: var(--bs-border-radius) 0 0 var(--bs-border-radius);
     }
 
