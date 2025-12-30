@@ -197,7 +197,7 @@ else
         height: 100%;
         object-fit: contain; /* 🔑 改为 contain，保持图片完整 */
         background-color: white; /* 🔑 白色背景填充空白区域 */
-        border-right: 2px solid #adb5bd;
+       
     }
 
     /* 占位符样式 */
@@ -213,14 +213,22 @@ else
         border-radius: var(--bs-border-radius) 0 0 var(--bs-border-radius);
     }
 
-    /* 修复卡片主体高度 */
-    .card-body {
-        min-height: 150px;
-    }
-
-    /* 确保卡片行等高 */
+    /* 🔑 确保卡片行等高，移除 max-height 限制 */
     .row.g-0 {
         min-height: 150px;
+        position: relative; /* 🔑 为伪元素定位 */
+    }
+
+    /* 🔑 用伪元素画分隔线，贯穿整行高度 */
+    .card .row.g-0::after {
+        content: "";
+        position: absolute;
+        left: calc(100% * 5 / 12); /* col-5 的右边界 */
+        top: 0;
+        bottom: 0; /* 从上到下贯穿 */
+        width: 2px;
+        background-color: #adb5bd; /* 分隔线颜色 */
+        pointer-events: none;
     }
 </style>
 
