@@ -1,5 +1,5 @@
 ﻿@page "/adminusers"
-@attribute [Authorize(Roles = AppRoles.Admin)] 
+@attribute [Authorize(Roles = AppRoles.Admin)]
 
 @using LabBenchManager.Models
 @using LabBenchManager.Services
@@ -39,54 +39,142 @@
     }
 </div>
 
-
 <!-- ==================== 用户列表 ==================== -->
 <table class="table table-striped table-hover">
     <thead class="table-light">
         <tr>
-            <th>NT账号</th>
-            <th>显示名称</th>
-            <th>部门</th>
+            <th style="cursor: pointer; user-select: none;" @onclick="() => ToggleSort(SortField.NtAccount)">
+                NT账号
+                @((MarkupString)GetSortIconHtml(SortField.NtAccount))
+                @if (GetSortPriority(SortField.NtAccount) is int priorityNt)
+                {
+                    <span class="badge bg-dark bg-opacity-75 ms-1" style="font-size: 0.45rem; padding: 0.2rem 0.2rem;">@priorityNt</span>
+                }
+            </th>
+            <th style="cursor: pointer; user-select: none;" @onclick="() => ToggleSort(SortField.DisplayName)">
+                显示名称
+                @((MarkupString)GetSortIconHtml(SortField.DisplayName))
+                @if (GetSortPriority(SortField.DisplayName) is int priorityName)
+                {
+                    <span class="badge bg-dark bg-opacity-75 ms-1" style="font-size: 0.45rem; padding: 0.2rem 0.2rem;">@priorityName</span>
+                }
+            </th>
+            <th style="cursor: pointer; user-select: none;" @onclick="() => ToggleSort(SortField.Department)">
+                部门
+                @((MarkupString)GetSortIconHtml(SortField.Department))
+                @if (GetSortPriority(SortField.Department) is int priorityDept)
+                {
+                    <span class="badge bg-dark bg-opacity-75 ms-1" style="font-size: 0.45rem; padding: 0.2rem 0.2rem;">@priorityDept</span>
+                }
+            </th>
             <th>邮箱</th>
-            <th>角色</th>
-            <th>操作</th>
+            <th style="cursor: pointer; user-select: none;" @onclick="() => ToggleSort(SortField.Role)">
+                角色
+                @((MarkupString)GetSortIconHtml(SortField.Role))
+                @if (GetSortPriority(SortField.Role) is int priorityRole)
+                {
+                    <span class="badge bg-dark bg-opacity-75 ms-1" style="font-size: 0.45rem; padding: 0.2rem 0.2rem;">@priorityRole</span>
+                }
+            </th>
+            <th style="width: 150px;">
+                操作
+                @if (sortColumns.Any())
+                {
+                    <button class="btn btn-sm btn-dark opacity-75" @onclick="ClearAllSort" title="清除所有排序" style="font-size: 0.5rem;">
+                        <span class="oi oi-reload" style="font-size: 0.5rem;"></span>
+                    </button>
+                }
+            </th>
         </tr>
     </thead>
     <tbody>
         @if (users == null)
         {
-            <tr><td colspan="5"><em>加载中...</em></td></tr>
+            <tr><td colspan="6"><em>加载中...</em></td></tr>
         }
         else
         {
             @foreach (var user in users)
             {
+                var isEditing = editingUserId == user.Id;
                 <tr>
-                    <td>@user.NtAccount</td>
                     <td>
-                        <InputText class="form-control form-control-sm" @bind-Value="user.DisplayName"
-                                   @onblur="() => UpdateUser(user)" />
+                        @if (isEditing)
+                        {
+                            <InputText class="form-control form-control-sm" @bind-Value="editingUser!.NtAccount" />
+                        }
+                        else
+                        {
+                            @user.NtAccount
+                        }
                     </td>
                     <td>
-                        <InputText class="form-control form-control-sm" @bind-Value="user.Department"
-                                   @onblur="() => UpdateUser(user)" />
+                        @if (isEditing)
+                        {
+                            <InputText class="form-control form-control-sm" @bind-Value="editingUser!.DisplayName" />
+                        }
+                        else
+                        {
+                            @(user.DisplayName ?? "-")
+                        }
                     </td>
                     <td>
-                        <InputText class="form-control form-control-sm" @bind-Value="user.Email"
-                                   type="email" @onblur="() => UpdateUser(user)" />
+                        @if (isEditing)
+                        {
+                            <InputText class="form-control form-control-sm" @bind-Value="editingUser!.Department" />
+                        }
+                        else
+                        {
+                            @(user.Department ?? "-")
+                        }
                     </td>
                     <td>
-                        <InputSelect class="form-select form-select-sm" @bind-Value="user.Role"
-                                     @bind-Value:after="() => UpdateUser(user)">
-                            <option value="@AppRoles.Requester">@AppRoles.Requester</option>
-                            <option value="@AppRoles.TestEngineer">@AppRoles.TestEngineer</option>
-                            <option value="@AppRoles.Admin">@AppRoles.Admin</option>
-                        </InputSelect>
+                        @if (isEditing)
+                        {
+                            <InputText class="form-control form-control-sm" @bind-Value="editingUser!.Email" type="email" />
+                        }
+                        else
+                        {
+                            @(user.Email ?? "-")
+                        }
                     </td>
                     <td>
-                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteUser(user)">
-                            <span class="oi oi-trash"></span>
-                        </button>
+                        @if (isEditing)
+                        {
+                            <InputSelect class="form-select form-select-sm" @bind-Value="editingUser!.Role">
+                                <option value="@AppRoles.Requester">@AppRoles.Requester</option>
+                                <option value="@AppRoles.TestEngineer">@AppRoles.TestEngineer</option>
+                                <option value="@AppRoles.Admin">@AppRoles.Admin</option>
+                            </InputSelect>
+                        }
+                        else
+                        {
+                            <span class="badge @GetRoleBadgeClass(user.Role)" style="font-size: 0.9rem; padding: 0.4rem 0.6rem;">@user.Role</span>
+                        }
+                    </td>
+                    <td>
+                        @if (isEditing)
+                        {
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-success" @onclick="() => SaveUser()" title="保存">
+                                    <span class="oi oi-check"></span>
+                                </button>
+                                <button class="btn btn-outline-secondary" @onclick="CancelEdit" title="取消">
+                                    <span class="oi oi-x"></span>
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" @onclick="() => StartEdit(user)" disabled="@(editingUserId != null)" title="编辑">
+                                    <span class="oi oi-pencil"></span>
+                                </button>
+                                <button class="btn btn-outline-danger" @onclick="() => DeleteUser(user)" disabled="@(editingUserId != null)" title="删除">
+                                    <span class="oi oi-trash"></span>
+                                </button>
+                            </div>
+                        }
                     </td>
                 </tr>
             }
@@ -98,18 +186,18 @@
 
 <!-- ==================== 添加新用户 ==================== -->
 <h4>添加新用户</h4>
-<EditForm Model="newUser" OnValidSubmit="AddNewUser" class="row g-3 align-items-end">
+<EditForm Model="newUser" OnValidSubmit="AddNewUser" class="row g-3 align-items-end pb-5">
     <DataAnnotationsValidator />
     <div class="col-md-3">
         <label class="form-label">NT账号 (格式: DOMAIN\user)</label>
         <InputText class="form-control" @bind-Value="newUser.NtAccount" />
         <ValidationMessage For="() => newUser.NtAccount" />
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <label class="form-label">显示名称</label>
         <InputText class="form-control" @bind-Value="newUser.DisplayName" />
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <label class="form-label">部门</label>
         <InputText class="form-control" @bind-Value="newUser.Department" />
     </div>
@@ -121,7 +209,6 @@
     <div class="col-md-2">
         <label class="form-label">角色</label>
         <InputSelect class="form-select" @bind-Value="newUser.Role">
-            <option value="">--选择角色--</option>
             <option value="@AppRoles.Requester">@AppRoles.Requester</option>
             <option value="@AppRoles.TestEngineer">@AppRoles.TestEngineer</option>
             <option value="@AppRoles.Admin">@AppRoles.Admin</option>
@@ -129,14 +216,30 @@
         <ValidationMessage For="() => newUser.Role" />
     </div>
     <div class="col-auto">
-        <button type="submit" class="btn btn-primary">添加</button>
+        <button type="submit" class="btn btn-primary" disabled="@(editingUserId != null)">
+            <span class="oi oi-plus me-1"></span>添加
+        </button>
     </div>
 </EditForm>
 
-
 @code {
     private List<ApplicationUser>? users;
-    private ApplicationUser newUser = new() { Role = AppRoles.Requester }; // 默认角色
+    private ApplicationUser newUser = new() { Role = AppRoles.Requester };
+
+    // 编辑状态管理
+    private int? editingUserId = null;
+    private ApplicationUser? editingUser = null;
+
+    // 排序状态管理
+    private List<SortColumn> sortColumns = new();
+
+    private enum SortField { NtAccount, DisplayName, Department, Role }
+    private class SortColumn
+    {
+        public SortField Field { get; set; }
+        public bool IsDescending { get; set; }
+    }
+
 
     // Excel 导入/导出状态
     private string? importStatusMessage;
@@ -145,37 +248,238 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadUsers();
+        // 设置默认排序：先按角色，再按部门
+        sortColumns.Add(new SortColumn { Field = SortField.Role, IsDescending = false });
+        sortColumns.Add(new SortColumn { Field = SortField.Department, IsDescending = false });
+
+        // 应用默认排序
+        if (users != null)
+        {
+            users = ApplySort(users);
+        }
     }
 
     private async Task LoadUsers()
     {
         users = await UserService.GetAllUsersAsync();
     }
+    private void ToggleSort(SortField field)
+    {
+        var existing = sortColumns.FirstOrDefault(s => s.Field == field);
+
+        if (existing != null)
+        {
+            if (!existing.IsDescending)
+            {
+                // 升序 → 降序
+                existing.IsDescending = true;
+            }
+            else
+            {
+                // 降序 → 移除排序
+                sortColumns.Remove(existing);
+            }
+        }
+        else
+        {
+            // 未排序 → 升序
+            sortColumns.Add(new SortColumn { Field = field, IsDescending = false });
+        }
+
+        // 重新排序
+        if (users != null)
+        {
+            users = ApplySort(users);
+        }
+    }
+
+    // 🔑 获取排序图标（显示上下双箭头，高亮当前方向）
+    // 🔑 获取排序图标（使用 Open Iconic 图标）
+    private string GetSortIconHtml(SortField field)
+    {
+        var sort = sortColumns.FirstOrDefault(s => s.Field == field);
+
+        if (sort == null)
+        {
+            // 未排序：显示双向箭头，半透明
+            return @"<span class=""oi oi-elevator ms-1"" style=""font-size: 0.8rem; opacity: 0.3;""></span>";
+        }
+        else if (!sort.IsDescending)
+        {
+            // 升序：显示上箭头
+            return @"<span class=""oi oi-arrow-thick-top ms-1"" style=""font-size: 0.8rem;""></span>";
+        }
+        else
+        {
+            // 降序：显示下箭头
+            return @"<span class=""oi oi-arrow-thick-bottom ms-1"" style=""font-size: 0.8rem;""></span>";
+        }
+    }
+    private int? GetSortPriority(SortField field)
+    {
+        var index = sortColumns.FindIndex(s => s.Field == field);
+        return index >= 0 ? index + 1 : null;
+    }
+
+
+    // 应用排序
+    private List<ApplicationUser> ApplySort(List<ApplicationUser> sourceUsers)
+    {
+        if (!sortColumns.Any())
+            return sourceUsers;
+
+        IOrderedEnumerable<ApplicationUser>? orderedUsers = null;
+
+        for (int i = 0; i < sortColumns.Count; i++)
+        {
+            var sortCol = sortColumns[i];
+
+            if (i == 0)
+            {
+                // 第一级排序
+                orderedUsers = sortCol.Field switch
+                {
+                    SortField.NtAccount => sortCol.IsDescending
+                        ? sourceUsers.OrderByDescending(u => u.NtAccount)
+                        : sourceUsers.OrderBy(u => u.NtAccount),
+                    SortField.DisplayName => sortCol.IsDescending
+                        ? sourceUsers.OrderByDescending(u => u.DisplayName)
+                        : sourceUsers.OrderBy(u => u.DisplayName),
+                    SortField.Department => sortCol.IsDescending
+                        ? sourceUsers.OrderByDescending(u => u.Department)
+                        : sourceUsers.OrderBy(u => u.Department),
+                    SortField.Role => sortCol.IsDescending
+                        ? sourceUsers.OrderByDescending(u => GetRoleOrder(u.Role))
+                        : sourceUsers.OrderBy(u => GetRoleOrder(u.Role)),
+                    _ => sourceUsers.OrderBy(u => u.Id)
+                };
+            }
+            else
+            {
+                // 后续级别排序
+                orderedUsers = sortCol.Field switch
+                {
+                    SortField.NtAccount => sortCol.IsDescending
+                        ? orderedUsers!.ThenByDescending(u => u.NtAccount)
+                        : orderedUsers!.ThenBy(u => u.NtAccount),
+                    SortField.DisplayName => sortCol.IsDescending
+                        ? orderedUsers!.ThenByDescending(u => u.DisplayName)
+                        : orderedUsers!.ThenBy(u => u.DisplayName),
+                    SortField.Department => sortCol.IsDescending
+                        ? orderedUsers!.ThenByDescending(u => u.Department)
+                        : orderedUsers!.ThenBy(u => u.Department),
+                    SortField.Role => sortCol.IsDescending
+                        ? orderedUsers!.ThenByDescending(u => GetRoleOrder(u.Role))
+                        : orderedUsers!.ThenBy(u => GetRoleOrder(u.Role)),
+                    _ => orderedUsers
+                };
+            }
+        }
+
+        return orderedUsers?.ToList() ?? sourceUsers;
+    }
+
+    // 定义角色排序优先级
+    private int GetRoleOrder(string role) => role switch
+    {
+        AppRoles.Admin => 1,
+        AppRoles.TestEngineer => 2,
+        AppRoles.Requester => 3,
+        _ => 99
+    };
+
+
+    // 清除某列排序
+    private void ClearSort(SortField field)
+    {
+        sortColumns.RemoveAll(s => s.Field == field);
+        if (users != null)
+        {
+            users = ApplySort(users);
+        }
+    }
+
+    // 清除所有排序
+    private void ClearAllSort()
+    {
+        sortColumns.Clear();
+        if (users != null)
+        {
+            users = ApplySort(users);
+        }
+    }
+
+    // 获取排序图标
+    private string GetSortIcon(SortField field)
+    {
+        var sort = sortColumns.FirstOrDefault(s => s.Field == field);
+        if (sort == null) return "oi-elevator"; // 未排序
+
+        return sort.IsDescending ? "oi-arrow-thick-bottom" : "oi-arrow-thick-top";
+    }
+
+
+
+    // 开始编辑
+    private void StartEdit(ApplicationUser user)
+    {
+        editingUserId = user.Id;
+        // 创建副本进行编辑
+        editingUser = new ApplicationUser
+        {
+            Id = user.Id,
+            NtAccount = user.NtAccount,
+            DisplayName = user.DisplayName,
+            Department = user.Department,
+            Email = user.Email,
+            Role = user.Role
+        };
+    }
+
+    // 🔑 保存编辑
+    private async Task SaveUser()
+    {
+        if (editingUser != null)
+        {
+            await UserService.UpdateUserAsync(editingUser);
+            await LoadUsers();
+            editingUserId = null;
+            editingUser = null;
+        }
+    }
+
+    // 🔑 取消编辑
+    private void CancelEdit()
+    {
+        editingUserId = null;
+        editingUser = null;
+    }
 
     private async Task AddNewUser()
     {
         await UserService.AddUserAsync(newUser);
-        newUser = new() { Role = AppRoles.Requester }; // 重置表单
+        newUser = new() { Role = AppRoles.Requester };
         await LoadUsers();
-    }
-
-    private async Task UpdateUser(ApplicationUser userToUpdate)
-    {
-        await UserService.UpdateUserAsync(userToUpdate);
     }
 
     private async Task DeleteUser(ApplicationUser User)
     {
         var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"确定要删除用户 '{User.NtAccount}' 吗？");
-
-        // 2. 检查用户的选择
         if (confirmed)
         {
             await UserService.DeleteUserAsync(User.Id);
             await LoadUsers();
         }
-        
     }
+
+    // 🔑 角色徽章样式
+    private string GetRoleBadgeClass(string role) => role switch
+    {
+        AppRoles.Admin => "bg-danger",
+        AppRoles.TestEngineer => "bg-primary",
+        AppRoles.Requester => "bg-secondary",
+        _ => "bg-secondary"
+    };
 
     private async Task ExportToExcel()
     {
@@ -184,20 +488,18 @@
         using var workbook = new XLWorkbook();
         var worksheet = workbook.Worksheets.Add("Users");
 
-        // ✅ 表头添加邮箱
         worksheet.Cell(1, 1).Value = "NtAccount";
         worksheet.Cell(1, 2).Value = "DisplayName";
         worksheet.Cell(1, 3).Value = "Department";
-        worksheet.Cell(1, 4).Value = "Email";  
+        worksheet.Cell(1, 4).Value = "Email";
         worksheet.Cell(1, 5).Value = "Role";
 
-        // 数据
         for (int i = 0; i < users.Count; i++)
         {
             worksheet.Cell(i + 2, 1).Value = users[i].NtAccount;
             worksheet.Cell(i + 2, 2).Value = users[i].DisplayName;
             worksheet.Cell(i + 2, 3).Value = users[i].Department;
-            worksheet.Cell(i + 2, 4).Value = users[i].Email;  
+            worksheet.Cell(i + 2, 4).Value = users[i].Email;
             worksheet.Cell(i + 2, 5).Value = users[i].Role;
         }
 
@@ -224,15 +526,12 @@
                 throw new Exception("未选择文件。");
             }
 
-            // 先将文件内容异步读入内存
             using var originalStream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
             using var memoryStream = new MemoryStream();
-            await originalStream.CopyToAsync(memoryStream); // 异步复制到内存
-            memoryStream.Position = 0; // 重置位置
+            await originalStream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
 
-            // 现在用支持同步读取的 MemoryStream 创建 workbook
             using var workbook = new XLWorkbook(memoryStream);
-
             var worksheet = workbook.Worksheet(1);
             if (worksheet == null)
             {
@@ -255,8 +554,8 @@
 
                 var displayName = worksheet.Cell(row, 2).Value.ToString().Trim();
                 var department = worksheet.Cell(row, 3).Value.ToString().Trim();
-                var email = worksheet.Cell(row, 4).Value.ToString().Trim();  
-                var roleRaw = worksheet.Cell(row, 5).Value.ToString().Trim(); 
+                var email = worksheet.Cell(row, 4).Value.ToString().Trim();
+                var roleRaw = worksheet.Cell(row, 5).Value.ToString().Trim();
 
                 var role = string.IsNullOrEmpty(roleRaw) ? AppRoles.Requester : roleRaw;
 
@@ -265,7 +564,7 @@
                     NtAccount = ntAccount,
                     DisplayName = displayName,
                     Department = department,
-                    Email = email,  
+                    Email = email,
                     Role = role
                 });
             }
