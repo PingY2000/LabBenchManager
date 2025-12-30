@@ -42,7 +42,7 @@
                 <th style="min-width: 90px; ">测试类型</th>
                 <th style="min-width: 90px ">测试对象</th>
                 <th >文档</th>
-                <th style="min-width: 100px; width: 140px;">操作</th>
+                <th style="min-width: 120px; width: 140px;">操作</th>
             </tr>
         </thead>
         <tbody>
@@ -100,6 +100,22 @@
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm" role="group">
+                                <AuthorizeView Roles="Admin">
+                                    @* 🔑 上移按钮 *@
+                                    <button class="btn btn-outline-secondary"
+                                            @onclick="() => MoveUp(bench)"
+                                            title="上移"
+                                            disabled="@(benchListWithStatus == null || benchListWithStatus.IndexOf(item) == 0)">
+                                        <span class="oi oi-arrow-top"></span>
+                                    </button>
+                                    @* 🔑 下移按钮 *@
+                                    <button class="btn btn-outline-secondary"
+                                            @onclick="() => MoveDown(bench)"
+                                            title="下移"
+                                            disabled="@(benchListWithStatus == null || benchListWithStatus.IndexOf(item) == benchListWithStatus.Count - 1)">
+                                        <span class="oi oi-arrow-bottom"></span>
+                                    </button>
+                                </AuthorizeView>
                                 <button class="btn btn-outline-info" @onclick="() => ManageDocuments(bench)" title="管理文档">
                                     <span class="oi oi-document"></span>
                                 </button>
@@ -761,6 +777,17 @@
     private void CloseModal()
     {
         showModal = false;
+    }
+    private async Task MoveUp(Bench bench)
+    {
+        await BenchSvc.MoveUpAsync(bench.Id);
+        await LoadBenches();
+    }
+
+    private async Task MoveDown(Bench bench)
+    {
+        await BenchSvc.MoveDownAsync(bench.Id);
+        await LoadBenches();
     }
 
     private string GetStatusBadgeClass(BenchStatus status) => status switch

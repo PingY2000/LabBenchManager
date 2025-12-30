@@ -1,4 +1,5 @@
 ﻿// Services/BenchService.cs
+using DocumentFormat.OpenXml.InkML;
 using LabBenchManager.Data;
 using LabBenchManager.Models;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +18,10 @@ namespace LabBenchManager.Services
         // 获取所有设备
         public async Task<List<Bench>> GetAllAsync()
         {
-            return await _db.Benches.OrderBy(b => b.Id).ToListAsync();
+            return await _db.Benches
+                .OrderBy(b => b.SortOrder) // 🔑 按排序字段排序
+                .ThenBy(b => b.Id)
+                .ToListAsync();
         }
 
         // 根据ID获取单个设备
@@ -241,6 +245,47 @@ namespace LabBenchManager.Services
             return await _db.Benches
                 .Include(b => b.Documents)
                 .FirstOrDefaultAsync(b => b.Id == benchId);
+        }
+
+
+        public async Task UpdateSortOrderAsync(int benchId, int newOrder)
+        {
+            var bench = await _db.Benches.FindAsync(benchId);
+            if (bench != null)
+            {
+                bench.SortOrder = newOrder;
+                await _db.SaveChangesAsync();
+            }
+        }
+
+       
+
+        public async Task MoveUpAsync(int benchId)
+        {
+            var benches = await _db.Benches.OrderBy(b => b.SortOrder).ToListAsync();
+            var currentIndex = benches.FindIndex(b => b.Id == benchId);
+
+            if (currentIndex > 0)
+            {
+                var temp = benches[currentIndex].SortOrder;
+                benches[currentIndex].SortOrder = benches[currentIndex - 1].SortOrder;
+                benches[currentIndex - 1].SortOrder = temp;
+                await _db.SaveChangesAsync();
+            }
+        }
+
+        public async Task MoveDownAsync(int benchId)
+        {
+            var benches = await _db.Benches.OrderBy(b => b.SortOrder).ToListAsync();
+            var currentIndex = benches.FindIndex(b => b.Id == benchId);
+
+            if (currentIndex < benches.Count - 1)
+            {
+                var temp = benches[currentIndex].SortOrder;
+                benches[currentIndex].SortOrder = benches[currentIndex + 1].SortOrder;
+                benches[currentIndex + 1].SortOrder = temp;
+                await _db.SaveChangesAsync();
+            }
         }
     }
 }

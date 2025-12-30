@@ -76,5 +76,7 @@ namespace LabBenchManager.Models
         public ICollection<TestPlan>? TestPlans { get; set; }
 
         public ICollection<BenchDocument>? Documents { get; set; }
+
+        public int SortOrder { get; set; } = 0;
     }
 }
