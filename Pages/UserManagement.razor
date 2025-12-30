@@ -262,6 +262,7 @@
     private async Task LoadUsers()
     {
         users = await UserService.GetAllUsersAsync();
+        users = ApplySort(users);
     }
     private void ToggleSort(SortField field)
     {
