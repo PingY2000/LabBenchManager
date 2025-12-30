@@ -44,13 +44,11 @@ namespace LabBenchManager.Models
 
         public TestPlanStatus Status { get; set; } = TestPlanStatus.初步规划;
 
-        // 新增：用于存储以逗号分隔的日期字符串，例如 "2023-10-26,2023-10-28"
         public string ScheduledDates { get; set; } = string.Empty;
 
         [StringLength(100)]
         public string? AssignedTo { get; set; }
 
-        // 其他字段保持不变...
         public string? RequestedBy { get; set; }
         public string? SampleNumber { get; set; }
         public int? SampleQuantity { get; set; }

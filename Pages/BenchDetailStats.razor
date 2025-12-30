@@ -9,7 +9,6 @@
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 
-<!-- CHANGE: Added a style block for the new daily grid view. You can also move this to your site.css file. -->
 <style>
     /* 单元格基础样式 */
     .day-cell {
@@ -174,11 +173,9 @@ else
                         数据详情：各月已安排天数
                     </div>
                     <div class="table-responsive">
-                        <!-- CHANGE: Table structure is updated for the new view -->
                         <table class="table table-sm table-bordered table-striped table-hover mb-0">
                             <thead class="table-light text-center">
                                 <tr>
-                                    <!-- 🔥 CHANGE: 回到经典的纵向布局表头 -->
                                     <th>年份</th>
                                     <th>月份</th>
                                     @for (int day = 1; day <= 31; day++)
@@ -189,7 +186,6 @@ else
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- 🔥 CHANGE: 恢复经典的纵向布局 -->
                                 @foreach (var year in reportData.First().YearData.Keys.OrderByDescending(y => y))
                                 {
                                     @foreach (var row in reportData.OrderByDescending(r => r.Month))
@@ -225,14 +221,12 @@ else
                                                     // 尝试获取当天的安排信息
                                                     if (usage?.UsageDetails.TryGetValue(day, out info) == true && info.Plans.Any())
                                                     {
-                                                        // 🔥 CHANGE: 将所有安排的详情拼接起来作为悬停提示
                                                         titleText = string.Join("\n", info.Plans.Select(p => p.Details));
                                                     }
 
                                                     <td class="@cellClass" title="@titleText">
                                                         @if (info != null && info.Plans.Any())
                                                         {
-                                                            <!-- 🔥 NEW: 渲染多个小方块 -->
                                                             <div class="daily-stack">
                                                                 @foreach (var plan in info.Plans)
                                                                 {
@@ -285,7 +279,6 @@ else
 
     private class DailyUsageInfo // 这个类现在代表一天的所有安排
     {
-        // 🔥 CHANGE: 新增一个安排列表
         public List<PlanDetail> Plans { get; set; } = new();
     }
     private class PlanDetail
@@ -373,7 +366,7 @@ else
             g.Key.Year,
             g.Key.Month,
             g.Key.Day,
-            // 🔥 将同一天的所有计划转换为 PlanDetail 列表
+            // 将同一天的所有计划转换为 PlanDetail 列表
             Plans = g.Select(x => new PlanDetail
             {
                 Details = $"{x.Plan.ProjectName} ({x.Plan.RequestedBy})",

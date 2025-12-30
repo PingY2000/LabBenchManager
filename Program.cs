@@ -35,9 +35,6 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<TestPlanService>();
 builder.Services.AddScoped<ReportApprovalService>();
 builder.Services.AddScoped<TestPlanHistoryService>();
-// --- 邮件服务 ---
-builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
-builder.Services.AddScoped<IEmailService, EmailService>();
 
 
 // --- 身份认证与授权 ---
@@ -78,7 +75,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// 🔥 开发环境：添加角色切换端点
+// 开发环境：添加角色切换端点
 if (app.Environment.IsDevelopment())
 {
     app.MapGet("/dev/switch-role", async (HttpContext context, string role, LabDbContext db) =>
@@ -137,23 +134,6 @@ if (app.Environment.IsDevelopment())
         return Results.Redirect("/");
     });
 
-    app.MapGet("/dev/test-email", async (IEmailService emailService, IConfiguration config) =>
-    {
-        try
-        {
-            var recipientEmail = "2256826618@qq.com"; // !! 修改成你想接收测试邮件的地址
-            var subject = "Test Email from LabBenchManager";
-            var body = "<h1>Hello!</h1><p>This is a test email sent from the LabBenchManager application.</p>";
-
-            await emailService.SendEmailAsync(recipientEmail, subject, body);
-
-            return Results.Ok($"Test email successfully sent to {recipientEmail}. Please check your inbox.");
-        }
-        catch (Exception ex)
-        {
-            return Results.Problem($"Failed to send email. Check the application logs. Error: {ex.Message}");
-        }
-    }).RequireAuthorization(); // 添加授权，确保只有登录用户能触发
 }
 
 
@@ -179,7 +159,7 @@ using (var scope = app.Services.CreateScope())
 
 app.Run();
 
-// 🔥 修改种子数据方法签名
+// 种子数据
 async Task SeedData(LabDbContext context, IWebHostEnvironment env)
 {
     if (env.IsDevelopment())

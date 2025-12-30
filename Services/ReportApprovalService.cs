@@ -259,7 +259,7 @@ namespace LabBenchManager.Services
             }
 
             report.Status = ReportApprovalStatus.草稿;
-            // （可选）清空之前的审核/批准意见和时间
+            // 清空之前的审核/批准意见和时间
             report.ReviewComments = null;
             report.ReviewTime = null;
             report.ApprovalComments = null;
@@ -293,7 +293,6 @@ namespace LabBenchManager.Services
             // 删除关联的文件
             if (!string.IsNullOrEmpty(report.ReportFilePath))
             {
-                // 您已有的 DeleteReportFileAsync 方法
                 await DeleteReportFileAsync(report.ReportFilePath);
             }
 
@@ -342,13 +341,12 @@ namespace LabBenchManager.Services
             return $"{datePrefix}{nextSequence:D2}";
         }
 
-        // ========== 新增方法：检查报告编号是否唯一 ==========
         public async Task<bool> IsReportNumberUniqueAsync(string reportNumber, int currentReportId)
         {
             await using var db = await _contextFactory.CreateDbContextAsync();
 
             // 检查数据库中是否存在其他报告使用了这个编号。
-            // 我们需要忽略大小写，并排除当前正在编辑的报告本身。
+            // 忽略大小写，并排除当前正在编辑的报告本身。
             return !await db.ReportApprovals
                 .AnyAsync(r => r.ReportNumber.ToLower() == reportNumber.ToLower() && r.Id != currentReportId);
         }

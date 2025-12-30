@@ -174,7 +174,6 @@ else
                 else if (currentViewMode == ViewMode.Detail)
                 {
                     <!-- ==================== 计划详情预览 ==================== -->
-                    <!-- 修改(1): 添加一个包装 div，并添加 onclick 事件来关闭详情 -->
                     <div @onclick="CloseDetail">
                         <TestPlanDetailView Plan="viewingPlan"
                                             OnClose="CloseDetail"
@@ -185,7 +184,7 @@ else
                 }
                 else
                 {
-                    <!-- ==================== 计划看板 (无变化) ==================== -->
+                    <!-- ==================== 计划看板 ==================== -->
                     <div class="d-flex flex-column gap-3">
 
                         <!-- 待创建计划的申请 -->
@@ -377,7 +376,7 @@ else
         {
             BenchId = BenchId,
             Status = TestPlanStatus.初步规划,
-            AssignedTo = currentUserDisplayName  // 🔥 自动填充当前用户
+            AssignedTo = currentUserDisplayName  // 自动填充当前用户
         };
         selectedDatesForEditing.Clear();
         currentViewMode = ViewMode.Edit;
@@ -418,7 +417,7 @@ else
             Status = TestPlanStatus.初步规划,
             RequestedBy = assignment.ApplicantName,
             SampleQuantity = assignment.SampleQuantity,
-            AssignedTo = currentUserDisplayName  // 🔥 自动填充当前用户
+            AssignedTo = currentUserDisplayName  // 自动填充当前用户
         };
         selectedDatesForEditing = new List<DateTime>();
         currentViewMode = ViewMode.Edit;
@@ -499,7 +498,7 @@ else
                 await PlanSvc.AddAsync(editingPlan);
                 savedPlan = editingPlan;
 
-                // 🔥 新增：如果新建的计划是"确定计划"或"已完成"，记录历史
+                // 如果新建的计划是"确定计划"或"已完成"，记录历史
                 if (savedPlan.Status == TestPlanStatus.确定计划 ||
                     savedPlan.Status == TestPlanStatus.已完成)
                 {

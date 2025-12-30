@@ -20,7 +20,6 @@ namespace LabBenchManager.Models
     {
         public int Id { get; set; }
 
-        // 新增字段：用于记录申请人的唯一标识（如NT账号）
         [StringLength(50)]
         public string? ApplicantNTAccount { get; set; } = "";
 
@@ -47,7 +46,6 @@ namespace LabBenchManager.Models
         [ForeignKey("BenchId")]
         public virtual Bench? Bench { get; set; }
 
-        // 新增：可选的外键关联到 TestPlan
         [Display(Name = "测试计划")]
         public int? TestPlanId { get; set; }
 

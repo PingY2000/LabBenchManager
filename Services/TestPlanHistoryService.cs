@@ -7,9 +7,9 @@ namespace LabBenchManager.Services
 {
     public class TestPlanHistoryService
     {
-        private readonly LabDbContext _context;  // 改为 LabDbContext
+        private readonly LabDbContext _context;  
 
-        public TestPlanHistoryService(LabDbContext context)  // 改为 LabDbContext
+        public TestPlanHistoryService(LabDbContext context) 
         {
             _context = context;
         }
@@ -34,7 +34,6 @@ namespace LabBenchManager.Services
     string modifiedBy,
     string? reason = null)
         {
-            // 修改后的记录条件：
             // 1. 如果原始状态是“确定计划”（覆盖所有对确定计划的修改）。
             // 2. 或者，如果新状态变成了“确定计划”或“已完成”（记录关键的状态推进）。
             bool shouldRecord = originalPlan.Status == TestPlanStatus.确定计划 ||

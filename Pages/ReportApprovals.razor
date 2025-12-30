@@ -230,12 +230,10 @@
                                 <label class="form-label">报告编号 <span class="text-danger">*</span></label>
                                 <InputText class="form-control" @bind-Value="currentReport.ReportNumber" />
                                 <ValidationMessage For="() => currentReport.ReportNumber" />
-                                <!-- ========== 新增的HTML，用于显示查重错误 ========== -->
                                 @if (!string.IsNullOrEmpty(reportNumberErrorMessage))
                                 {
                                     <div class="validation-message text-danger">@reportNumberErrorMessage</div>
                                 }
-                                <!-- ========== 新增HTML结束 ========== -->
                             </div>
                             <div class="col-md-12 mb-3">
                                 <label class="form-label">关联申请</label>
@@ -631,7 +629,7 @@
         };
     }
 
-    private async Task ShowCreateModal() // <-- 将方法改为 async Task
+    private async Task ShowCreateModal() 
     {
         reportNumberErrorMessage = null;
         currentReport = new ReportApproval
@@ -699,7 +697,6 @@
         successMessage = null;
         reportNumberErrorMessage = null; // 每次保存前都清空旧的查重错误
 
-        // ========== 新增的查重逻辑 ==========
         bool isUnique = await ReportService.IsReportNumberUniqueAsync(currentReport.ReportNumber, currentReport.Id);
         if (!isUnique)
         {
@@ -708,7 +705,6 @@
             isSaving = false;
             return;
         }
-        // ========== 查重逻辑结束 ==========
 
         try
         {
@@ -755,7 +751,6 @@
         successMessage = null;
         reportNumberErrorMessage = null; // 每次保存前都清空旧的查重错误
 
-        // ========== 新增的查重逻辑 ==========
         bool isUnique = await ReportService.IsReportNumberUniqueAsync(currentReport.ReportNumber, currentReport.Id);
         if (!isUnique)
         {
@@ -764,7 +759,6 @@
             isSaving = false;
             return;
         }
-        // ========== 查重逻辑结束 ==========
         try
         {
             var reviewer = users?.FirstOrDefault(u => u.NtAccount == currentReport.ReviewerNTAccount);

@@ -13,13 +13,11 @@
 <div class="container-fluid py-3">
     
 
-    <!-- 页面标题 (添加一个查看我的申请的按钮)-->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h3 class="fw-bold text-primary">测试申请单</h3>
             <p class="text-muted">请详细填写以下测试申请信息，所有带 <span class="text-danger">*</span> 的为必填项。</p>
         </div>
-        <!-- 修改(2): 在页面右上角也添加一个"查看我的申请"按钮 -->
         <a href="/my-assignments" class="btn btn-outline-primary">
             <span class="oi oi-list-rich me-1"></span>我提交的申请
         </a>
@@ -279,7 +277,6 @@
                     <h5 class="alert-heading mb-1">申请提交成功！</h5>
                     <p class="mb-0">您的测试申请已提交，申请编号：<strong>@lastRequestId</strong>。管理员将会尽快审批。</p>
                     <div class="mt-2">
-                        <!-- 修改(1): "查看我的申请"按钮现在导航到新页面 -->
                         <a href="/my-assignments" class="btn btn-sm btn-outline-success me-2">
                             <span class="oi oi-list me-1"></span>查看我的申请
                         </a>
@@ -328,7 +325,7 @@
     private int lastRequestId = 0;
     private ClaimsPrincipal? currentUser;
 
-    // 🔥 修改：自动填充用户信息
+    // 自动填充用户信息
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
@@ -338,16 +335,16 @@
         {
             var ntAccount = currentUser.Identity.Name;
 
-            // 🔥 设置 NT 账号
+            // 设置 NT 账号
             newAssignment.ApplicantNTAccount = ntAccount;
 
-            // 🔥 从数据库获取用户信息
+            // 从数据库获取用户信息
             var (displayName, department) = await UserService.GetUserInfoAsync(ntAccount);
 
-            // 🔥 自动填充显示名称（如果数据库有值）
+            // 自动填充显示名称（如果数据库有值）
             newAssignment.ApplicantName = displayName ?? UserService.GetUserName(ntAccount);
 
-            // 🔥 自动填充部门（如果数据库有值）
+            // 自动填充部门（如果数据库有值）
             if (!string.IsNullOrWhiteSpace(department))
             {
                 newAssignment.Department = department;
@@ -362,7 +359,7 @@
 
     private void ResetForm()
     {
-        // 🔥 保存当前申请人的信息，便于再次申请
+        // 保存当前申请人的信息，便于再次申请
         var savedNT = newAssignment.ApplicantNTAccount;
         var savedName = newAssignment.ApplicantName;
         var savedDept = newAssignment.Department;
@@ -391,7 +388,7 @@
                 return;
             }
 
-            // 🔥 确保 NT 账号在提交时被设置
+            // 确保 NT 账号在提交时被设置
             newAssignment.ApplicantNTAccount = currentUser.Identity.Name ?? "unknown";
 
             // 验证时间逻辑
@@ -411,14 +408,14 @@
                 newAssignment.UrgentReason = "项目紧急，需要尽快完成测试";
             }
 
-            // 🔥 保存到数据库
+            // 保存到数据库
             await AssignmentSvc.AddAsync(newAssignment);
             lastRequestId = newAssignment.Id;
 
             showSuccessMessage = true;
             StateHasChanged();
 
-            // 🔥 重置表单，但保留申请人信息
+            // 重置表单，但保留申请人信息
             var savedNT = newAssignment.ApplicantNTAccount;
             var savedName = newAssignment.ApplicantName;
             var savedDept = newAssignment.Department;

@@ -231,7 +231,6 @@
     </div>
 </div>
 
-<!-- 新的模态框组件调用方式 -->
 <AssignmentDetailModal Assignment="selectedAssignment"
                        OnClose="CloseDetail"
                        OnApprove="HandleApproval"
@@ -255,7 +254,7 @@
     private Assignment? selectedAssignment;
     private Assignment? assignmentToAllocate;
 
-    // 筛选参数 - 改为多选列表
+    // 筛选参数
     private HashSet<AssignmentStatus> selectedStatuses = new();
     private int timeRange = 7;
     private string? errorMessage;
@@ -406,7 +405,6 @@
         }
     }
 
-    // --- 新增：删除逻辑 ---
     private async Task ConfirmDelete(Assignment assignment)
     {
         var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"确定要删除申请 #{assignment.Id} ({assignment.ProjectName}) 吗？此操作无法撤销。");

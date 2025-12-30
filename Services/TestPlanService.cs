@@ -30,7 +30,6 @@ namespace LabBenchManager.Services
         // 获取所有测试计划
         public async Task<List<TestPlan>> GetAllPlansAsync()
         {
-            // 新的排序逻辑
             var plans = await _db.TestPlans
                                  .Include(p => p.Bench)
                                  .OrderBy(p => p.BenchId)
@@ -68,12 +67,11 @@ namespace LabBenchManager.Services
                 plan.Status = newStatus;
                 plan.UpdatedAt = DateTime.Now;
 
-                // 移除了与 ActualStartTime/EndTime 相关的逻辑
                 await _db.SaveChangesAsync();
             }
         }
 
-        // 更新测试计划（完整编辑）
+        // 更新测试计划
         public async Task UpdateAsync(TestPlan plan)
         {
             var existingPlan = await _db.TestPlans.FindAsync(plan.Id);

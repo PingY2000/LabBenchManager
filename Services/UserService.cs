@@ -9,12 +9,12 @@ namespace LabBenchManager.Services
     public class UserService
     {
         private readonly IDbContextFactory<LabDbContext> _dbFactory;
-        private readonly ILogger<UserService> _logger; // 🆕 添加日志
+        private readonly ILogger<UserService> _logger; // 添加日志
 
         public UserService(IDbContextFactory<LabDbContext> dbFactory, ILogger<UserService> logger)
         {
             _dbFactory = dbFactory;
-            _logger = logger; // 🆕
+            _logger = logger; 
         }
         // <summary>
         /// 更新当前用户的个人信息（不包括角色）
@@ -54,7 +54,6 @@ namespace LabBenchManager.Services
                 return false;
             }
         }
-        // ===== 🆕 新增方法：自动注册相关 =====
 
         /// <summary>
         /// 创建新用户（带并发处理）
@@ -131,7 +130,6 @@ namespace LabBenchManager.Services
             }
         }
 
-        // ===== 原有方法保持不变 =====
 
         // 静态辅助方法 - 从 NT 账号提取用户名
         public static string GetUserName(string? ntAccount)

@@ -227,7 +227,7 @@
 }
 else if (Assignment != null && !canView)
 {
-    @* 🔥 无权限提示模态框 - 柔和样式 *@
+    @* 无权限提示模态框 - 柔和样式 *@
     <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -277,13 +277,13 @@ else if (Assignment != null && !canView)
 
     private bool canView = false;
 
-    // 🔥 权限检查
+    // 权限检查
     protected override async Task OnParametersSetAsync()
     {
         await CheckViewPermission();
     }
 
-    // 🔥 权限检查方法
+    // 权限检查方法
     private async Task CheckViewPermission()
     {
         if (Assignment == null)
@@ -309,7 +309,7 @@ else if (Assignment != null && !canView)
                   IsApplicant(currentUserNTAccount);
     }
 
-    // 🔥 发起人判断方法
+    // 发起人判断方法
     private bool IsApplicant(string? currentUserNTAccount)
     {
         if (string.IsNullOrEmpty(currentUserNTAccount) || Assignment == null)

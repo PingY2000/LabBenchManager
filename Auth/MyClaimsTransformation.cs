@@ -25,7 +25,7 @@ namespace LabBenchManager.Auth
                 return principal;
             }
 
-            // 🔥 避免重复处理
+            // 避免重复处理
             if (identity.HasClaim(c => c.Type == ClaimTypes.Role))
             {
                 return principal;
@@ -34,7 +34,7 @@ namespace LabBenchManager.Auth
             var userName = identity.Name;
             var userInDb = await _userService.GetUserWithRoleAsync(userName);
 
-            // 🆕 用户不存在时自动注册为 Requester
+            // 用户不存在时自动注册为 Requester
             if (userInDb == null)
             {
                 _logger.LogInformation("New user '{UserName}' detected. Auto-registering with role '{Role}'.",
@@ -57,7 +57,7 @@ namespace LabBenchManager.Auth
                 _logger.LogInformation("Successfully auto-registered user '{UserName}' with role '{Role}'.",
                     userName, AppRoles.Requester);
             }
-            // 🆕 用户存在但无角色时，分配默认角色
+            // 用户存在但无角色时，分配默认角色
             else if (string.IsNullOrWhiteSpace(userInDb.Role))
             {
                 _logger.LogWarning("User '{UserName}' exists but has no role. Assigning default role '{Role}'.",
@@ -73,7 +73,6 @@ namespace LabBenchManager.Auth
                 new Claim(ClaimTypes.Role, userInDb.Role)
             };
 
-            // 可选：添加其他声明
             if (!string.IsNullOrEmpty(userInDb.DisplayName))
             {
                 claims.Add(new Claim("DisplayName", userInDb.DisplayName));
