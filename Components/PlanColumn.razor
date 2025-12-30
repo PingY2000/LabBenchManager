@@ -76,10 +76,18 @@
     {
         if (Plans != null)
         {
-            plansForThisStatus = Plans.Where(p => p.Status == Status)
-                                      .OrderByDescending(p => p.Id)  // 🔥 改为按ID降序
-                                      .ToList();
+            plansForThisStatus = Plans
+                .Where(p => p.Status == Status)
+                .OrderByDescending(GetLastScheduledDate)
+                .ToList();
         }
+    }
+
+    private DateTime GetLastScheduledDate(TestPlan plan)
+    {
+        return plan.ScheduledDateList.Any()
+            ? plan.ScheduledDateList.Max()
+            : DateTime.MinValue;
     }
 
     private void ToggleCollapse()

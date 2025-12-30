@@ -277,9 +277,12 @@ else
     // 状态：查看申请
     private Assignment? viewingAssignment;
 
+    private int previousBenchId = 0;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadCurrentUser();
+        previousBenchId = BenchId;
         await LoadData();
     }
     private async Task LoadCurrentUser()
@@ -294,6 +297,25 @@ else
     }
     protected override async Task OnParametersSetAsync()
     {
+        // 检测设备是否切换
+        if (BenchId != previousBenchId)
+        {
+            // 重置所有视图状态
+            currentViewMode = ViewMode.List;
+            viewingPlan = null;
+            editingPlan = new();
+            selectedDatesForEditing.Clear();
+            validationError = "";
+            showReasonInput = false;
+            modificationReason = "";
+            viewingAssignment = null;
+
+            // 更新记录的 BenchId
+            previousBenchId = BenchId;
+
+            // 重新加载数据
+            await LoadData();
+        }
         // 1. 如果有 initialDate 参数，则用它来设置当前月份
         if (initialDate.HasValue)
         {
@@ -351,6 +373,13 @@ else
 
     private void ShowPlanDetail(TestPlan plan)
     {
+        var planDates = plan.GetScheduledDates();
+
+        // 🔑 如果有日期，跳转到第一天所在月份
+        if (planDates.Any())
+        {
+            currentDate = planDates.Min(); // 跳转到最早的日期
+        }
         viewingPlan = plan;
         currentViewMode = ViewMode.Detail;
     }
