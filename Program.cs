@@ -3,8 +3,8 @@ using LabBenchManager.Data;
 using LabBenchManager.Models;
 using LabBenchManager.Services;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Negotiate;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Negotiate;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
 using System.Security.Claims;  
@@ -61,6 +61,7 @@ builder.Services.AddScoped<IClaimsTransformation, MyClaimsTransformation>();
 builder.Configuration["IsDevelopment"] = builder.Environment.IsDevelopment().ToString();
 
 var app = builder.Build();
+
 
 if (!app.Environment.IsDevelopment())
 {

@@ -22,8 +22,17 @@
             <small class="text-muted">支持的操作：更新现有用户，或根据NT账号添加新用户。</small>
         </div>
         <div class="btn-group">
-            <button class="btn btn-success" @onclick="ExportToExcel" disabled="@(users == null || !users.Any())">
-                <span class="oi oi-data-transfer-download me-1"></span>导出为Excel
+            <button class="btn btn-success" @onclick="ExportToExcel" disabled="@(users == null || !users.Any() || isExporting)">
+                @if (isExporting)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                    <span>导出中...</span>
+                }
+                else
+                {
+                    <span class="oi oi-data-transfer-download me-1"></span>
+                    <span>导出为Excel</span>
+                }
             </button>
             <button class="btn btn-info" onclick="document.getElementById('file-upload').click();">
                 <span class="oi oi-data-transfer-upload me-1"></span>上传Excel更新
@@ -240,6 +249,7 @@
         public bool IsDescending { get; set; }
     }
 
+    private bool isExporting = false;
 
     // Excel 导入/导出状态
     private string? importStatusMessage;
@@ -486,32 +496,44 @@
     {
         if (users == null || !users.Any()) return;
 
-        using var workbook = new XLWorkbook();
-        var worksheet = workbook.Worksheets.Add("Users");
-
-        worksheet.Cell(1, 1).Value = "NtAccount";
-        worksheet.Cell(1, 2).Value = "DisplayName";
-        worksheet.Cell(1, 3).Value = "Department";
-        worksheet.Cell(1, 4).Value = "Email";
-        worksheet.Cell(1, 5).Value = "Role";
-
-        for (int i = 0; i < users.Count; i++)
+        isExporting = true;
+        StateHasChanged(); // 立即更新UI
+        try
         {
-            worksheet.Cell(i + 2, 1).Value = users[i].NtAccount;
-            worksheet.Cell(i + 2, 2).Value = users[i].DisplayName;
-            worksheet.Cell(i + 2, 3).Value = users[i].Department;
-            worksheet.Cell(i + 2, 4).Value = users[i].Email;
-            worksheet.Cell(i + 2, 5).Value = users[i].Role;
+            await Task.Delay(1);
+            using var workbook = new XLWorkbook();
+            var worksheet = workbook.Worksheets.Add("Users");
+
+            worksheet.Cell(1, 1).Value = "NtAccount";
+            worksheet.Cell(1, 2).Value = "DisplayName";
+            worksheet.Cell(1, 3).Value = "Department";
+            worksheet.Cell(1, 4).Value = "Email";
+            worksheet.Cell(1, 5).Value = "Role";
+
+            for (int i = 0; i < users.Count; i++)
+            {
+                worksheet.Cell(i + 2, 1).Value = users[i].NtAccount;
+                worksheet.Cell(i + 2, 2).Value = users[i].DisplayName;
+                worksheet.Cell(i + 2, 3).Value = users[i].Department;
+                worksheet.Cell(i + 2, 4).Value = users[i].Email;
+                worksheet.Cell(i + 2, 5).Value = users[i].Role;
+            }
+
+            worksheet.Columns().AdjustToContents();
+
+            using var ms = new MemoryStream();
+            workbook.SaveAs(ms);
+            var fileBytes = ms.ToArray();
+
+            var fileName = $"Users_Export_{DateTime.Now:yyyyMMdd}.xlsx";
+            await JSRuntime.InvokeVoidAsync("saveAsFile", fileName, Convert.ToBase64String(fileBytes));
+        }
+        finally
+        {
+            isExporting = false;
         }
 
-        worksheet.Columns().AdjustToContents();
-
-        using var ms = new MemoryStream();
-        workbook.SaveAs(ms);
-        var fileBytes = ms.ToArray();
-
-        var fileName = $"Users_Export_{DateTime.Now:yyyyMMdd}.xlsx";
-        await JSRuntime.InvokeVoidAsync("saveAsFile", fileName, Convert.ToBase64String(fileBytes));
+        
     }
 
     private async Task ImportFromExcel(InputFileChangeEventArgs e)
