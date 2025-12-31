@@ -84,15 +84,10 @@ namespace LabBenchManager.Services
                                  .ToListAsync();
 
             // 1. 检查今天是否有计划
-            var activePlanToday = plans.FirstOrDefault(p => p.GetScheduledDates().Contains(today));
-
-            if (activePlanToday != null)
+            bool hasPlanToday = plans.Any(p => p.GetScheduledDates().Contains(today));
+            if (hasPlanToday)
             {
-                // 如果今天有计划，则根据计划的状态决定设备状态
-                return activePlanToday.Status switch
-                {
-                    _ => BenchStatus.空闲 // 已完成或已取消的计划意味着设备今天空闲
-                };
+                return BenchStatus.使用中;
             }
 
             // 2. 如果今天没有计划，检查未来是否有预定
@@ -111,39 +106,45 @@ namespace LabBenchManager.Services
         /// </summary>
         public async Task<List<BenchWithStatus>> GetAllWithStatusAsync()
         {
-            // 为了优化性能，一次性加载所有计划
+            var today = DateTime.Today; // 提前定义，避免每次循环创建
+
             var allPlans = await _db.TestPlans.ToListAsync();
             var benches = await GetAllAsync();
             var result = new List<BenchWithStatus>();
 
             foreach (var bench in benches)
             {
-                var today = DateTime.Today;
                 var plansForBench = allPlans.Where(p => p.BenchId == bench.Id).ToList();
 
-                // --- 重复 GetBenchStatusAsync 的逻辑以避免多次数据库调用 ---
-                var status = BenchStatus.空闲;
-                var activePlanToday = plansForBench.FirstOrDefault(p => p.GetScheduledDates().Contains(today));
-
-                if (activePlanToday != null)
+                // 1. 只要今天有任何计划（不管状态），就是“使用中”
+                if (plansForBench.Any(p => p.GetScheduledDates().Contains(today)))
                 {
-                    status = activePlanToday.Status switch
+                    result.Add(new BenchWithStatus
                     {
-                        _ => BenchStatus.空闲
-                    };
+                        Bench = bench,
+                        Status = BenchStatus.使用中
+                    });
                 }
+                // 2. 否则，检查未来是否有任何预定（不管状态）
                 else if (plansForBench.Any(p => p.GetScheduledDates().Any(d => d > today)))
                 {
-                    status = BenchStatus.已预定;
+                    result.Add(new BenchWithStatus
+                    {
+                        Bench = bench,
+                        Status = BenchStatus.已预定
+                    });
                 }
-                // --- 逻辑结束 ---
-
-                result.Add(new BenchWithStatus
+                // 3. 完全没安排
+                else
                 {
-                    Bench = bench,
-                    Status = status
-                });
+                    result.Add(new BenchWithStatus
+                    {
+                        Bench = bench,
+                        Status = BenchStatus.空闲
+                    });
+                }
             }
+
             return result;
         }
 

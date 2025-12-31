@@ -230,6 +230,26 @@ else
         background-color: #adb5bd; /* 分隔线颜色 */
         pointer-events: none;
     }
+
+    .border-success-deep {
+        border: 2px solid #146c43 !important;
+    }
+
+    .border-warning-deep {
+        border: 2px solid #e6a800 !important;
+    }
+
+    .border-danger-deep {
+        border: 2px solid #b02a37 !important;
+    }
+
+    .border-info-deep {
+        border: 2px solid #0b8ed0 !important;
+    }
+
+    .border-secondary-deep {
+        border: 2px solid #545b62 !important;
+    }
 </style>
 
 @code {
@@ -276,21 +296,13 @@ else
 
     private string GetStatusClass(BenchStatus status) => status switch
     {
-        BenchStatus.空闲 => "border-success",
-        BenchStatus.使用中 => "border-warning",
-        BenchStatus.维护中 => "border-danger",
-        BenchStatus.已预定 => "border-info",
-        _ => "border-secondary"
+        BenchStatus.空闲 => "border-success-deep",
+        BenchStatus.使用中 => "border-warning-deep",
+        BenchStatus.维护中 => "border-danger-deep",
+        BenchStatus.已预定 => "border-info-deep",
+        _ => "border-secondary-deep"
     };
 
-    private string GetStatusBadgeClass(BenchStatus status) => status switch
-    {
-        BenchStatus.空闲 => "bg-success",
-        BenchStatus.使用中 => "bg-warning text-dark",
-        BenchStatus.维护中 => "bg-danger",
-        BenchStatus.已预定 => "bg-info text-dark",
-        _ => "bg-secondary"
-    };
 
     private void ViewSchedule(int benchId)
     {

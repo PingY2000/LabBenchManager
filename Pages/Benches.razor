@@ -790,13 +790,5 @@
         await LoadBenches();
     }
 
-    private string GetStatusBadgeClass(BenchStatus status) => status switch
-    {
-        BenchStatus.空闲 => "bg-success",
-        BenchStatus.使用中 => "bg-warning text-dark",
-        BenchStatus.维护中 => "bg-danger",
-        BenchStatus.已预定 => "bg-info text-dark",
-        _ => "bg-secondary"
-    };
 
 }
