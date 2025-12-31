@@ -11,35 +11,75 @@
 <h3>用户权限管理</h3>
 <p class="text-muted">为NT账号分配应用程序角色、姓名和部门。</p>
 
-<!-- ==================== Excel 导入/导出区域 ==================== -->
+<!-- ==================== 批量操作区域 ==================== -->
 <div class="card mb-4">
     <div class="card-header">
         <h5><span class="oi oi-spreadsheet me-2"></span>批量操作</h5>
     </div>
-    <div class="card-body d-flex justify-content-between align-items-center">
-        <div>
-            <p class="mb-1">您可以导出当前用户列表为Excel模板，编辑后上传以批量更新用户信息。</p>
-            <small class="text-muted">支持的操作：更新现有用户，或根据NT账号添加新用户。</small>
-        </div>
-        <div class="btn-group">
-            <button class="btn btn-success" @onclick="ExportToExcel" disabled="@(users == null || !users.Any() || isExporting)">
-                @if (isExporting)
-                {
-                    <span class="spinner-border spinner-border-sm me-1"></span>
-                    <span>导出中...</span>
-                }
-                else
-                {
-                    <span class="oi oi-data-transfer-download me-1"></span>
-                    <span>导出为Excel</span>
-                }
-            </button>
-            <button class="btn btn-info" onclick="document.getElementById('file-upload').click();">
-                <span class="oi oi-data-transfer-upload me-1"></span>上传Excel更新
-            </button>
-            <InputFile id="file-upload" OnChange="ImportFromExcel" class="d-none" accept=".xlsx" />
-        </div>
+    <div class="card-body">
+        @if (!isBatchEditMode)
+        {
+            <!-- 普通模式：显示导入导出和批量编辑按钮 -->
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <p class="mb-1">支持Excel批量导入/导出，或直接在表格中批量编辑用户信息。</p>
+                    <small class="text-muted">Excel导入支持新增和更新用户，以NT账号为匹配依据。</small>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-success" @onclick="ExportToExcel" disabled="@(users == null || !users.Any() || isExporting)">
+                        @if (isExporting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                            <span>导出中...</span>
+                        }
+                        else
+                        {
+                            <span class="oi oi-data-transfer-download me-1"></span>
+                            <span>导出为Excel</span>
+                        }
+                    </button>
+                    <button class="btn btn-info" onclick="document.getElementById('file-upload').click();">
+                        <span class="oi oi-data-transfer-upload me-1"></span>上传Excel更新
+                    </button>
+                    <button class="btn btn-warning" @onclick="EnterBatchEditMode" disabled="@(users == null || !users.Any())">
+                        <span class="oi oi-pencil me-1"></span>进入批量编辑
+                    </button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- 批量编辑模式：显示状态和保存/退出按钮 -->
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="badge bg-warning text-dark me-2" style="font-size: 1rem; padding: 0.6rem 1.0rem;">
+                        <span class="oi oi-pencil me-1"></span>批量编辑模式
+                    </span>
+                    @if (modifiedUserIds.Any())
+                    {
+                        <span class="badge bg-info me-2" style="font-size: 1rem; padding: 0.5rem 0.8rem;">
+                            @modifiedUserIds.Count 行待保存
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">请修改需要更新的用户信息</span>
+                    }
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-success" @onclick="SaveAllModified" disabled="@(!modifiedUserIds.Any())">
+                        <span class="oi oi-check me-1"></span>保存全部 (@modifiedUserIds.Count)
+                    </button>
+                    <button class="btn btn-secondary" @onclick="ExitBatchEditMode">
+                        <span class="oi oi-x me-1"></span>退出编辑
+                    </button>
+                </div>
+            </div>
+        }
+
+        <InputFile id="file-upload" OnChange="ImportFromExcel" class="d-none" accept=".xlsx" />
     </div>
+
     @if (!string.IsNullOrEmpty(importStatusMessage))
     {
         <div class="card-footer @(isImportError ? "bg-danger" : "bg-success") text-white">
@@ -105,12 +145,42 @@
         {
             @foreach (var user in users)
             {
-                var isEditing = editingUserId == user.Id;
-                <tr>
+                // 🔑 区分批量编辑和单行编辑
+                var isBatchEditing = isBatchEditMode && editingUsers.ContainsKey(user.Id);
+                var isSingleEditing = editingUserId == user.Id && !isBatchEditMode;
+                var isEditing = isBatchEditing || isSingleEditing;
+
+                var isModified = modifiedUserIds.Contains(user.Id);
+
+                // 🔑 获取编辑对象
+                ApplicationUser editUser;
+                if (isBatchEditing)
+                {
+                    editUser = editingUsers[user.Id];
+                }
+                else if (isSingleEditing)
+                {
+                    editUser = editingUser!;
+                }
+                else
+                {
+                    editUser = user;
+                }
+
+                <tr class="@(isModified ? "table-warning" : "")">
                     <td>
                         @if (isEditing)
                         {
-                            <InputText class="form-control form-control-sm" @bind-Value="editingUser!.NtAccount" />
+                            @if (isBatchEditing)
+                            {
+                                <input type="text" class="form-control form-control-sm"
+                                       value="@editUser.NtAccount"
+                                       @oninput="@(e => { editUser.NtAccount = e.Value?.ToString() ?? ""; OnFieldChanged(user.Id); })" />
+                            }
+                            else
+                            {
+                                <InputText class="form-control form-control-sm" @bind-Value="editUser.NtAccount" />
+                            }
                         }
                         else
                         {
@@ -120,7 +190,16 @@
                     <td>
                         @if (isEditing)
                         {
-                            <InputText class="form-control form-control-sm" @bind-Value="editingUser!.DisplayName" />
+                            @if (isBatchEditing)
+                            {
+                                <input type="text" class="form-control form-control-sm"
+                                       value="@editUser.DisplayName"
+                                       @oninput="@(e => { editUser.DisplayName = e.Value?.ToString(); OnFieldChanged(user.Id); })" />
+                            }
+                            else
+                            {
+                                <InputText class="form-control form-control-sm" @bind-Value="editUser.DisplayName" />
+                            }
                         }
                         else
                         {
@@ -130,7 +209,16 @@
                     <td>
                         @if (isEditing)
                         {
-                            <InputText class="form-control form-control-sm" @bind-Value="editingUser!.Department" />
+                            @if (isBatchEditing)
+                            {
+                                <input type="text" class="form-control form-control-sm"
+                                       value="@editUser.Department"
+                                       @oninput="@(e => { editUser.Department = e.Value?.ToString(); OnFieldChanged(user.Id); })" />
+                            }
+                            else
+                            {
+                                <InputText class="form-control form-control-sm" @bind-Value="editUser.Department" />
+                            }
                         }
                         else
                         {
@@ -140,7 +228,16 @@
                     <td>
                         @if (isEditing)
                         {
-                            <InputText class="form-control form-control-sm" @bind-Value="editingUser!.Email" type="email" />
+                            @if (isBatchEditing)
+                            {
+                                <input type="email" class="form-control form-control-sm"
+                                       value="@editUser.Email"
+                                       @oninput="@(e => { editUser.Email = e.Value?.ToString(); OnFieldChanged(user.Id); })" />
+                            }
+                            else
+                            {
+                                <InputText class="form-control form-control-sm" @bind-Value="editUser.Email" type="email" />
+                            }
                         }
                         else
                         {
@@ -150,11 +247,24 @@
                     <td>
                         @if (isEditing)
                         {
-                            <InputSelect class="form-select form-select-sm" @bind-Value="editingUser!.Role">
-                                <option value="@AppRoles.Requester">@AppRoles.Requester</option>
-                                <option value="@AppRoles.TestEngineer">@AppRoles.TestEngineer</option>
-                                <option value="@AppRoles.Admin">@AppRoles.Admin</option>
-                            </InputSelect>
+                            @if (isBatchEditing)
+                            {
+                                <select class="form-select form-select-sm"
+                                        value="@editUser.Role"
+                                        @onchange="@(e => { editUser.Role = e.Value?.ToString() ?? AppRoles.Requester; OnFieldChanged(user.Id); })">
+                                    <option value="@AppRoles.Requester">@AppRoles.Requester</option>
+                                    <option value="@AppRoles.TestEngineer">@AppRoles.TestEngineer</option>
+                                    <option value="@AppRoles.Admin">@AppRoles.Admin</option>
+                                </select>
+                            }
+                            else
+                            {
+                                <InputSelect class="form-select form-select-sm" @bind-Value="editUser.Role">
+                                    <option value="@AppRoles.Requester">@AppRoles.Requester</option>
+                                    <option value="@AppRoles.TestEngineer">@AppRoles.TestEngineer</option>
+                                    <option value="@AppRoles.Admin">@AppRoles.Admin</option>
+                                </InputSelect>
+                            }
                         }
                         else
                         {
@@ -162,10 +272,28 @@
                         }
                     </td>
                     <td>
-                        @if (isEditing)
+                        @if (isBatchEditing)
+                        {
+                            @if (isModified)
+                            {
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-success" @onclick="() => SaveSingleUser(user.Id)" title="保存">
+                                        <span class="oi oi-check"></span>
+                                    </button>
+                                    <button class="btn btn-outline-secondary" @onclick="() => CancelSingleEdit(user.Id)" title="撤销">
+                                        <span class="oi oi-action-undo"></span>
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">未修改</span>
+                            }
+                        }
+                        else if (isSingleEditing)
                         {
                             <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-success" @onclick="() => SaveUser()" title="保存">
+                                <button class="btn btn-outline-success" @onclick="SaveUser" title="保存">
                                     <span class="oi oi-check"></span>
                                 </button>
                                 <button class="btn btn-outline-secondary" @onclick="CancelEdit" title="取消">
@@ -176,10 +304,12 @@
                         else
                         {
                             <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-primary" @onclick="() => StartEdit(user)" disabled="@(editingUserId != null)" title="编辑">
+                                <button class="btn btn-outline-primary" @onclick="() => StartEdit(user)"
+                                        disabled="@(editingUserId != null || isBatchEditMode)" title="编辑">
                                     <span class="oi oi-pencil"></span>
                                 </button>
-                                <button class="btn btn-outline-danger" @onclick="() => DeleteUser(user)" disabled="@(editingUserId != null)" title="删除">
+                                <button class="btn btn-outline-danger" @onclick="() => DeleteUser(user)"
+                                        disabled="@(editingUserId != null || isBatchEditMode)" title="删除">
                                     <span class="oi oi-trash"></span>
                                 </button>
                             </div>
@@ -249,11 +379,20 @@
         public bool IsDescending { get; set; }
     }
 
+    // 导出状态
     private bool isExporting = false;
 
     // Excel 导入/导出状态
     private string? importStatusMessage;
     private bool isImportError = false;
+
+    // 🔑 批量编辑状态管理
+    private bool isBatchEditMode = false;
+    private Dictionary<int, ApplicationUser> editingUsers = new();
+    private Dictionary<int, ApplicationUser> originalUsers = new();
+    private HashSet<int> modifiedUserIds = new();
+
+    
 
     protected override async Task OnInitializedAsync()
     {
@@ -273,6 +412,23 @@
     {
         users = await UserService.GetAllUsersAsync();
         users = ApplySort(users);
+
+        // 🔑 如果正在批量编辑，重新初始化字典
+        if (isBatchEditMode && users != null)
+        {
+            // 保留已修改的状态
+            var currentModified = new HashSet<int>(modifiedUserIds);
+            EnterBatchEditMode();
+
+            // 恢复修改标记
+            foreach (var id in currentModified)
+            {
+                if (editingUsers.ContainsKey(id))
+                {
+                    modifiedUserIds.Add(id);
+                }
+            }
+        }
     }
     private void ToggleSort(SortField field)
     {
@@ -304,8 +460,7 @@
         }
     }
 
-    // 🔑 获取排序图标（显示上下双箭头，高亮当前方向）
-    // 🔑 获取排序图标（使用 Open Iconic 图标）
+    // 获取排序图标
     private string GetSortIconHtml(SortField field)
     {
         var sort = sortColumns.FirstOrDefault(s => s.Field == field);
@@ -605,6 +760,134 @@
         {
             isImportError = true;
             importStatusMessage = $"导入失败: {ex.Message}";
+        }
+    }
+
+    // 进入批量编辑模式
+    private void EnterBatchEditMode()
+    {
+        if (users == null || !users.Any()) return;
+
+        isBatchEditMode = true;
+        editingUsers.Clear();
+        originalUsers.Clear();
+        modifiedUserIds.Clear();
+
+        foreach (var user in users)
+        {
+            var editCopy = new ApplicationUser
+            {
+                Id = user.Id,
+                NtAccount = user.NtAccount ?? "",
+                DisplayName = user.DisplayName ?? "",
+                Department = user.Department ?? "",
+                Email = user.Email ?? "",
+                Role = user.Role ?? AppRoles.Requester
+            };
+
+            var originalCopy = new ApplicationUser
+            {
+                Id = user.Id,
+                NtAccount = user.NtAccount ?? "",
+                DisplayName = user.DisplayName ?? "",
+                Department = user.Department ?? "",
+                Email = user.Email ?? "",
+                Role = user.Role ?? AppRoles.Requester
+            };
+
+            editingUsers[user.Id] = editCopy;
+            originalUsers[user.Id] = originalCopy;
+        }
+    }
+
+    // 退出批量编辑模式
+    private void ExitBatchEditMode()
+    {
+        isBatchEditMode = false;
+        editingUsers.Clear();
+        originalUsers.Clear();
+        modifiedUserIds.Clear();
+    }
+
+    // 检测字段变化
+    private void OnFieldChanged(int userId)
+    {
+        if (!editingUsers.ContainsKey(userId) || !originalUsers.ContainsKey(userId))
+            return;
+
+        var edited = editingUsers[userId];
+        var original = originalUsers[userId];
+
+        bool hasChanges = edited.NtAccount != original.NtAccount
+                       || edited.DisplayName != original.DisplayName
+                       || edited.Department != original.Department
+                       || edited.Email != original.Email
+                       || edited.Role != original.Role;
+
+        if (hasChanges)
+            modifiedUserIds.Add(userId);
+        else
+            modifiedUserIds.Remove(userId);
+    }
+
+    // 保存单个用户
+    private async Task SaveSingleUser(int userId)
+    {
+        if (!editingUsers.ContainsKey(userId)) return;
+
+        var userToSave = editingUsers[userId];
+        await UserService.UpdateUserAsync(userToSave);
+
+        // 🔑 直接更新内存中的用户，不重新加载
+        var userInList = users?.FirstOrDefault(u => u.Id == userId);
+        if (userInList != null)
+        {
+            userInList.NtAccount = userToSave.NtAccount;
+            userInList.DisplayName = userToSave.DisplayName;
+            userInList.Department = userToSave.Department;
+            userInList.Email = userToSave.Email;
+            userInList.Role = userToSave.Role;
+        }
+
+        // 更新原始副本
+        originalUsers[userId] = new ApplicationUser
+        {
+            Id = userToSave.Id,
+            NtAccount = userToSave.NtAccount,
+            DisplayName = userToSave.DisplayName,
+            Department = userToSave.Department,
+            Email = userToSave.Email,
+            Role = userToSave.Role
+        };
+
+        modifiedUserIds.Remove(userId);
+    }
+
+    // 撤销单个用户修改
+    private void CancelSingleEdit(int userId)
+    {
+        if (!originalUsers.ContainsKey(userId)) return;
+
+        var original = originalUsers[userId];
+        editingUsers[userId] = new ApplicationUser
+        {
+            Id = original.Id,
+            NtAccount = original.NtAccount,
+            DisplayName = original.DisplayName,
+            Department = original.Department,
+            Email = original.Email,
+            Role = original.Role
+        };
+
+        modifiedUserIds.Remove(userId);
+    }
+
+    // 保存所有修改
+    private async Task SaveAllModified()
+    {
+        foreach (var userId in modifiedUserIds.ToList())
+        {
+            await SaveSingleUser(userId);
         }
     }
 }
