@@ -553,6 +553,9 @@
 
         if (editingBench.Id == 0)
         {
+            // 计算当前最大的 SortOrder，如果没有设备则从 0 开始
+            var maxSortOrder = benchListWithStatus?.Any() == true ? benchListWithStatus.Max(b => b.Bench.SortOrder) : 0;
+            editingBench.SortOrder = maxSortOrder + 1;
             await BenchSvc.AddAsync(editingBench);
         }
         else
