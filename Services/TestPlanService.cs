@@ -14,20 +14,20 @@ namespace LabBenchManager.Services
             _db = db;
         }
 
-        // »ñÈ¡Ä³¸ö²âÊÔÌ¨µÄËùÓĞ²âÊÔ¼Æ»®
+        // è·å–æŸä¸ªæµ‹è¯•å°çš„æ‰€æœ‰æµ‹è¯•è®¡åˆ’
         public async Task<List<TestPlan>> GetPlansByBenchIdAsync(int benchId)
         {
-            // ĞÂµÄÅÅĞòÂß¼­£º°´¼Æ»®µÄµÚÒ»¸öÈÕÆÚÅÅĞò
+            // æ–°çš„æ’åºé€»è¾‘ï¼šæŒ‰è®¡åˆ’çš„ç¬¬ä¸€ä¸ªæ—¥æœŸæ’åº
             var plans = await _db.TestPlans
                                  .Where(p => p.BenchId == benchId)
                                  .Include(p => p.Bench)
                                  .ToListAsync();
 
-            // ÔÚÄÚ´æÖĞÅÅĞò£¬ÒòÎªÊı¾İ¿âÎŞ·¨Ö±½Ó½âÎö ScheduledDateList
+            // åœ¨å†…å­˜ä¸­æ’åºï¼Œå› ä¸ºæ•°æ®åº“æ— æ³•ç›´æ¥è§£æ ScheduledDateList
             return plans.OrderBy(p => p.ScheduledDateList.FirstOrDefault()).ToList();
         }
 
-        // »ñÈ¡ËùÓĞ²âÊÔ¼Æ»®
+        // è·å–æ‰€æœ‰æµ‹è¯•è®¡åˆ’
         public async Task<List<TestPlan>> GetAllPlansAsync()
         {
             var plans = await _db.TestPlans
@@ -35,13 +35,13 @@ namespace LabBenchManager.Services
                                  .OrderBy(p => p.BenchId)
                                  .ToListAsync();
 
-            // ÔÚÄÚ´æÖĞÅÅĞò
+            // åœ¨å†…å­˜ä¸­æ’åº
             return plans.OrderBy(p => p.BenchId)
                         .ThenBy(p => p.ScheduledDateList.FirstOrDefault())
                         .ToList();
         }
 
-        // ¸ù¾İID»ñÈ¡µ¥¸ö¼Æ»®
+        // æ ¹æ®IDè·å–å•ä¸ªè®¡åˆ’
         public async Task<TestPlan?> GetByIdAsync(int id)
         {
             return await _db.TestPlans
@@ -49,16 +49,16 @@ namespace LabBenchManager.Services
                             .FirstOrDefaultAsync(p => p.Id == id);
         }
 
-        // Ìí¼ÓĞÂ²âÊÔ¼Æ»®
+        // æ·»åŠ æ–°æµ‹è¯•è®¡åˆ’
         public async Task AddAsync(TestPlan plan)
         {
             plan.CreatedAt = DateTime.Now;
-            // ²»ÔÙĞèÒªÉèÖÃ SortOrder
+            // ä¸å†éœ€è¦è®¾ç½® SortOrder
             _db.TestPlans.Add(plan);
             await _db.SaveChangesAsync();
         }
 
-        // ¸üĞÂ²âÊÔ¼Æ»®×´Ì¬
+        // æ›´æ–°æµ‹è¯•è®¡åˆ’çŠ¶æ€
         public async Task UpdateStatusAsync(int planId, TestPlanStatus newStatus)
         {
             var plan = await _db.TestPlans.FindAsync(planId);
@@ -71,17 +71,17 @@ namespace LabBenchManager.Services
             }
         }
 
-        // ¸üĞÂ²âÊÔ¼Æ»®
+        // æ›´æ–°æµ‹è¯•è®¡åˆ’
         public async Task UpdateAsync(TestPlan plan)
         {
             var existingPlan = await _db.TestPlans.FindAsync(plan.Id);
             if (existingPlan == null)
             {
-                // ¿ÉÒÔÅ×³öÒì³£»ò·µ»ØÒ»¸ö½á¹û¶ÔÏó
+                // å¯ä»¥æŠ›å‡ºå¼‚å¸¸æˆ–è¿”å›ä¸€ä¸ªç»“æœå¯¹è±¡
                 return;
             }
 
-            // ÊÖ¶¯¸üĞÂ×Ö¶Î£¬ÒÔ±ÜÃâEF Core¸ú×ÙÎÊÌâ
+            // æ‰‹åŠ¨æ›´æ–°å­—æ®µï¼Œä»¥é¿å…EF Coreè·Ÿè¸ªé—®é¢˜
             existingPlan.ProjectName = plan.ProjectName;
             existingPlan.Description = plan.Description;
             existingPlan.Status = plan.Status;
@@ -97,7 +97,7 @@ namespace LabBenchManager.Services
             await _db.SaveChangesAsync();
         }
 
-        // É¾³ı²âÊÔ¼Æ»®
+        // åˆ é™¤æµ‹è¯•è®¡åˆ’
         public async Task DeleteAsync(int id)
         {
             var planToDelete = await _db.TestPlans.FindAsync(id);
@@ -109,16 +109,16 @@ namespace LabBenchManager.Services
                     if (relatedAssignment != null)
                     {
                         relatedAssignment.TestPlanId = null;
-                        if (relatedAssignment.Status == AssignmentStatus.ÒÑ¹æ»®)
+                        if (relatedAssignment.Status == AssignmentStatus.å·²è§„åˆ’)
                         {
-                            relatedAssignment.Status = AssignmentStatus.Î´¿ªÊ¼;
+                            relatedAssignment.Status = AssignmentStatus.æœªå¼€å§‹;
                         }
                         _db.Assignments.Update(relatedAssignment);
                     }
                 }
 
                 _db.TestPlans.Remove(planToDelete);
-                await _db.SaveChangesAsync(); // Ô­×Ó²Ù×÷£¬Í¬Ê±¸üĞÂAssignmentºÍÉ¾³ıTestPlan
+                await _db.SaveChangesAsync(); // åŸå­æ“ä½œï¼ŒåŒæ—¶æ›´æ–°Assignmentå’Œåˆ é™¤TestPlan
             }
         }
 
