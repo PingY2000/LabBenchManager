@@ -118,5 +118,7 @@ namespace LabBenchManager.Models
         [StringLength(1000)]
         [Display(Name = "备注说明")]
         public string? Notes { get; set; }
+
+        public string? RejectionReason { get; set; }
     }
 }

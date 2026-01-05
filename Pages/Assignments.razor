@@ -242,6 +242,10 @@
                            OnClose="CloseAllocationModal"
                            OnConfirmAllocation="HandleAllocationConfirmed" />
 
+<RejectionReasonModal IsVisible="showRejectionModal"
+                      AssignmentId="assignmentToProcess?.Id ?? 0"
+                      OnConfirm="HandleRejectionWithReason"
+                      OnClose="() => showRejectionModal = false" />
 
 @code {
     // 原始数据
@@ -259,6 +263,8 @@
     private int timeRange = 7;
     private string? errorMessage;
 
+    private bool showRejectionModal = false;
+    private Assignment? assignmentToProcess;
 
     protected override async Task OnInitializedAsync()
     {
@@ -365,20 +371,27 @@
     // 统一处理审批/拒绝逻辑，可被列表按钮和模态框按钮复用
     private async Task ProcessApproval(Assignment assignment, bool isApproved)
     {
-        try
+        if (isApproved)
         {
-            assignment.Status = isApproved ? AssignmentStatus.待分配 : AssignmentStatus.已拒绝;
-            await AssignmentSvc.UpdateAsync(assignment);
-
-            if (selectedAssignment != null) CloseDetail(); // 如果操作来自模态框，则关闭它
-
-            ApplyFilters(); // 刷新列表UI
-            StateHasChanged();
+            try
+            {
+                assignment.Status = AssignmentStatus.待分配;
+                assignment.RejectionReason = null; // 确保批准时清除旧的拒绝理由
+                await AssignmentSvc.UpdateAsync(assignment);
+                if (selectedAssignment != null) CloseDetail();
+                ApplyFilters();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"处理批准时出错: {ex.Message}";
+            }
         }
-        catch (Exception ex)
+        else
         {
-            errorMessage = $"处理审批时出错: {ex.Message}";
-            Console.WriteLine(errorMessage);
+            // 如果是拒绝，则弹出理由输入框
+            assignmentToProcess = assignment;
+            showRejectionModal = true;
         }
     }
 
@@ -439,6 +452,33 @@
         // 允许分配的条件：状态是"待分配"，或者是"未开始"但尚未创建测试计划
         return assignment.Status == AssignmentStatus.待分配 ||
                (assignment.Status == AssignmentStatus.未开始 && !assignment.TestPlanId.HasValue);
+    }
+
+    private async Task HandleRejectionWithReason(string reason)
+    {
+        if (assignmentToProcess == null || string.IsNullOrWhiteSpace(reason))
+        {
+            return;
+        }
+
+        try
+        {
+            assignmentToProcess.Status = AssignmentStatus.已拒绝;
+            assignmentToProcess.RejectionReason = reason; // 保存拒绝理由
+            await AssignmentSvc.UpdateAsync(assignmentToProcess);
+
+            // 关闭所有相关模态框和重置状态
+            showRejectionModal = false;
+            assignmentToProcess = null;
+            if (selectedAssignment != null) CloseDetail();
+
+            ApplyFilters(); // 刷新UI
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"处理拒绝时出错: {ex.Message}";
+        }
     }
 
     // 此方法保留在父组件中，因为主列表需要它

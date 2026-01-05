@@ -1,0 +1,64 @@
+﻿@if (IsVisible)
+{
+    <div class="modal fade show" style="display:block" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <span class="oi oi-comment-square me-2"></span>请输入拒绝理由
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>请为拒绝申请 <strong>#@AssignmentId</strong> 提供一个明确的理由，以便申请人了解情况。</p>
+                    <div class="mb-3">
+                        <label for="rejectionReason" class="form-label">拒绝理由 <span class="text-danger">*</span></label>
+                        <textarea id="rejectionReason" class="form-control" @bind="Reason" @bind:event="oninput" rows="4" placeholder="例如：测试样品不符合要求、申请信息不完整等..."></textarea>
+                        @if (string.IsNullOrWhiteSpace(Reason))
+                        {
+                            <small class="text-danger">拒绝理由不能为空。</small>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="Close">取消</button>
+                    <button type="button" class="btn btn-danger" @onclick="Confirm" disabled="@string.IsNullOrWhiteSpace(Reason)">
+                        <span class="oi oi-x me-1"></span>确认拒绝
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public int AssignmentId { get; set; }
+    [Parameter] public EventCallback<string> OnConfirm { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string Reason { get; set; } = "";
+
+    protected override void OnParametersSet()
+    {
+        // 每次模态框变为可见时，清空之前的理由
+        if (IsVisible)
+        {
+            Reason = "";
+        }
+    }
+
+    private async Task Confirm()
+    {
+        if (!string.IsNullOrWhiteSpace(Reason))
+        {
+            await OnConfirm.InvokeAsync(Reason);
+        }
+    }
+
+    private async Task Close()
+    {
+        await OnClose.InvokeAsync();
+    }
+}

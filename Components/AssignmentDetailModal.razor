@@ -199,6 +199,17 @@
                             <pre class="form-control-plaintext bg-light p-3 rounded">@Assignment.Notes</pre>
                         </div>
                     }
+
+                    @if (Assignment.Status == AssignmentStatus.已拒绝 && !string.IsNullOrEmpty(Assignment.RejectionReason))
+                    {
+                        <div class="alert alert-danger mt-3">
+                            <h6 class="alert-heading fw-bold">
+                                <span class="oi oi-warning me-2"></span>拒绝理由
+                            </h6>
+                            <p class="mb-0">@Assignment.RejectionReason</p>
+                        </div>
+                    }
+
                 </div>
                 <div class="modal-footer">
                     @if (ShowActions)
